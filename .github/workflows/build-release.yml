@@ -1,0 +1,74 @@
+name: Build Release AAB (for Play Store)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Version code (whole number, must increase each release: 1, 2, 3...)"
+        required: true
+        default: "1"
+      version_name:
+        description: "Version name shown to users (e.g. 1.0)"
+        required: true
+        default: "1.0"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Create Capacitor project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Warehouse Empire" com.abdulgames.warehouseempire --web-dir=www
+          mkdir -p www
+          cp warehouse-empire-android.html www/index.html
+          npx cap add android
+
+      - name: Fix Kotlin duplicate classes
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          configurations.all {
+              resolutionStrategy {
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+              }
+          }
+          EOF
+
+      - name: Set version numbers
+        run: |
+          sed -i "s/versionCode 1/versionCode ${{ github.event.inputs.version_code }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"${{ github.event.inputs.version_name }}\"/" android/app/build.gradle
+
+      - name: Build release bundle
+        run: cd android && ./gradlew bundleRelease
+
+      - name: Sign the bundle
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          jarsigner -keystore release.keystore \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            android/app/build/outputs/bundle/release/app-release.aab warehouse
+          rm release.keystore
+
+      - name: Upload signed AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-empire-release-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
