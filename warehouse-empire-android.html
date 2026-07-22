@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2314161a'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle'%3E%F0%9F%8F%97%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<title>Warehouse Empire</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14161a; --panel:#1e2127; --panel2:#262a31; --line:#33383f;
+    --ink:#e8eaed; --dim:#8b929c;
+    --hivis:#ff7a1a; --hazard:#ffc93c; --cash:#4ade80; --bad:#f87171;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Mono',monospace; height:100%; touch-action:manipulation;
+    overscroll-behavior:none;}
+  body{display:block; max-width:520px; margin:0 auto; min-height:100vh;}
+
+  /* Sticky top bar: header + money always visible */
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg);
+    padding-bottom:8px; border-bottom:4px solid transparent;
+    border-image:repeating-linear-gradient(45deg,var(--hazard) 0 12px,#1a1a1a 12px 24px) 4;}
+
+  /* Header */
+  header{padding:8px 14px 4px;}
+  header h1{margin:0; font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:20px; letter-spacing:2px; text-transform:uppercase;}
+  header h1 span{color:var(--hivis);}
+
+  /* Money terminal */
+  .terminal{margin:0 14px; background:#0d0f12; border:1px solid var(--line);
+    border-radius:8px; padding:8px 12px; position:relative; overflow:hidden;}
+  .terminal::after{content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 3px);}
+  .money{font-size:26px; font-weight:600; color:var(--cash); line-height:1.1;}
+  .rate{font-size:11px; color:var(--dim); margin-top:2px;}
+  .rate b{color:var(--ink); font-weight:600;}
+
+  /* Pick button */
+  .pickwrap{padding:10px 14px 4px;}
+  #pickBtn{width:100%; padding:12px; font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:20px; letter-spacing:3px; text-transform:uppercase;
+    color:#141414; background:var(--hivis); border:none; border-radius:10px;
+    box-shadow:0 4px 0 #b35100; cursor:pointer; user-select:none;
+    transition:transform .05s, box-shadow .05s;}
+  #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 #b35100;}
+  #pickBtn small{display:block; font-size:11px; letter-spacing:1px; font-family:'IBM Plex Mono',monospace; font-weight:600;}
+
+  /* Dispatch log ticker */
+  .log{height:54px; overflow:hidden; margin:8px 14px 0; padding:6px 10px;
+    background:#0d0f12; border:1px solid var(--line); border-radius:6px;
+    font-size:10px; color:var(--dim); line-height:1.5;}
+  .log div b{color:var(--cash); font-weight:600;}
+
+  /* Buy amount toggle */
+  .toolbar{display:flex; align-items:center; justify-content:space-between; padding:12px 14px 6px;}
+  .toolbar .label{font-family:'Saira Condensed',sans-serif; font-weight:600;
+    letter-spacing:2px; font-size:14px; color:var(--dim); text-transform:uppercase;}
+  .qty{display:flex; gap:6px;}
+  .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line);
+    border-radius:6px; padding:4px 12px; font-family:inherit; font-size:12px; cursor:pointer;}
+  .qty button.on{background:var(--hivis); color:#141414; border-color:var(--hivis); font-weight:600;}
+
+  /* Generators */
+  .gens{padding:0 14px 90px; display:flex; flex-direction:column; gap:8px;}
+  .gen{display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;}
+  .gen.locked{opacity:.4; filter:grayscale(.6);}
+  .gen .icon{font-size:24px; width:34px; text-align:center;}
+  .gen .info{flex:1; min-width:0;}
+  .gen .name{font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:16px;
+    letter-spacing:1px; text-transform:uppercase;}
+  .gen .name .count{color:var(--hivis); margin-left:6px;}
+  .gen .meta{font-size:10px; color:var(--dim); margin-top:1px;}
+  .gen .meta b{color:var(--ink); font-weight:600;}
+  .gen .mult{color:var(--hazard); font-weight:600;}
+  .buy{background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+    color:var(--ink); font-family:inherit; font-size:12px; padding:8px 10px;
+    min-width:86px; cursor:pointer; text-align:center;}
+  .buy .cost{display:block; font-weight:600; font-size:12px;}
+  .buy.can{border-color:var(--cash); color:var(--cash);}
+  .buy:disabled{cursor:default;}
+
+  /* Upgrades shop */
+  .shop{display:flex; gap:8px; overflow-x:auto; padding:0 14px 4px;
+    -webkit-overflow-scrolling:touch; scrollbar-width:none;}
+  .shop::-webkit-scrollbar{display:none;}
+  .up{flex:0 0 auto; width:128px; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; cursor:pointer; text-align:left;
+    font-family:inherit; color:var(--ink);}
+  .up .uicon{font-size:18px;}
+  .up .uname{font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:13px;
+    letter-spacing:.5px; text-transform:uppercase; line-height:1.15; margin-top:2px;}
+  .up .udesc{font-size:9px; color:var(--hazard); margin-top:2px;}
+  .up .ucost{font-size:11px; font-weight:600; color:var(--dim); margin-top:4px;}
+  .up.can{border-color:var(--cash);}
+  .up.can .ucost{color:var(--cash);}
+  .up:disabled{opacity:.45; cursor:default;}
+
+  /* Prestige row */
+  .prestige{display:flex; align-items:center; justify-content:space-between;
+    margin-top:6px; padding-top:6px; border-top:1px dashed var(--line); font-size:10px;}
+  #repInfo{color:var(--hazard); letter-spacing:1px;}
+  #sellBtn{background:transparent; border:1px solid var(--hazard); color:var(--hazard);
+    border-radius:6px; padding:3px 10px; font-family:inherit; font-size:10px;
+    letter-spacing:1px; cursor:pointer;}
+  #sellBtn.armed{background:var(--hazard); color:#141414; font-weight:600;}
+  #boostTag{color:var(--hivis); font-weight:600;}
+
+  /* Rush order */
+  #rushBtn{position:fixed; right:14px; bottom:20px; z-index:7;
+    background:var(--bad); color:#fff; border:none; border-radius:999px;
+    padding:12px 18px; font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:16px; letter-spacing:2px; cursor:pointer;
+    box-shadow:0 0 0 0 rgba(248,113,113,.6); animation:pulse 1.2s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(248,113,113,.6);}
+    100%{box-shadow:0 0 0 18px rgba(248,113,113,0);}
+  }
+  @media (prefers-reduced-motion:reduce){ #rushBtn{animation:none;} }
+
+  /* Toast */
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(80px);
+    background:var(--panel2); border:1px solid var(--hazard); border-radius:8px;
+    padding:12px 16px; font-size:12px; max-width:90%; transition:transform .3s; z-index:9;}
+  #toast.show{transform:translateX(-50%) translateY(0);}
+  #toast b{color:var(--cash);}
+
+  /* Floating tap numbers */
+  .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600;
+    font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
+  @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
+  @media (prefers-reduced-motion:reduce){ .float{animation:none; opacity:0;} }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <header>
+      <h1>Warehouse <span>Empire</span></h1>
+    </header>
+    <div class="terminal">
+      <div class="money" id="money">$0</div>
+      <div class="rate"><b id="rate">0</b>/sec &middot; tap value <b id="tapval">$1</b> <span id="boostTag"></span></div>
+      <div class="prestige">
+        <span id="repInfo">REP 0 &middot; +0% output</span>
+        <button id="sellBtn" hidden>SELL BUSINESS</button>
+      </div>
+    </div>
+  </div>
+  <button id="rushBtn" hidden>🔥 RUSH ORDER</button>
+
+  <div class="pickwrap">
+    <button id="pickBtn">Pick Order<small id="pickSub">TAP TO SCAN</small></button>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div class="toolbar" id="shopHead" hidden>
+    <div class="label">Upgrades</div>
+  </div>
+  <div class="shop" id="shop"></div>
+
+  <div class="toolbar">
+    <div class="label">Equipment</div>
+    <div class="qty">
+      <button id="q1" class="on">×1</button>
+      <button id="q10">×10</button>
+    </div>
+  </div>
+
+  <div class="gens" id="gens"></div>
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var SAVE_KEY = "warehouse-empire-save";
+  var COST_GROWTH = 1.15;
+  var OFFLINE_CAP_HOURS = 8;
+  var MILESTONES = [25, 50, 100, 200];
+
+  var GENS = [
+    {id:"picker",   name:"Casual Picker",    icon:"🧤", cost:15,        rate:0.1,   desc:"Picks by hand, complains a lot"},
+    {id:"trolley",  name:"Pallet Trolley",   icon:"🛒", cost:100,       rate:1,     desc:"Manual, reliable, squeaky wheel"},
+    {id:"forklift", name:"Forklift",         icon:"🏗️", cost:1100,      rate:8,     desc:"Counterbalance classic"},
+    {id:"reach",    name:"Reach Truck",      icon:"📦", cost:12000,     rate:47,    desc:"High racking, no worries"},
+    {id:"conveyor", name:"Conveyor Line",    icon:"➿", cost:130000,    rate:260,   desc:"It never stops. Ever."},
+    {id:"sorter",   name:"Sorting Robot",    icon:"🤖", cost:1400000,   rate:1400,  desc:"Doesn't take smoko"},
+    {id:"crane",    name:"Automated Crane",  icon:"🏭", cost:20000000,  rate:7800,  desc:"Full-height AS/RS retrieval"},
+    {id:"hub",      name:"Distribution Hub", icon:"🌐", cost:330000000, rate:44000, desc:"A whole site, running itself"}
+  ];
+
+  // ---------- upgrades ----------
+  var U1 = {picker:"Ergonomic Gloves", trolley:"Greased Bearings", forklift:"Fresh Batteries", reach:"Tilt Cameras", conveyor:"High-Speed Belts", sorter:"Firmware Patch", crane:"Dual Hoists", hub:"Night Shift Crew"};
+  var U2 = {picker:"Espresso Machine", trolley:"Alloy Frames", forklift:"Attachment Kit", reach:"Laser Guidance", conveyor:"Smart Diverters", sorter:"Neural Sort AI", crane:"Predictive Maintenance", hub:"Regional Network"};
+  var UPGRADES = [];
+  GENS.forEach(function(g){
+    UPGRADES.push({id:g.id+"_u1", name:U1[g.id], icon:g.icon, cost:Math.ceil(g.cost*12),  target:g.id, mult:2, reqGen:g.id, reqCount:10, desc:g.name+" ×2"});
+    UPGRADES.push({id:g.id+"_u2", name:U2[g.id], icon:g.icon, cost:Math.ceil(g.cost*140), target:g.id, mult:3, reqGen:g.id, reqCount:60, desc:g.name+" ×3"});
+  });
+  UPGRADES.push({id:"tap1", name:"Barcode Scanner", icon:"📟", cost:500,      target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Tap value ×2"});
+  UPGRADES.push({id:"tap2", name:"RF Gun",          icon:"🔫", cost:60000,    target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Tap value ×2"});
+  UPGRADES.push({id:"tap3", name:"Voice Picking",   icon:"🎧", cost:8000000,  target:"tap", mult:3, reqGen:null, reqCount:0, desc:"Tap value ×3"});
+  UPGRADES.push({id:"all1", name:"5S Blitz",        icon:"📋", cost:2500000,  target:"all", mult:1.5, reqGen:null, reqCount:0, desc:"ALL output ×1.5"});
+  UPGRADES.push({id:"all2", name:"SAP Go-Live",     icon:"🖥️", cost:250000000,target:"all", mult:2,   reqGen:null, reqCount:0, desc:"ALL output ×2"});
+
+  var state = {
+    money: 0,
+    total: 0,
+    lifetime: 0,
+    rep: 0,
+    taps: 0,
+    owned: {},
+    upgrades: {},
+    lastSeen: Date.now()
+  };
+  GENS.forEach(function(g){ state.owned[g.id] = 0; });
+
+  var buyQty = 1;
+  var ordNum = Math.floor(Math.random()*9000)+1000;
+  var boostUntil = 0;
+
+  // ---------- helpers ----------
+  function fmt(n){
+    if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
+    var units = ["K","M","B","T","Qa","Qi"];
+    var u = -1;
+    while (n >= 1000 && u < units.length-1){ n /= 1000; u++; }
+    return (Math.floor(n*100)/100) + units[u];
+  }
+  function money(n){ return "$" + fmt(n); }
+
+  function multFor(count){
+    var m = 1;
+    for (var i=0;i<MILESTONES.length;i++) if (count >= MILESTONES[i]) m *= 2;
+    return m;
+  }
+  function upMult(target){
+    var m = 1;
+    UPGRADES.forEach(function(u){ if (state.upgrades[u.id] && u.target === target) m *= u.mult; });
+    return m;
+  }
+  function genRate(g){ return state.owned[g.id] * g.rate * multFor(state.owned[g.id]) * upMult(g.id); }
+  function prestigeMult(){ return 1 + state.rep * 0.10; }
+  function boostActive(){ return Date.now() < boostUntil; }
+  function totalRate(){
+    var r = 0;
+    GENS.forEach(function(g){ r += genRate(g); });
+    return r * upMult("all") * prestigeMult() * (boostActive() ? 5 : 1);
+  }
+  function repEarnedByLifetime(){ return Math.floor(Math.sqrt(state.lifetime / 1e7)); }
+  function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
+  function tapValue(){ return (1 + totalRate() * 0.05) * upMult("tap"); }
+
+  function costOf(g, qty){
+    var owned = state.owned[g.id], sum = 0;
+    for (var i=0;i<qty;i++) sum += g.cost * Math.pow(COST_GROWTH, owned+i);
+    return Math.ceil(sum);
+  }
+
+  // ---------- persistence (localStorage — works in any browser/WebView) ----------
+  function saveGame(){
+    state.lastSeen = Date.now();
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){ /* storage unavailable */ }
+  }
+  async function loadGame(){
+    var raw = null;
+    try { raw = localStorage.getItem(SAVE_KEY); } catch(e){ /* storage unavailable */ }
+    if (!raw) return;
+    try {
+      var s = JSON.parse(raw);
+      state.money = s.money||0; state.total = s.total||0; state.taps = s.taps||0;
+      state.rep = s.rep||0;
+      state.lifetime = s.lifetime || s.total || 0;
+      state.upgrades = s.upgrades || {};
+      GENS.forEach(function(g){ state.owned[g.id] = (s.owned && s.owned[g.id])||0; });
+      state.lastSeen = s.lastSeen || Date.now();
+      grantOffline();
+    } catch(e){ /* corrupted save, start fresh */ }
+  }
+  function grantOffline(){
+    var secs = (Date.now() - state.lastSeen) / 1000;
+    if (secs < 30) return;
+    secs = Math.min(secs, OFFLINE_CAP_HOURS*3600);
+    var earned = totalRate() * secs;
+    if (earned < 1) return;
+    state.money += earned; state.total += earned; state.lifetime += earned;
+    var mins = Math.floor(secs/60);
+    showToast("While you were away (" + (mins<60? mins+" min" : Math.floor(mins/60)+" hr") + "), your crew dispatched <b>" + money(earned) + "</b> of orders.");
+  }
+
+  // ---------- UI ----------
+  var el = {
+    money: document.getElementById("money"),
+    rate: document.getElementById("rate"),
+    tapval: document.getElementById("tapval"),
+    gens: document.getElementById("gens"),
+    log: document.getElementById("log"),
+    toast: document.getElementById("toast"),
+    pick: document.getElementById("pickBtn")
+  };
+
+  var genEls = {};
+  function buildGens(){
+    GENS.forEach(function(g){
+      var row = document.createElement("div");
+      row.className = "gen locked";
+      row.innerHTML =
+        '<div class="icon">'+g.icon+'</div>'+
+        '<div class="info">'+
+          '<div class="name">'+g.name+'<span class="count" data-r="count"></span></div>'+
+          '<div class="meta"><b data-r="prod"></b>/sec <span class="mult" data-r="mult"></span><br>'+g.desc+'</div>'+
+        '</div>'+
+        '<button class="buy"><span class="cost" data-r="cost"></span><span data-r="qty"></span></button>';
+      var btn = row.querySelector(".buy");
+      btn.addEventListener("click", function(){ buyGen(g); });
+      el.gens.appendChild(row);
+      genEls[g.id] = {
+        row: row,
+        count: row.querySelector('[data-r="count"]'),
+        prod: row.querySelector('[data-r="prod"]'),
+        mult: row.querySelector('[data-r="mult"]'),
+        cost: row.querySelector('[data-r="cost"]'),
+        qty: row.querySelector('[data-r="qty"]'),
+        btn: btn
+      };
+    });
+  }
+
+  function render(){
+    el.money.textContent = money(state.money);
+    el.rate.textContent = money(totalRate()).slice(1) ? money(totalRate()) : "$0";
+    el.tapval.textContent = money(tapValue());
+    repInfo.textContent = "REP " + state.rep + " · +" + Math.round(state.rep*10) + "% output";
+    var gain = pendingRep();
+    sellBtn.hidden = gain < 1;
+    if (!sellArmed) sellBtn.textContent = "SELL: +" + gain + " REP";
+    boostTag.textContent = boostActive() ? "· ×5 RUSH " + Math.ceil((boostUntil-Date.now())/1000) + "s" : "";
+    renderShop();
+    GENS.forEach(function(g){
+      var e = genEls[g.id];
+      var owned = state.owned[g.id];
+      var unlocked = owned > 0 || state.total >= g.cost * 0.5;
+      e.row.classList.toggle("locked", !unlocked);
+      e.count.textContent = owned > 0 ? "×"+owned : "";
+      e.prod.textContent = money(genRate(g));
+      var m = multFor(owned);
+      e.mult.textContent = m > 1 ? "×"+m+" bonus" : "";
+      var c = costOf(g, buyQty);
+      e.cost.textContent = money(c);
+      e.qty.textContent = "buy ×"+buyQty;
+      var can = state.money >= c && unlocked;
+      e.btn.classList.toggle("can", can);
+      e.btn.disabled = !can;
+    });
+  }
+
+  function buyGen(g){
+    var c = costOf(g, buyQty);
+    if (state.money < c) return;
+    state.money -= c;
+    state.owned[g.id] += buyQty;
+    var owned = state.owned[g.id];
+    if (MILESTONES.indexOf(owned) !== -1)
+      showToast(g.name + " crew hits <b>×"+multFor(owned)+"</b> output at "+owned+" units!");
+    logLine("EQUIP " + g.name.toUpperCase() + " ×" + buyQty + " <b>-" + money(c) + "</b>");
+    render(); saveGame();
+  }
+
+  function logLine(html){
+    var d = document.createElement("div");
+    d.innerHTML = html;
+    el.log.insertBefore(d, el.log.firstChild);
+    while (el.log.children.length > 12) el.log.removeChild(el.log.lastChild);
+  }
+
+  var toastTimer = null;
+  function showToast(html){
+    el.toast.innerHTML = html;
+    el.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4200);
+  }
+
+  // ---------- tap ----------
+  function onPick(ev){
+    if (navigator.vibrate) navigator.vibrate(10);
+    var v = tapValue();
+    state.money += v; state.total += v; state.lifetime += v; state.taps++;
+    ordNum = (ordNum + 1) % 100000;
+    logLine("ORD-" + String(ordNum).padStart(5,"0") + " PICKED <b>+" + money(v) + "</b>");
+    var x = (ev.touches? ev.touches[0].clientX : ev.clientX) || window.innerWidth/2;
+    var y = (ev.touches? ev.touches[0].clientY : ev.clientY) || 200;
+    var f = document.createElement("div");
+    f.className = "float"; f.textContent = "+" + money(v);
+    f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
+    document.body.appendChild(f);
+    setTimeout(function(){ f.remove(); }, 800);
+    render();
+  }
+  el.pick.addEventListener("pointerdown", onPick);
+
+  // ---------- upgrades shop ----------
+  var shopEl = document.getElementById("shop");
+  var shopHead = document.getElementById("shopHead");
+  var upEls = {};
+  function upUnlocked(u){
+    if (state.upgrades[u.id]) return false;
+    if (u.reqGen) return state.owned[u.reqGen] >= u.reqCount;
+    return state.total >= u.cost * 0.25;
+  }
+  function buildShop(){
+    UPGRADES.forEach(function(u){
+      var b = document.createElement("button");
+      b.className = "up"; b.hidden = true;
+      b.innerHTML = '<div class="uicon">'+u.icon+'</div>'+
+        '<div class="uname">'+u.name+'</div>'+
+        '<div class="udesc">'+u.desc+'</div>'+
+        '<div class="ucost">'+money(u.cost)+'</div>';
+      b.addEventListener("click", function(){ buyUpgrade(u); });
+      shopEl.appendChild(b);
+      upEls[u.id] = b;
+    });
+  }
+  function buyUpgrade(u){
+    if (state.money < u.cost || state.upgrades[u.id]) return;
+    state.money -= u.cost;
+    state.upgrades[u.id] = true;
+    logLine("UPGRADE: " + u.name.toUpperCase() + " — " + u.desc.toUpperCase() + " <b>-" + money(u.cost) + "</b>");
+    showToast(u.icon + " <b>" + u.name + "</b> installed — " + u.desc + ".");
+    render(); saveGame();
+  }
+  function renderShop(){
+    var any = false;
+    UPGRADES.forEach(function(u){
+      var b = upEls[u.id];
+      var show = upUnlocked(u);
+      b.hidden = !show;
+      if (show){
+        any = true;
+        var can = state.money >= u.cost;
+        b.classList.toggle("can", can);
+        b.disabled = !can;
+      }
+    });
+    shopHead.hidden = !any;
+  }
+
+  // ---------- prestige ----------
+  var sellBtn = document.getElementById("sellBtn");
+  var repInfo = document.getElementById("repInfo");
+  var boostTag = document.getElementById("boostTag");
+  var sellArmed = false, sellArmTimer = null;
+  sellBtn.addEventListener("click", function(){
+    var gain = pendingRep();
+    if (gain < 1) return;
+    if (!sellArmed){
+      sellArmed = true;
+      sellBtn.classList.add("armed");
+      sellBtn.textContent = "CONFIRM: +" + gain + " REP";
+      clearTimeout(sellArmTimer);
+      sellArmTimer = setTimeout(disarmSell, 4000);
+      return;
+    }
+    // Confirmed: sell the business
+    state.rep += gain;
+    state.money = 0; state.total = 0;
+    state.upgrades = {};
+    GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    disarmSell();
+    el.log.innerHTML = "";
+    logLine("BUSINESS SOLD. REPUTATION +" + gain + ". NEW SITE OPENED.");
+    showToast("Sold up! You now hold <b>" + state.rep + " Reputation</b> — all output permanently ×" + prestigeMult().toFixed(1) + ".");
+    render(); saveGame();
+  });
+  function disarmSell(){
+    sellArmed = false;
+    sellBtn.classList.remove("armed");
+    clearTimeout(sellArmTimer);
+  }
+
+  // ---------- rush orders ----------
+  var rushBtn = document.getElementById("rushBtn");
+  var rushHideTimer = null;
+  function scheduleRush(){
+    setTimeout(function(){
+      if (totalRate() > 0){
+        rushBtn.hidden = false;
+        clearTimeout(rushHideTimer);
+        rushHideTimer = setTimeout(function(){ rushBtn.hidden = true; scheduleRush(); }, 10000);
+      } else {
+        scheduleRush();
+      }
+    }, 45000 + Math.random()*75000);
+  }
+  rushBtn.addEventListener("click", function(){
+    rushBtn.hidden = true;
+    clearTimeout(rushHideTimer);
+    boostUntil = Date.now() + 30000;
+    logLine("RUSH ORDER ACCEPTED. ALL LINES ×5 FOR 30s");
+    showToast("🔥 Rush order! Production <b>×5</b> for 30 seconds.");
+    scheduleRush();
+  });
+
+  // ---------- qty toggle ----------
+  var q1 = document.getElementById("q1"), q10 = document.getElementById("q10");
+  q1.addEventListener("click", function(){ buyQty=1; q1.classList.add("on"); q10.classList.remove("on"); render(); });
+  q10.addEventListener("click", function(){ buyQty=10; q10.classList.add("on"); q1.classList.remove("on"); render(); });
+
+  // ---------- loops ----------
+  var last = Date.now();
+  setInterval(function(){
+    var now = Date.now(), dt = (now-last)/1000; last = now;
+    var earned = totalRate() * dt;
+    state.money += earned; state.total += earned; state.lifetime += earned;
+    render();
+  }, 100);
+  setInterval(saveGame, 10000);
+  document.addEventListener("visibilitychange", function(){
+    if (document.visibilityState === "hidden") saveGame();
+  });
+
+  // ---------- boot ----------
+  buildGens();
+  buildShop();
+  loadGame().then(function(){
+    render();
+    logLine("SHIFT STARTED. SCANNER ONLINE.");
+    scheduleRush();
+  });
+})();
+</script>
+</body>
+</html>
