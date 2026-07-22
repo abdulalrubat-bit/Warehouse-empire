@@ -34,6 +34,18 @@ jobs:
           cp warehouse-empire-android.html www/index.html
           npx cap add android
 
+      - name: Fix Kotlin duplicate classes
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          configurations.all {
+              resolutionStrategy {
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+              }
+          }
+          EOF
+
       - name: Build debug APK
         run: cd android && ./gradlew assembleDebug
 
