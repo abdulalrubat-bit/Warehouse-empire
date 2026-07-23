@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Warehouse Empire</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#232529; --panel:#2c2f34; --panel2:#383c42; --line:#474c53;
+    --ink:#edeff1; --dim:#969ca4; --steel:#79818b;
+    --hivis:#f2620f; --hivis-d:#a83d00; --hazard:#f0c000;
+    --cash:#74c46e; --bad:#e05252;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  [hidden]{display:none !important;}
+  input{-webkit-user-select:text; user-select:text;}
+
+  /* ---------- Fateful Games splash ---------- */
+  #splash{position:fixed; inset:0; z-index:60; background:#0e0f12;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px; transition:opacity .45s ease;}
+  #splash.out{opacity:0; pointer-events:none;}
+  #splashMark{width:132px; height:136px; overflow:visible;
+    animation:markIn 1s cubic-bezier(.2,.9,.2,1) both;}
+  #splashMark .face{fill:#1a1c21; stroke:#f4f6f8; stroke-width:2.4;
+    stroke-linejoin:round; opacity:0;
+    animation:faceIn .55s ease forwards;}
+  #splashMark .top{animation-delay:.12s; fill:#23262c;}
+  #splashMark .left{animation-delay:.26s;}
+  #splashMark .right{animation-delay:.34s; fill:#141619;}
+  #splashMark .pip{fill:#e0a942; opacity:0; animation:pipIn .4s ease forwards;}
+  #splashMark .p1{animation-delay:.72s;} #splashMark .p2{animation-delay:.80s;}
+  #splashMark .p3{animation-delay:.88s;} #splashMark .p4{animation-delay:.96s;}
+  #splashMark .p5{animation-delay:1.02s;} #splashMark .p6{animation-delay:1.08s;}
+  @keyframes markIn{from{transform:translateY(14px) scale(.86); opacity:0;}
+                    to{transform:none; opacity:1;}}
+  @keyframes faceIn{to{opacity:1;}}
+  @keyframes pipIn{from{opacity:0; transform:scale(.2);} to{opacity:1; transform:none;}}
+  .splashname{font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:27px; letter-spacing:9px; text-transform:uppercase; color:#f4f6f8;
+    padding-left:9px; opacity:0;
+    animation:nameIn .8s ease .95s forwards;}
+  @keyframes nameIn{from{opacity:0; letter-spacing:16px;} to{opacity:1; letter-spacing:9px;}}
+  .splashtag{font-size:9px; letter-spacing:2px; color:#5c6067; text-transform:uppercase;
+    opacity:0; animation:nameIn .6s ease 1.7s forwards;}
+  @media (prefers-reduced-motion:reduce){
+    #splashMark, #splashMark .face, #splashMark .pip, .splashname, .splashtag{animation-duration:.01s;}
+  }
+
+  /* ---------- First-run setup ---------- */
+  #setup{position:fixed; inset:0; z-index:55; background:#16181b;
+    display:flex; align-items:center; justify-content:center; padding:22px;}
+  .setupbox{width:100%; max-width:360px; background:var(--panel);
+    border:1px solid var(--line); border-top:4px solid var(--hivis);
+    border-radius:6px; padding:22px;}
+  .setuptitle{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:24px;
+    letter-spacing:2px; text-transform:uppercase; color:var(--ink);}
+  .setupsub{font-size:10.5px; color:var(--dim); margin:6px 0 18px; line-height:1.6;}
+  .setupbox label{display:block; font-size:9px; letter-spacing:1.5px; color:var(--steel);
+    text-transform:uppercase; margin-bottom:5px;}
+  .setupbox input{width:100%; background:#1c1e21; border:1px solid var(--line);
+    border-radius:4px; color:var(--ink); font-family:'IBM Plex Mono',monospace;
+    font-size:14px; padding:11px 12px; margin-bottom:14px; outline:none;}
+  .setupbox input:focus{border-color:var(--hivis);}
+  #setupGo{width:100%; background:var(--hivis); color:#20130a; border:none;
+    border-radius:4px; padding:14px; font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:17px; letter-spacing:2.5px; text-transform:uppercase;
+    cursor:pointer; box-shadow:0 3px 0 var(--hivis-d);}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
+    font-family:'IBM Plex Mono',monospace; height:100%;}
+  body{display:block; max-width:520px; margin:0 auto; min-height:100vh;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+  .num{font-family:'Saira Condensed',sans-serif; font-variant-numeric:tabular-nums;}
+
+  /* Sticky top bar: header + money always visible */
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg);
+    padding-bottom:8px; border-bottom:3px solid var(--hivis);
+    box-shadow:0 6px 14px rgba(0,0,0,.35);}
+
+  /* Header */
+  header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
+  header h1{margin:0; font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
+  header h1 span{color:var(--ink);}
+  #headMark svg{width:22px; height:22px; display:block;}
+
+  /* Money terminal */
+  .terminal{margin:0 14px; background:linear-gradient(180deg,#1c1e21,#191b1e);
+    border:1px solid var(--line); border-radius:6px; padding:9px 12px;
+    position:relative; overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+  .money{font-family:'Saira Condensed',sans-serif; font-variant-numeric:tabular-nums;
+    font-size:34px; font-weight:800; color:var(--ink); line-height:1;
+    letter-spacing:.5px;}
+  .rate{font-size:10.5px; color:var(--dim); margin-top:4px; letter-spacing:.3px;}
+  .rate b{color:var(--cash); font-weight:600;}
+
+  /* Pick button */
+  .pickwrap{padding:10px 14px 4px;}
+  #pickBtn{width:100%; padding:14px; font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase;
+    color:#20130a; background:linear-gradient(180deg,var(--hivis),#d85508);
+    border:none; border-radius:6px;
+    box-shadow:0 4px 0 var(--hivis-d), 0 6px 14px rgba(0,0,0,.4);
+    cursor:pointer; user-select:none;
+    transition:transform .05s, box-shadow .05s;}
+  #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
+  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; opacity:.75;}
+
+  /* Combo meter */
+  .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
+  .combobar{flex:1; height:5px; background:#1d2023; border-radius:3px; overflow:hidden;
+    border:1px solid var(--line);}
+  .combobar i{display:block; height:100%; width:0; background:var(--hivis);
+    transition:width .1s linear;}
+  #comboText{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:13px;
+    letter-spacing:1px; color:var(--steel); font-variant-numeric:tabular-nums;
+    min-width:78px; text-align:right;}
+  #comboText.hot{color:var(--hivis);}
+
+  /* Contract card */
+  .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
+  .contract.done{border-left-color:var(--cash);}
+  .crow{display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+    font-size:9.5px; color:var(--dim);}
+  .ctitle{font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:14px;
+    letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
+  .ctime{color:var(--steel); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .creward{color:var(--hazard); white-space:nowrap;}
+  .cbar{height:5px; background:#1d2023; border-radius:3px; margin:7px 0 5px; overflow:hidden;}
+  .cbar i{display:block; height:100%; background:var(--hazard); transition:width .3s;}
+
+  /* Shift strip */
+  .shift{display:flex; gap:7px; margin:8px 14px 0;}
+  .shift div{flex:1; background:var(--panel); border:1px solid var(--line);
+    border-radius:4px; padding:8px 4px; text-align:center;}
+  .shift b{display:block; font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:17px; color:var(--cash); font-variant-numeric:tabular-nums; line-height:1.1;}
+  .shift span{font-size:8px; color:var(--dim); letter-spacing:.5px; text-transform:uppercase;}
+
+  /* Next unlock teaser */
+  .nextup{margin:8px 14px 0; font-size:9.5px; color:var(--steel); letter-spacing:.4px;
+    border-left:2px solid var(--line); padding-left:8px; line-height:1.5;}
+  .nextup b{color:var(--ink);}
+
+  /* Dispatch log ticker */
+  .log{height:38px; overflow:hidden; margin:8px 14px 0; padding:5px 10px;
+    background:#1c1e21; border:1px solid var(--line); border-left:3px solid var(--steel);
+    border-radius:4px; font-size:9.5px; color:var(--dim); line-height:1.55;
+    -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent);
+    mask-image:linear-gradient(180deg,#000 55%,transparent);}
+  .log div b{color:var(--cash); font-weight:600;}
+
+  /* Dispatch log ticker */
+  .log{height:54px; overflow:hidden; margin:8px 14px 0; padding:6px 10px;
+    background:#0d0f12; border:1px solid var(--line); border-radius:6px;
+    font-size:10px; color:var(--dim); line-height:1.5;}
+  .log div b{color:var(--cash); font-weight:600;}
+
+  /* Buy amount toggle */
+  .toolbar{display:flex; align-items:center; justify-content:space-between; padding:14px 14px 6px;}
+  .toolbar .label{font-family:'Saira Condensed',sans-serif; font-weight:800;
+    letter-spacing:3px; font-size:13px; color:var(--steel); text-transform:uppercase;
+    border-left:3px solid var(--hivis); padding-left:8px;}
+  .qty{display:flex; gap:6px;}
+  .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line);
+    border-radius:4px; padding:5px 12px; font-family:inherit; font-size:11px; cursor:pointer;}
+  .qty button.on{background:var(--hivis); color:#20130a; border-color:var(--hivis); font-weight:600;}
+
+  /* Steel icon plate */
+  .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px;
+    background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+  .plate svg{width:24px; height:24px; display:block;}
+
+  /* Generators */
+  .gens{padding:0 14px 8px; display:flex; flex-direction:column; gap:7px;}
+  .gen{display:flex; align-items:center; gap:10px; background:var(--panel);
+    border:1px solid var(--line); border-left:3px solid var(--line);
+    border-radius:4px; padding:9px 11px;}
+  .gen.can{border-left-color:var(--cash);
+    background:linear-gradient(90deg,rgba(116,196,110,.08),var(--panel) 45%);}
+  .gen.locked{opacity:.33; filter:grayscale(.8);}
+  .gen .info{flex:1; min-width:0;}
+  .gen .name{font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:16px;
+    letter-spacing:1.2px; text-transform:uppercase;}
+  .gen .name .count{color:var(--hivis); margin-left:6px; font-variant-numeric:tabular-nums;}
+  .gen .meta{font-size:9.5px; color:var(--dim); margin-top:1px;}
+  .gen .meta b{color:var(--ink); font-weight:600;}
+  .gen .mult{color:var(--hazard); font-weight:600;}
+  .gen .bar{height:3px; background:#1d2023; border-radius:2px; margin-top:5px; overflow:hidden;}
+  .gen .bar i{display:block; height:100%; background:var(--hazard); transition:width .3s;}
+  .buy{background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line);
+    border-radius:4px; color:var(--dim); font-family:inherit; font-size:11px;
+    padding:9px 8px; min-width:84px; cursor:pointer; text-align:center;}
+  .buy .cost{display:block; font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:15px; font-variant-numeric:tabular-nums; letter-spacing:.5px;}
+  .buy.can{border-color:var(--cash); color:var(--cash);
+    box-shadow:0 0 0 1px rgba(116,196,110,.25);}
+  .buy:disabled{cursor:default; opacity:.75;}
+
+  /* Upgrades shop — vertical list */
+  .shop{display:flex; flex-direction:column; gap:7px; padding:0 14px;}
+  .up{width:100%; display:flex; align-items:center; gap:10px; text-align:left;
+    background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--line);
+    border-radius:4px; padding:9px 11px; cursor:pointer;
+    font-family:inherit; color:var(--ink);}
+  .up .uname{font-family:'Saira Condensed',sans-serif; font-weight:600; font-size:15px;
+    letter-spacing:1px; text-transform:uppercase; line-height:1.15;}
+  .up .udesc{font-size:9.5px; color:var(--hazard); margin-top:2px;}
+  .up .ucost{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:15px;
+    font-variant-numeric:tabular-nums; color:var(--dim); margin-left:auto; white-space:nowrap;}
+  .up.can{border-left-color:var(--cash);
+    background:linear-gradient(90deg,rgba(116,196,110,.08),var(--panel) 45%);}
+  .up.can .ucost{color:var(--cash);}
+  .up:disabled{opacity:.42; cursor:default;}
+
+  #achPanel{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line);
+    border-radius:4px; padding:10px; display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:7px;}
+  .badge{text-align:center; padding:9px 4px; background:var(--panel2);
+    border:1px solid var(--line); border-radius:4px; font-size:8.5px; color:var(--dim);
+    letter-spacing:.3px;}
+  .badge .bicon{display:block; margin:0 auto 4px; width:22px; height:22px; opacity:.28;}
+  .badge .bicon svg{width:22px; height:22px;}
+  .badge.got{border-color:var(--hazard); color:var(--ink);
+    background:linear-gradient(180deg,rgba(240,192,0,.1),var(--panel2));}
+  .badge.got .bicon{opacity:1;}
+
+  /* Prestige row */
+  .prestige{display:flex; align-items:center; justify-content:space-between;
+    margin-top:6px; padding-top:6px; border-top:1px dashed var(--line); font-size:10px;}
+  #repInfo{color:var(--hazard); letter-spacing:1px;}
+  #sellBtn{background:transparent; border:1px solid var(--hazard); color:var(--hazard);
+    border-radius:6px; padding:3px 10px; font-family:inherit; font-size:10px;
+    letter-spacing:1px; cursor:pointer;}
+  #sellBtn.armed{background:var(--hazard); color:#141414; font-weight:600;}
+  #boostTag{color:var(--hivis); font-weight:600;}
+
+  /* Rank line */
+  .rankline{display:flex; align-items:center; gap:8px; margin-top:6px;
+    padding-top:6px; border-top:1px solid rgba(255,255,255,.06);}
+  #rankName{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:12px;
+    letter-spacing:1.6px; color:var(--hazard); text-transform:uppercase; white-space:nowrap;}
+  #rankBar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
+  #rankBar b{display:block; height:100%; width:0; background:var(--hazard); transition:width .4s;}
+
+  /* Splash screen */
+  #splash{position:fixed; inset:0; z-index:30; background:#232529;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .5s ease;}
+  #splash.hide{opacity:0; pointer-events:none;}
+  .splashwrap{text-align:center; opacity:0; transform:translateY(6px);
+    animation:splashFade 1.4s .15s ease forwards;}
+  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px;
+    filter:drop-shadow(0 8px 18px rgba(0,0,0,.55));
+    animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
+  #splashName{font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:38px; letter-spacing:6px; color:var(--ink);}
+  #splashSub{font-family:'Saira Condensed',sans-serif; font-weight:600;
+    font-size:12px; letter-spacing:8px; color:var(--steel); margin-top:2px;}
+  #splashBand{width:180px; height:6px; margin:22px auto 14px;
+    background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,#141414 8px 16px);
+    border-radius:2px;
+    animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
+  #splashTag{font-family:'IBM Plex Mono',monospace; font-size:9px;
+    letter-spacing:2px; color:var(--dim);}
+  @keyframes splashFade{
+    0%{opacity:0; transform:translateY(6px);}
+    100%{opacity:1; transform:translateY(0);}
+  }
+  @keyframes markPop{
+    0%{transform:scale(.6) rotate(-12deg); opacity:0;}
+    60%{transform:scale(1.06) rotate(2deg); opacity:1;}
+    100%{transform:scale(1) rotate(0);}
+  }
+  @keyframes bandGrow{
+    0%{width:0; opacity:0;} 100%{width:180px; opacity:1;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .splashwrap,#splashMark,#splashBand{animation:none; opacity:1; transform:none; width:180px;}
+  }
+
+  /* First-run setup */
+  #setup{position:fixed; inset:0; z-index:22; display:flex;
+    align-items:center; justify-content:center; padding:20px;
+    background:rgba(15,17,19,.94);}
+  .setupbox{width:100%; max-width:360px; background:var(--panel);
+    border:1px solid var(--line); border-top:4px solid var(--hivis);
+    border-radius:6px; padding:20px;
+    box-shadow:0 20px 50px rgba(0,0,0,.7);}
+  .setuptitle{font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:26px; letter-spacing:3px; color:var(--hivis); text-align:center;
+    margin-bottom:14px;}
+  .setupfield{display:block; margin-bottom:16px;}
+  .setupfield span{display:block; font-size:9.5px; color:var(--steel);
+    letter-spacing:1.5px; margin-bottom:5px;}
+  .setupfield input{width:100%; background:#1c1e21; border:1px solid var(--line);
+    border-left:3px solid var(--hivis); border-radius:3px;
+    padding:10px 12px; color:var(--ink); font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:16px; letter-spacing:1.5px; text-transform:uppercase;}
+  .setuplabel{font-size:9.5px; color:var(--steel); letter-spacing:1.5px; margin-bottom:6px;}
+  .setupswatches{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;}
+  .setupswatch{aspect-ratio:1; border:2px solid var(--line); border-radius:4px;
+    cursor:pointer; background:var(--panel2);}
+  .setupswatch.on{border-color:var(--ink); box-shadow:inset 0 0 0 3px var(--panel);}
+  .setupswatch span{display:block; width:100%; height:100%; border-radius:2px;}
+  #setupGo{width:100%; background:linear-gradient(180deg,var(--hivis),#d85508);
+    color:#20130a; border:none; border-radius:4px; padding:13px;
+    font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:16px;
+    letter-spacing:2px; cursor:pointer;
+    box-shadow:0 4px 0 var(--hivis-d);}
+  #setupGo:active{transform:translateY(2px); box-shadow:0 2px 0 var(--hivis-d);}
+
+  /* Business sold overlay */
+  #soldScreen{position:fixed; inset:0; z-index:20; display:flex;
+    align-items:center; justify-content:center; padding:20px;
+    background:rgba(12,13,15,.9);}
+  .soldbox{width:100%; max-width:380px; background:var(--panel);
+    border:1px solid var(--line); border-top:4px solid var(--hazard);
+    border-radius:6px; padding:20px; text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,.6);}
+  .soldstamp{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:30px;
+    letter-spacing:3px; color:var(--hazard); border:3px solid var(--hazard);
+    border-radius:4px; padding:8px; transform:rotate(-3deg); margin-bottom:18px;}
+  .soldrows{text-align:left; font-size:11px; color:var(--dim); line-height:1.9;}
+  .soldrows div{display:flex; justify-content:space-between; gap:10px;
+    border-bottom:1px dashed var(--line); padding:2px 0;}
+  .soldrows b{color:var(--ink); font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:14px; font-variant-numeric:tabular-nums;}
+  .soldrows .hi b{color:var(--cash);}
+  #soldClose{width:100%; margin-top:18px; background:var(--hazard); color:#20180a;
+    border:none; border-radius:4px; padding:13px;
+    font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:15px;
+    letter-spacing:2px; cursor:pointer;}
+
+  /* Random events */
+  #rushBtn{position:fixed; right:14px; bottom:88px; z-index:7;
+    background:var(--bad); color:#fff; border:2px solid rgba(255,255,255,.15);
+    border-radius:4px; padding:11px 16px;
+    font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:15px; letter-spacing:2px; cursor:pointer;
+    box-shadow:0 0 0 0 rgba(224,82,82,.6); animation:pulse 1.2s infinite;}
+  #rushBtn.ev-over{background:var(--hivis); color:#20130a;}
+  #rushBtn.ev-bulk{background:var(--cash); color:#12240f;}
+  #rushBtn.ev-pal{background:var(--hazard); color:#20180a;}
+  #rushBtn.ev-bad{background:#b3231f; color:#fff; animation:pulse .6s infinite;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(224,82,82,.55);}
+    100%{box-shadow:0 0 0 16px rgba(224,82,82,0);}
+  }
+  @media (prefers-reduced-motion:reduce){ #rushBtn{animation:none;} }
+
+  /* Living warehouse view */
+  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:4px;
+    overflow:hidden; background:#1a1c1f;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,.5);}
+  .floorview canvas{display:block; width:100%; height:140px;}
+
+  /* Pallet shop */
+  .palletbar{display:flex; align-items:center; justify-content:space-between;
+    margin:10px 14px 0; background:linear-gradient(180deg,#3c4046,#2e3238);
+    border:1px solid var(--line); border-left:3px solid var(--hazard);
+    border-radius:4px; padding:10px 12px;}
+  .palletcount{font-family:'Saira Condensed',sans-serif; font-weight:800;
+    font-size:26px; letter-spacing:1px; color:var(--hazard);
+    font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:7px;}
+  .palletcount svg{width:22px; height:22px;}
+  #dailyBtn{background:var(--hazard); color:#20180a; border:none; border-radius:4px;
+    padding:9px 12px; font-family:inherit; font-size:10.5px; font-weight:600;
+    letter-spacing:1px; cursor:pointer;}
+  #dailyBtn:disabled{background:var(--panel2); color:var(--dim); cursor:default;}
+  .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
+  .swatch{width:20px; height:20px; border-radius:3px; display:block;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.35);}
+  .up.owned{border-left-color:var(--hazard); opacity:1;}
+  .up.owned .ucost{color:var(--hazard);}
+  .up.active{border-left-color:var(--cash);}
+  .up.active .ucost{color:var(--cash);}
+
+  /* Bottom tab bar */
+  body{padding-bottom:74px;}
+  .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6;
+    width:100%; max-width:520px; display:flex;
+    background:linear-gradient(180deg,#32363b,#282b2f);
+    border-top:1px solid var(--line); box-shadow:0 -4px 14px rgba(0,0,0,.35);}
+  .tabs button{flex:1; background:none; border:none; color:var(--steel);
+    font-family:'IBM Plex Mono',monospace; padding:7px 0 9px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .tabs button svg{width:21px; height:21px;}
+  .tabs button span{font-size:8.5px; letter-spacing:.6px; text-transform:uppercase;}
+  .tabs button.on{color:var(--hivis);
+    box-shadow:inset 0 3px 0 var(--hivis); background:rgba(242,98,15,.07);}
+
+  /* Office */
+  .office-block{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line);
+    border-left:3px solid var(--steel); border-radius:4px; padding:12px;}
+  .office-title{font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:14px;
+    letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
+  .office-text{font-size:10.5px; color:var(--dim); margin-top:6px; line-height:1.65;}
+  .office-text b{color:var(--ink);}
+  #sellBtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--hazard);
+    color:var(--hazard); border-radius:4px; padding:12px; font-family:'Saira Condensed',sans-serif;
+    font-weight:800; font-size:15px; letter-spacing:2px; cursor:pointer;}
+  #sellBtn.armed{background:var(--hazard); color:#20180a;}
+  .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line);
+    color:var(--steel); border-radius:4px; padding:10px;
+    font-family:'Saira Condensed',sans-serif; font-weight:800; font-size:13px;
+    letter-spacing:2px; cursor:pointer;}
+  .renamebtn:active{background:var(--panel2); color:var(--ink);}
+  #sellBtn:disabled{opacity:.35; cursor:default; border-color:var(--line); color:var(--dim);}
+  .emptymsg{margin:8px 14px 0; padding:16px; font-size:10.5px; color:var(--dim);
+    border:1px dashed var(--line); border-radius:4px; text-align:center; line-height:1.6;}
+  #achPanel{margin:8px 0 0; padding:0; border:none; background:none;}
+
+  /* Toast */
+  #toast{position:fixed; left:50%; bottom:96px; z-index:9;
+    transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none;
+    background:var(--panel2); border:1px solid var(--hazard); border-left:3px solid var(--hazard);
+    border-radius:4px; padding:11px 14px; font-size:11px; line-height:1.5;
+    max-width:calc(100% - 28px); width:max-content;
+    box-shadow:0 8px 22px rgba(0,0,0,.5);
+    transition:transform .3s ease, opacity .3s ease;}
+  #toast.show{transform:translateX(-50%) translateY(0); opacity:1;}
+  #toast b{color:var(--cash);}
+
+  /* Floating tap numbers */
+  .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600;
+    font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
+  @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
+  @media (prefers-reduced-motion:reduce){ .float{animation:none; opacity:0;} }
+</style>
+</head>
+<body>
+  <div id="setup" hidden></div>
+  <div class="topbar">
+    <header>
+      <span id="headMark"></span>
+      <h1>Warehouse <span>Empire</span></h1>
+    </header>
+    <div class="terminal">
+      <div class="money" id="money">$0</div>
+      <div class="rate"><b id="rate">0</b>/sec &middot; tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
+      <div class="rankline"><span id="rankName">Casual Hand</span><i id="rankBar"><b></b></i></div>
+    </div>
+  </div>
+  <button id="rushBtn" hidden>RUSH ORDER</button>
+
+  <section id="tab-floor">
+    <div class="floorview"><canvas id="wcanvas"></canvas></div>
+    <div class="pickwrap">
+      <button id="pickBtn">Pick Order<small id="pickSub">TAP TO SCAN</small></button>
+      <div class="combo">
+        <div class="combobar"><i id="comboBar" style="width:0%"></i></div>
+        <span id="comboText">COMBO ×1.0</span>
+      </div>
+    </div>
+
+    <div class="contract" id="contractCard">
+      <div class="crow">
+        <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
+        <span class="ctime" id="contractTime"></span>
+      </div>
+      <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
+      <div class="crow">
+        <span id="contractProg">—</span>
+        <span class="creward" id="contractReward"></span>
+      </div>
+    </div>
+
+    <div class="shift">
+      <div><b id="shiftEarned">$0</b><span>this session</span></div>
+      <div><b id="shiftTaps">0</b><span>hand picks</span></div>
+      <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
+    </div>
+
+    <div class="nextup" id="nextUp" hidden></div>
+
+    <div class="log" id="log"></div>
+  </section>
+
+  <section id="tab-equip" hidden>
+    <div class="toolbar">
+      <div class="label">Equipment</div>
+      <div class="qty">
+        <button id="q1" class="on">×1</button>
+        <button id="q10">×10</button>
+      </div>
+    </div>
+    <div class="gens" id="gens"></div>
+  </section>
+
+  <section id="tab-upgrades" hidden>
+    <div class="toolbar">
+      <div class="label">Upgrades &amp; Managers</div>
+    </div>
+    <div class="shop" id="shop"></div>
+    <div class="emptymsg" id="shopEmpty">Nothing available yet — keep building equipment to unlock upgrades and managers.</div>
+  </section>
+
+  <section id="tab-office" hidden>
+    <div class="toolbar">
+      <div class="label">The Office</div>
+      <div class="qty"><button id="muteBtn">SFX ON</button></div>
+    </div>
+    <div class="office-block">
+      <div class="office-title">COMPANY</div>
+      <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
+      <button id="renameBtn" class="renamebtn">RENAME COMPANY</button>
+    </div>
+    <div class="office-block">
+      <div class="office-title">SELL THE BUSINESS</div>
+      <div class="office-text">Cash out for permanent Reputation — your first sale unlocks at $1M lifetime earnings. Every point is +6% output forever. Equipment and upgrades reset — managers, pallets and your career rank stay with you.</div>
+      <button id="sellBtn" disabled>SELL BUSINESS</button>
+    </div>
+    <div class="office-block">
+      <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
+      <div id="achPanel"></div>
+    </div>
+    <div class="office-block">
+      <div class="office-title">STATS</div>
+      <div class="office-text" id="statsText"></div>
+    </div>
+  </section>
+
+  <section id="tab-pallets" hidden>
+    <div class="palletbar">
+      <div class="palletcount"><span id="palletIcon"></span><span id="palletNum">0</span></div>
+      <button id="dailyBtn">CLAIM DAILY +3</button>
+    </div>
+    <div class="palletnote">Pallets are earned by playing — one per achievement, one per ten rush orders, five every time you sell the business, plus a daily delivery.</div>
+
+    <div class="toolbar"><div class="label">Permanent Boosts</div></div>
+    <div class="shop" id="perkList"></div>
+
+    <div class="toolbar"><div class="label">Supplies</div></div>
+    <div class="shop" id="supplyList"></div>
+
+    <div class="toolbar"><div class="label">Site Livery</div></div>
+    <div class="shop" id="themeList"></div>
+  </section>
+
+  <nav class="tabs">
+    <button data-tab="floor" class="on"><svg viewBox="0 0 24 24"><path d="M2 10.6 12 4l10 6.6V21H2z" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9" y="13.6" width="6" height="7.4" fill="currentColor"/></svg><span>Floor</span></button>
+    <button data-tab="equip"><svg viewBox="0 0 24 24"><rect x="8.6" y="4" width="1.8" height="11" fill="currentColor"/><rect x="3.5" y="13.4" width="6" height="1.6" fill="currentColor"/><rect x="10.6" y="9" width="8" height="6" rx="1" fill="currentColor"/><circle cx="12.8" cy="17.6" r="2.2" fill="currentColor"/><circle cx="17.6" cy="17.8" r="1.8" fill="currentColor"/></svg><span>Fleet</span></button>
+    <button data-tab="upgrades"><svg viewBox="0 0 24 24"><rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="currentColor" transform="rotate(-45 9.6 15.9)"/><circle cx="16.6" cy="7.4" r="4.6" fill="currentColor"/><circle cx="16.6" cy="7.4" r="1.9" fill="#2b2e33"/></svg><span>Upgrades</span></button>
+    <button data-tab="pallets"><svg viewBox="0 0 24 24"><rect x="2" y="8.4" width="20" height="3.1" fill="currentColor"/><rect x="2" y="15" width="20" height="3.1" fill="currentColor"/><rect x="3" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/><rect x="10.4" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/><rect x="17.8" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/></svg><span>Store</span></button>
+    <button data-tab="office"><svg viewBox="0 0 24 24"><rect x="4" y="3.6" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="currentColor"/><rect x="7" y="10" width="10" height="1.6" fill="currentColor"/><rect x="7" y="14" width="7" height="1.6" fill="currentColor"/></svg><span>Office</span></button>
+  </nav>
+  <div id="splash">
+    <div class="splashwrap">
+      <svg id="splashMark" viewBox="0 0 120 120">
+        <!-- outer steel hex plate -->
+        <polygon points="60,6 111,34 111,86 60,114 9,86 9,34" fill="#31363d"/>
+        <polygon points="60,10 108,36 108,84 60,110 12,84 12,36" fill="#262a2f"/>
+        <!-- hi-vis inner face -->
+        <polygon id="splashFace" points="60,18 100,40 100,80 60,102 20,80 20,40" fill="#f2620f"/>
+        <!-- F mark cut-out -->
+        <path d="M45 36 h30 v9 h-21 v11 h17 v9 h-17 v19 h-9 z" fill="#232529"/>
+      </svg>
+      <div id="splashName">FATEFUL</div>
+      <div id="splashSub">G A M E S</div>
+      <div id="splashBand"></div>
+      <div id="splashTag">A FATEFUL GAMES PRODUCTION</div>
+    </div>
+  </div>
+
+  <div id="soldScreen" hidden>
+    <div class="soldbox">
+      <div class="soldstamp">BUSINESS SOLD</div>
+      <div class="soldrows" id="soldRows"></div>
+      <button id="soldClose">OPEN THE NEW SITE</button>
+    </div>
+  </div>
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- storage shim ----------
+  // window.storage only exists inside Claude artifacts. In the packaged app it is
+  // undefined, so every save fell through to an in-memory variable and died with
+  // the process. Back it with localStorage, which persists in the Capacitor WebView.
+  if (!window.storage) {
+    window.storage = {
+      get: function(k){
+        try { var v = localStorage.getItem(k);
+              return Promise.resolve(v === null ? null : { key:k, value:v, shared:false }); }
+        catch(e){ return Promise.reject(e); }
+      },
+      set: function(k, v){
+        try { localStorage.setItem(k, v);
+              return Promise.resolve({ key:k, value:v, shared:false }); }
+        catch(e){ return Promise.reject(e); }
+      },
+      delete: function(k){
+        try { localStorage.removeItem(k);
+              return Promise.resolve({ key:k, deleted:true, shared:false }); }
+        catch(e){ return Promise.reject(e); }
+      },
+      list: function(prefix){
+        try {
+          var keys = [];
+          for (var i=0; i<localStorage.length; i++){
+            var key = localStorage.key(i);
+            if (!prefix || key.indexOf(prefix) === 0) keys.push(key);
+          }
+          return Promise.resolve({ keys:keys, prefix:prefix, shared:false });
+        } catch(e){ return Promise.reject(e); }
+      }
+    };
+  }
+
+  var SAVE_KEY = "warehouse-empire-save";
+  var COST_GROWTH = 1.15;
+  var OFFLINE_CAP_HOURS = 8;
+  var MILESTONES = [25, 50, 100, 200];
+
+  // ---------- geometric icon set ----------
+  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437',
+      HZ = 'var(--hazard)', CS = 'var(--cash)';
+  var ICONS = {
+    glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/>'+
+      '<rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/>'+
+      '<rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/>'+
+      '<rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>'+
+      '<rect x="7" y="12.6" width="10" height="1.5" fill="#fff" opacity=".55"/>',
+    trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/>'+
+      '<rect x="3" y="14" width="15" height="2" fill="'+S+'"/>'+
+      '<rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/>'+
+      '<rect x="6.5" y="10" width="9" height="1.2" fill="'+BXD+'"/>'+
+      '<circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
+    forklift:'<rect x="9" y="3" width="1.8" height="13" fill="'+A+'"/>'+
+      '<rect x="4" y="14" width="6.5" height="1.6" fill="'+S+'"/>'+
+      '<rect x="4.5" y="8" width="5" height="6" fill="'+BX+'"/>'+
+      '<rect x="11" y="9.5" width="8" height="6" rx="1" fill="'+A+'"/>'+
+      '<rect x="12.4" y="4" width="1.5" height="5.5" fill="'+A+'"/>'+
+      '<rect x="17" y="4" width="1.5" height="5.5" fill="'+A+'"/>'+
+      '<rect x="12.4" y="4" width="6.1" height="1.5" fill="'+A+'"/>'+
+      '<circle cx="13.2" cy="17.6" r="2.4" fill="'+S+'"/><circle cx="18" cy="17.9" r="1.9" fill="'+S+'"/>',
+    reach:'<rect x="8.2" y="2" width="1.6" height="16" fill="'+A+'"/>'+
+      '<rect x="10.2" y="2" width="1.6" height="16" fill="'+A+'"/>'+
+      '<rect x="3" y="6.4" width="5.4" height="1.4" fill="'+S+'"/>'+
+      '<rect x="3.2" y="2.4" width="5" height="4" fill="'+BX+'"/>'+
+      '<rect x="12.4" y="10" width="7" height="7" rx="1" fill="'+A+'"/>'+
+      '<circle cx="14.2" cy="18.6" r="2" fill="'+S+'"/><circle cx="18.4" cy="18.8" r="1.7" fill="'+S+'"/>',
+    conveyor:'<rect x="2" y="12" width="20" height="3" rx="1.5" fill="'+S+'"/>'+
+      '<circle cx="4.6" cy="13.5" r="2.5" fill="'+S+'"/><circle cx="19.4" cy="13.5" r="2.5" fill="'+S+'"/>'+
+      '<rect x="5" y="6" width="6" height="6" fill="'+BX+'"/>'+
+      '<rect x="13" y="8" width="5" height="4" fill="'+BX+'"/>'+
+      '<rect x="3" y="17" width="1.6" height="4" fill="'+S+'"/><rect x="19.4" y="17" width="1.6" height="4" fill="'+S+'"/>',
+    robot:'<rect x="9.6" y="18" width="9" height="3" rx="1" fill="'+S+'"/>'+
+      '<rect x="12.6" y="9" width="3" height="9" fill="'+S+'"/>'+
+      '<rect x="5" y="8" width="10.6" height="2.6" fill="'+A+'"/>'+
+      '<rect x="5.6" y="10.6" width="2" height="2.4" fill="'+A+'"/>'+
+      '<rect x="8.8" y="10.6" width="2" height="2.4" fill="'+A+'"/>'+
+      '<rect x="4.6" y="13" width="7" height="6" fill="'+BX+'"/>',
+    crane:'<rect x="2" y="3.5" width="20" height="2.6" fill="'+A+'"/>'+
+      '<rect x="3" y="6.1" width="2.2" height="14.4" fill="'+S+'"/>'+
+      '<rect x="18.8" y="6.1" width="2.2" height="14.4" fill="'+S+'"/>'+
+      '<rect x="11.4" y="6.1" width="1.2" height="6.4" fill="'+S+'"/>'+
+      '<rect x="8" y="12.5" width="8" height="7" fill="'+BX+'"/>',
+    hub:'<rect x="9" y="9" width="6" height="6" rx="1" fill="'+A+'"/>'+
+      '<rect x="2" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/>'+
+      '<rect x="16.6" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/>'+
+      '<rect x="2" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/>'+
+      '<rect x="16.6" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/>'+
+      '<path d="M6 6.2 9.4 9.4M18 6.2 14.6 9.4M6 17.8 9.4 14.6M18 17.8 14.6 14.6" stroke="'+S+'" stroke-width="1.4"/>',
+    wrench:'<rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="'+S+'" transform="rotate(-45 9.6 15.9)"/>'+
+      '<circle cx="16.6" cy="7.4" r="5" fill="'+A+'"/><circle cx="16.6" cy="7.4" r="2.1" fill="#2c2f34"/>',
+    hat:'<path d="M4 15.6a8 8 0 0 1 16 0z" fill="'+A+'"/>'+
+      '<rect x="2" y="15.4" width="20" height="2.7" rx="1.35" fill="'+A+'"/>'+
+      '<rect x="10.8" y="6.2" width="2.4" height="5" fill="#fff" opacity=".6"/>',
+    pallet:'<rect x="2" y="8.4" width="20" height="3.1" fill="'+BX+'"/>'+
+      '<rect x="2" y="15" width="20" height="3.1" fill="'+BX+'"/>'+
+      '<rect x="3" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>'+
+      '<rect x="10.4" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>'+
+      '<rect x="17.8" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>',
+    scanner:'<rect x="6" y="2.5" width="12" height="15" rx="2" fill="'+S+'"/>'+
+      '<rect x="8" y="4.5" width="8" height="6" fill="#1c1e21"/>'+
+      '<rect x="9" y="5.5" width="1" height="4" fill="'+CS+'"/><rect x="11" y="5.5" width="1.6" height="4" fill="'+CS+'"/>'+
+      '<rect x="13.4" y="5.5" width="1" height="4" fill="'+CS+'"/>'+
+      '<rect x="9.5" y="17.5" width="5" height="4.5" fill="'+A+'"/>',
+    cash:'<rect x="2" y="6" width="20" height="12" rx="2" fill="'+CS+'"/>'+
+      '<circle cx="12" cy="12" r="3.4" fill="#2c2f34" opacity=".35"/>'+
+      '<rect x="4.4" y="8.4" width="2" height="7.2" fill="#2c2f34" opacity=".25"/>'+
+      '<rect x="17.6" y="8.4" width="2" height="7.2" fill="#2c2f34" opacity=".25"/>',
+    flame:'<path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.6-1-2.4-1-4 2.4 1.6 4 4 4 7a6 6 0 0 1-12 0c0-5 4-7 6-12z" fill="var(--bad)"/>',
+    cycle:'<path d="M5 12a7 7 0 0 1 12-4.9" stroke="'+A+'" stroke-width="2.4" fill="none"/>'+
+      '<path d="M19 12a7 7 0 0 1-12 4.9" stroke="'+S+'" stroke-width="2.4" fill="none"/>'+
+      '<path d="M17.6 3.4v4.2h-4.2M6.4 20.6v-4.2h4.2" fill="'+A+'"/>',
+    crown:'<path d="M3 18h18l-1.6-9-4.4 3.4L12 6l-3 6.4L4.6 9z" fill="'+HZ+'"/>'+
+      '<rect x="3" y="18.6" width="18" height="2.6" fill="'+HZ+'"/>',
+    clip:'<rect x="4" y="3.6" width="16" height="18" rx="2" fill="'+S+'"/>'+
+      '<rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="'+A+'"/>'+
+      '<rect x="7" y="9" width="10" height="1.6" fill="#2c2f34"/>'+
+      '<rect x="7" y="12.6" width="10" height="1.6" fill="#2c2f34"/>'+
+      '<rect x="7" y="16.2" width="6" height="1.6" fill="#2c2f34"/>',
+    box:'<rect x="3.5" y="6" width="17" height="13" fill="'+BX+'"/>'+
+      '<rect x="3.5" y="11" width="17" height="1.8" fill="'+BXD+'"/>'+
+      '<rect x="11" y="6" width="2" height="13" fill="'+BXD+'"/>',
+    moon:'<path d="M17 15.5A8 8 0 0 1 8.5 7a7 7 0 1 0 8.5 8.5z" fill="'+HZ+'"/>',
+    radio:'<rect x="5" y="10" width="11" height="10" rx="1.6" fill="'+S+'"/>'+
+      '<rect x="7" y="12" width="7" height="3.4" fill="#1c1e21"/>'+
+      '<rect x="17" y="3" width="1.6" height="9" fill="'+A+'" transform="rotate(18 17.8 7.5)"/>'+
+      '<circle cx="8.6" cy="17.6" r="1.3" fill="'+A+'"/><circle cx="12.6" cy="17.6" r="1.3" fill="'+A+'"/>',
+    rocket:'<path d="M12 2c3.4 2.6 5 6.4 5 10.4l-2.6 3H9.6L7 12.4C7 8.4 8.6 4.6 12 2z" fill="'+A+'"/>'+
+      '<circle cx="12" cy="9.4" r="2" fill="#1c1e21"/>'+
+      '<path d="M9.6 16.4h4.8l-2.4 5.2z" fill="'+HZ+'"/>',
+    ruler:'<rect x="2.4" y="8" width="19.2" height="8" rx="1.4" fill="'+S+'"/>'+
+      '<rect x="5.4" y="8" width="1.4" height="4" fill="#1c1e21"/>'+
+      '<rect x="9.4" y="8" width="1.4" height="5.4" fill="#1c1e21"/>'+
+      '<rect x="13.4" y="8" width="1.4" height="4" fill="#1c1e21"/>'+
+      '<rect x="17.4" y="8" width="1.4" height="5.4" fill="#1c1e21"/>',
+    building:'<path d="M2 10.6 12 4l10 6.6V21H2z" fill="'+S+'"/>'+
+      '<rect x="9" y="13.6" width="6" height="7.4" fill="#1c1e21"/>'+
+      '<rect x="2" y="9.6" width="20" height="2.2" fill="'+A+'"/>'
+  };
+  function icon(name, cls){
+    return '<svg viewBox="0 0 24 24" class="'+(cls||"")+'" aria-hidden="true">'+
+      (ICONS[name] || ICONS.box) + '</svg>';
+  }
+  function plate(name){ return '<div class="plate">'+icon(name)+'</div>'; }
+  document.getElementById("headMark").innerHTML = icon("forklift");
+
+  var GENS = [
+    {id:"picker",   name:"Casual Picker",    ic:"glove",    cost:15,        rate:0.1,   desc:"Picks by hand, complains a lot"},
+    {id:"trolley",  name:"Pallet Trolley",   ic:"trolley",  cost:100,       rate:1,     desc:"Manual, reliable, squeaky wheel"},
+    {id:"forklift", name:"Forklift",         ic:"forklift", cost:1100,      rate:8,     desc:"Counterbalance classic"},
+    {id:"reach",    name:"Reach Truck",      ic:"reach",    cost:12000,     rate:47,    desc:"High racking, no worries"},
+    {id:"conveyor", name:"Conveyor Line",    ic:"conveyor", cost:130000,    rate:260,   desc:"It never stops. Ever."},
+    {id:"sorter",   name:"Sorting Robot",    ic:"robot",    cost:1400000,   rate:1400,  desc:"Doesn't take smoko"},
+    {id:"crane",    name:"Automated Crane",  ic:"crane",    cost:20000000,  rate:7800,  desc:"Full-height AS/RS retrieval"},
+    {id:"hub",      name:"Distribution Hub", ic:"hub",      cost:330000000, rate:44000, desc:"A whole site, running itself"}
+  ];
+
+  // ---------- upgrades ----------
+  var U1 = {picker:"Ergonomic Gloves", trolley:"Greased Bearings", forklift:"Fresh Batteries", reach:"Tilt Cameras", conveyor:"High-Speed Belts", sorter:"Firmware Patch", crane:"Dual Hoists", hub:"Night Shift Crew"};
+  var U2 = {picker:"Espresso Machine", trolley:"Alloy Frames", forklift:"Attachment Kit", reach:"Laser Guidance", conveyor:"Smart Diverters", sorter:"Neural Sort AI", crane:"Predictive Maintenance", hub:"Regional Network"};
+  var UPGRADES = [];
+  GENS.forEach(function(g){
+    UPGRADES.push({id:g.id+"_u1", name:U1[g.id], ic:"wrench", cost:Math.ceil(g.cost*12),  target:g.id, mult:2, reqGen:g.id, reqCount:10, desc:g.name+" ×2"});
+    UPGRADES.push({id:g.id+"_u2", name:U2[g.id], ic:"ruler",  cost:Math.ceil(g.cost*140), target:g.id, mult:3, reqGen:g.id, reqCount:60, desc:g.name+" ×3"});
+  });
+  UPGRADES.push({id:"tap1", name:"Barcode Scanner", ic:"scanner", cost:500,      target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Tap value ×2"});
+  UPGRADES.push({id:"tap2", name:"RF Gun",          ic:"scanner", cost:60000,    target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Tap value ×2"});
+  UPGRADES.push({id:"tap3", name:"Voice Picking",   ic:"radio",   cost:8000000,  target:"tap", mult:3, reqGen:null, reqCount:0, desc:"Tap value ×3"});
+  UPGRADES.push({id:"all1", name:"5S Blitz",        ic:"clip",    cost:2500000,  target:"all", mult:1.5, reqGen:null, reqCount:0, desc:"ALL output ×1.5"});
+  UPGRADES.push({id:"all2", name:"SAP Go-Live",     ic:"hub",     cost:250000000,target:"all", mult:2,   reqGen:null, reqCount:0, desc:"ALL output ×2"});
+
+  // Managers: hired once, ×1.5 their tier, SURVIVE selling the business
+  var MGR_NAMES = {picker:"Deso", trolley:"Shazza", forklift:"Big Mick", reach:"Tran", conveyor:"Elena", sorter:"Unit 7", crane:"Davo", hub:"The Colonel"};
+  GENS.forEach(function(g){
+    UPGRADES.push({id:"mgr_"+g.id, name:"Mgr: "+MGR_NAMES[g.id], ic:"hat", cost:Math.ceil(g.cost*45), target:g.id, mult:1.5, reqGen:g.id, reqCount:25, desc:g.name+" ×1.5 · keeps thru sell"});
+  });
+
+  // ---------- achievements ----------
+  var ACH = [
+    {id:"tap100",   ic:"glove",    name:"Fast Hands",        test:function(){return state.taps>=100;}},
+    {id:"tap2500",  ic:"scanner",  name:"RSI Risk",           test:function(){return state.taps>=2500;}},
+    {id:"cash100k", ic:"cash",     name:"First 100K",         test:function(){return state.lifetime>=1e5;}},
+    {id:"cash10m",  ic:"cash",     name:"Serious Operation",  test:function(){return state.lifetime>=1e7;}},
+    {id:"cash1b",   ic:"crown",    name:"Logistics Baron",    test:function(){return state.lifetime>=1e9;}},
+    {id:"own50",    ic:"forklift", name:"Fleet Manager",      test:function(){return ownedCount()>=50;}},
+    {id:"own250",   ic:"crane",    name:"Yard Full",          test:function(){return ownedCount()>=250;}},
+    {id:"up5",      ic:"wrench",   name:"Continuous Improvement", test:function(){return upBought()>=5;}},
+    {id:"mgr3",     ic:"hat",      name:"Delegator",          test:function(){return mgrHired()>=3;}},
+    {id:"mgr8",     ic:"clip",     name:"Org Chart Complete", test:function(){return mgrHired()>=8;}},
+    {id:"pres1",    ic:"cycle",    name:"Serial Entrepreneur",test:function(){return state.prestiges>=1;}},
+    {id:"pres5",    ic:"crown",    name:"Empire Builder",     test:function(){return state.prestiges>=5;}},
+    {id:"rush10",   ic:"flame",    name:"Rush Hour",          test:function(){return state.rushCaught>=10;}},
+    {id:"con5",     ic:"clip",     name:"Reliable Supplier",  test:function(){return state.contractsDone>=5;}},
+    {id:"con25",    ic:"crown",    name:"Preferred Carrier",  test:function(){return state.contractsDone>=25;}},
+    {id:"combo",    ic:"scanner",  name:"In The Zone",        test:function(){return state.bestCombo>=2;}}
+  ];
+  function ownedCount(){ var n=0; GENS.forEach(function(g){ n+=state.owned[g.id]; }); return n; }
+  function upBought(){ var n=0; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_")!==0) n++; return n; }
+  function mgrHired(){ var n=0; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_")===0) n++; return n; }
+
+  // ---------- sound engine ----------
+  var AC = null;
+  function sfx(type){
+    if (state.muted) return;
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      var t = AC.currentTime;
+      function tone(f, st, dur, vol, shape){
+        var o = AC.createOscillator(), g = AC.createGain();
+        o.type = shape || "square"; o.frequency.value = f;
+        o.connect(g); g.connect(AC.destination);
+        g.gain.setValueAtTime(vol, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+        o.start(st); o.stop(st + dur);
+      }
+      if (type === "tap") tone(1250, t, 0.05, 0.05);
+      else if (type === "buy"){ tone(300, t, 0.09, 0.09); tone(220, t+0.06, 0.12, 0.09); }
+      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); }
+      else if (type === "rush"){ tone(660, t, 0.1, 0.09, "sawtooth"); tone(660, t+0.15, 0.1, 0.09, "sawtooth"); }
+      else if (type === "ach"){ tone(1046, t, 0.1, 0.07); tone(1318, t+0.1, 0.1, 0.07); tone(1568, t+0.2, 0.2, 0.07); }
+      else if (type === "prestige"){ tone(523, t, 0.12, 0.08); tone(659, t+0.12, 0.12, 0.08); tone(784, t+0.24, 0.12, 0.08); tone(1046, t+0.36, 0.3, 0.08); }
+    } catch(e){ /* audio unavailable */ }
+  }
+
+  // ---------- pallet shop ----------
+  var PERKS = [
+    {id:"gloves",  ic:"glove",  name:"Padded Gloves",    cost:5,  desc:"Tap value +25%, forever"},
+    {id:"lean",    ic:"ruler",  name:"Lean Layout",      cost:8,  desc:"All output +10%, forever"},
+    {id:"radio",   ic:"radio",  name:"Radio Dispatch",   cost:10, desc:"Rush orders arrive far more often"},
+    {id:"night",   ic:"moon",   name:"Overnight Crew",   cost:12, desc:"Offline earnings cap 8h → 24h"},
+    {id:"movers",  ic:"rocket", name:"Fast Movers",      cost:20, desc:"All output +25%, forever"}
+  ];
+  var SUPPLIES = [
+    {id:"dispatch", ic:"box",   name:"Instant Dispatch", cost:5, desc:"Bank 1 hour of production now"},
+    {id:"callrush", ic:"flame", name:"Call a Rush",      cost:2, desc:"Trigger a ×5 rush order instantly"}
+  ];
+
+  // ---------- career ranks (the long game) ----------
+  var RANKS = [
+    {name:"Casual Hand",          at:0},
+    {name:"Storeman",             at:5e4},
+    {name:"Leading Hand",         at:2e6},
+    {name:"Shift Supervisor",     at:1e8},
+    {name:"Inventory Controller", at:5e9},
+    {name:"Site Manager",         at:2.5e11},
+    {name:"Regional Manager",     at:1e13},
+    {name:"National Director",    at:5e14},
+    {name:"Board Chair",          at:2.5e16},
+    {name:"Logistics Legend",     at:1e18}
+  ];
+  function rankIndex(){
+    var i = 0;
+    for (var k = 0; k < RANKS.length; k++) if (state.lifetime >= RANKS[k].at) i = k;
+    return i;
+  }
+  function rankBonus(){ return 1 + rankIndex() * 0.03; }
+  var THEMES = [
+    {id:"hivis",  name:"Safety Orange",  cost:0,  hivis:"#f2620f", hivisD:"#a83d00", hazard:"#f0c000"},
+    {id:"nightshift", name:"Night Shift", cost:6,  hivis:"#3f8fd8", hivisD:"#1d5285", hazard:"#79c4ee"},
+    {id:"safety", name:"Hi-Vis Lime",    cost:6,  hivis:"#8dc63f", hivisD:"#4e7a1e", hazard:"#d4e157"},
+    {id:"cold",   name:"Cold Storage",   cost:10, hivis:"#5fc9d6", hivisD:"#2a7d87", hazard:"#c7e9f2"}
+  ];
+
+  var state = {
+    money: 0,
+    total: 0,
+    lifetime: 0,
+    rep: 0,
+    taps: 0,
+    owned: {},
+    upgrades: {},
+    ach: {},
+    pallets: 0,
+    perks: {},
+    theme: "hivis",
+    lastDaily: 0,
+    muted: false,
+    prestiges: 0,
+    rushCaught: 0,
+    contract: null,
+    contractsDone: 0,
+    bestCombo: 1,
+    rank: 0,
+    company: "",
+    setupDone: false,
+    lastSeen: Date.now()
+  };
+  GENS.forEach(function(g){ state.owned[g.id] = 0; });
+
+  var buyQty = 1;
+  var ordNum = Math.floor(Math.random()*9000)+1000;
+  var boostUntil = 0;
+  var tapBoostUntil = 0;
+  var penaltyUntil = 0;
+
+  // ---------- helpers ----------
+  function fmt(n){
+    if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
+    var units = ["K","M","B","T","Qa","Qi"];
+    var u = -1;
+    while (n >= 1000 && u < units.length-1){ n /= 1000; u++; }
+    return (Math.floor(n*100)/100) + units[u];
+  }
+  function money(n){ return "$" + fmt(n); }
+
+  function multFor(count){
+    var m = 1;
+    for (var i=0;i<MILESTONES.length;i++) if (count >= MILESTONES[i]) m *= 2;
+    return m;
+  }
+  function upMult(target){
+    var m = 1;
+    UPGRADES.forEach(function(u){ if (state.upgrades[u.id] && u.target === target) m *= u.mult; });
+    return m;
+  }
+  function genRate(g){ return state.owned[g.id] * g.rate * multFor(state.owned[g.id]) * upMult(g.id); }
+  function prestigeMult(){ return 1 + state.rep * 0.06; }
+  function boostActive(){ return Date.now() < boostUntil; }
+  function tapBoostActive(){ return Date.now() < tapBoostUntil; }
+  function penaltyActive(){ return Date.now() < penaltyUntil; }
+  function perkMult(){
+    var m = 1;
+    if (state.perks.lean) m *= 1.10;
+    if (state.perks.movers) m *= 1.25;
+    return m;
+  }
+  function offlineCapHours(){ return state.perks.night ? 24 : OFFLINE_CAP_HOURS; }
+  function totalRate(){
+    var r = 0;
+    GENS.forEach(function(g){ r += genRate(g); });
+    return r * upMult("all") * perkMult() * prestigeMult() * rankBonus()
+      * (boostActive() ? 5 : 1) * (penaltyActive() ? 0.55 : 1);
+  }
+  function repEarnedByLifetime(){ return Math.floor(Math.sqrt(state.lifetime / 1e6)); }
+  function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
+  function tapValue(){
+    return (1 + totalRate() * 0.05) * upMult("tap")
+      * (state.perks.gloves ? 1.25 : 1) * (tapBoostActive() ? 4 : 1);
+  }
+
+  function costOf(g, qty){
+    var owned = state.owned[g.id], sum = 0;
+    for (var i=0;i<qty;i++) sum += g.cost * Math.pow(COST_GROWTH, owned+i);
+    return Math.ceil(sum);
+  }
+
+  // ---------- persistence ----------
+  var memFallback = null;
+  function saveGame(){
+    state.lastSeen = Date.now();
+    var payload = JSON.stringify(state);
+    if (window.storage){
+      try { window.storage.set(SAVE_KEY, payload); } catch(e){ memFallback = payload; }
+    } else { memFallback = payload; }
+  }
+  async function loadGame(){
+    var raw = null;
+    if (window.storage){
+      try {
+        var res = await window.storage.get(SAVE_KEY);
+        if (res && res.value) raw = res.value;
+      } catch(e){ /* no save yet */ }
+    } else if (memFallback) raw = memFallback;
+    if (!raw) return;
+    try {
+      var s = JSON.parse(raw);
+      state.money = s.money||0; state.total = s.total||0; state.taps = s.taps||0;
+      state.rep = s.rep||0;
+      state.lifetime = s.lifetime || s.total || 0;
+      state.upgrades = s.upgrades || {};
+      state.ach = s.ach || {};
+      state.pallets = s.pallets || 0;
+      state.perks = s.perks || {};
+      state.theme = s.theme || "hivis";
+      state.lastDaily = s.lastDaily || 0;
+      state.muted = !!s.muted;
+      state.prestiges = s.prestiges || 0;
+      state.rushCaught = s.rushCaught || 0;
+      state.contract = s.contract || null;
+      state.contractsDone = s.contractsDone || 0;
+      state.bestCombo = s.bestCombo || 1;
+      state.rank = s.rank || 0;
+      state.company = s.company || "";
+      state.setupDone = !!s.setupDone;
+      GENS.forEach(function(g){ state.owned[g.id] = (s.owned && s.owned[g.id])||0; });
+      state.lastSeen = s.lastSeen || Date.now();
+      grantOffline();
+    } catch(e){ /* corrupted save, start fresh */ }
+  }
+  function grantOffline(){
+    var secs = (Date.now() - state.lastSeen) / 1000;
+    if (secs < 30) return;
+    secs = Math.min(secs, offlineCapHours()*3600);
+    var earned = totalRate() * secs;
+    if (earned < 1) return;
+    state.money += earned; state.total += earned; state.lifetime += earned;
+    var mins = Math.floor(secs/60);
+    showToast("While you were away (" + (mins<60? mins+" min" : Math.floor(mins/60)+" hr") + "), your crew dispatched <b>" + money(earned) + "</b> of orders.");
+  }
+
+  // ---------- UI ----------
+  var el = {
+    money: document.getElementById("money"),
+    rate: document.getElementById("rate"),
+    tapval: document.getElementById("tapval"),
+    gens: document.getElementById("gens"),
+    log: document.getElementById("log"),
+    toast: document.getElementById("toast"),
+    pick: document.getElementById("pickBtn")
+  };
+
+  var genEls = {};
+  function buildGens(){
+    GENS.forEach(function(g){
+      var row = document.createElement("div");
+      row.className = "gen locked";
+      row.innerHTML =
+        plate(g.ic)+
+        '<div class="info">'+
+          '<div class="name">'+g.name+'<span class="count" data-r="count"></span></div>'+
+          '<div class="meta"><b data-r="prod"></b>/sec <span class="mult" data-r="mult"></span><br>'+g.desc+'</div>'+
+          '<div class="bar"><i data-r="bar" style="width:0%"></i></div>'+
+        '</div>'+
+        '<button class="buy"><span class="cost" data-r="cost"></span><span data-r="qty"></span></button>';
+      var btn = row.querySelector(".buy");
+      btn.addEventListener("click", function(){ buyGen(g); });
+      el.gens.appendChild(row);
+      genEls[g.id] = {
+        row: row,
+        count: row.querySelector('[data-r="count"]'),
+        prod: row.querySelector('[data-r="prod"]'),
+        mult: row.querySelector('[data-r="mult"]'),
+        cost: row.querySelector('[data-r="cost"]'),
+        qty: row.querySelector('[data-r="qty"]'),
+        bar: row.querySelector('[data-r="bar"]'),
+        btn: btn
+      };
+    });
+  }
+
+  function render(){
+    el.money.textContent = money(state.money);
+    el.rate.textContent = money(totalRate()).slice(1) ? money(totalRate()) : "$0";
+    el.tapval.textContent = money(tapValue());
+    repInfo.textContent = "REP " + state.rep + " (+" + Math.round(state.rep*6) + "%)";
+    var gain = pendingRep();
+    sellBtn.disabled = gain < 1;
+    if (!sellArmed) sellBtn.textContent = gain < 1 ? "SELL BUSINESS — REACH $1M LIFETIME" : "SELL: +" + gain + " REP";
+    boostTag.textContent = boostActive() ? "· RUSH ×5 " + Math.ceil((boostUntil-Date.now())/1000) + "s" : "";
+    renderShop();
+    GENS.forEach(function(g){
+      var e = genEls[g.id];
+      var owned = state.owned[g.id];
+      var unlocked = owned > 0 || state.total >= g.cost * 0.5;
+      e.row.classList.toggle("locked", !unlocked);
+      e.count.textContent = owned > 0 ? "×"+owned : "";
+      e.prod.textContent = money(genRate(g));
+      var m = multFor(owned);
+      e.mult.textContent = m > 1 ? "×"+m+" bonus" : "";
+      var c = costOf(g, buyQty);
+      e.cost.textContent = money(c);
+      e.qty.textContent = "buy ×"+buyQty;
+      var can = state.money >= c && unlocked;
+      e.btn.classList.toggle("can", can);
+      e.row.classList.toggle("can", can);
+      e.btn.disabled = !can;
+      var nextMs = 0;
+      for (var mi = 0; mi < MILESTONES.length; mi++){
+        if (owned < MILESTONES[mi]){ nextMs = MILESTONES[mi]; break; }
+      }
+      var prevMs = 0;
+      for (var pj = MILESTONES.length - 1; pj >= 0; pj--){
+        if (owned >= MILESTONES[pj]){ prevMs = MILESTONES[pj]; break; }
+      }
+      var pct = nextMs ? ((owned - prevMs) / (nextMs - prevMs)) * 100 : 100;
+      e.bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    });
+  }
+
+  function buyGen(g){
+    var c = costOf(g, buyQty);
+    if (state.money < c) return;
+    state.money -= c;
+    state.owned[g.id] += buyQty;
+    contractProgress("buy", buyQty);
+    sfx("buy");
+    var owned = state.owned[g.id];
+    if (MILESTONES.indexOf(owned) !== -1)
+      showToast(g.name + " crew hits <b>×"+multFor(owned)+"</b> output at "+owned+" units!");
+    logLine("EQUIP " + g.name.toUpperCase() + " ×" + buyQty + " <b>-" + money(c) + "</b>");
+    render(); saveGame();
+  }
+
+  function logLine(html){
+    var d = document.createElement("div");
+    d.innerHTML = html;
+    el.log.insertBefore(d, el.log.firstChild);
+    while (el.log.children.length > 12) el.log.removeChild(el.log.lastChild);
+  }
+
+  var toastTimer = null;
+  function showToast(html){
+    el.toast.innerHTML = html;
+    el.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4200);
+  }
+
+  // ---------- tap ----------
+  function onPick(ev){
+    sfx("tap");
+    spawnPickBox();
+    bumpCombo();
+    var v = tapValue() * comboMult();
+    state.money += v; state.total += v; state.lifetime += v; state.taps++;
+    contractProgress("tap", 1);
+    contractProgress("earn", v);
+    ordNum = (ordNum + 1) % 100000;
+    logLine("ORD-" + String(ordNum).padStart(5,"0") + " PICKED <b>+" + money(v) + "</b>");
+    var x = (ev.touches? ev.touches[0].clientX : ev.clientX) || window.innerWidth/2;
+    var y = (ev.touches? ev.touches[0].clientY : ev.clientY) || 200;
+    var f = document.createElement("div");
+    f.className = "float"; f.textContent = "+" + money(v);
+    f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
+    document.body.appendChild(f);
+    setTimeout(function(){ f.remove(); }, 800);
+    render();
+  }
+  el.pick.addEventListener("pointerdown", onPick);
+
+  // ---------- upgrades shop ----------
+  var shopEl = document.getElementById("shop");
+  var shopEmpty = document.getElementById("shopEmpty");
+  var upEls = {};
+  function upUnlocked(u){
+    if (state.upgrades[u.id]) return false;
+    if (u.reqGen) return state.owned[u.reqGen] >= u.reqCount;
+    return state.total >= u.cost * 0.25;
+  }
+  function buildShop(){
+    UPGRADES.forEach(function(u){
+      var b = document.createElement("button");
+      b.className = "up"; b.hidden = true;
+      b.innerHTML = plate(u.ic)+
+        '<div><div class="uname">'+u.name+'</div>'+
+        '<div class="udesc">'+u.desc+'</div></div>'+
+        '<div class="ucost">'+money(u.cost)+'</div>';
+      b.addEventListener("click", function(){ buyUpgrade(u); });
+      shopEl.appendChild(b);
+      upEls[u.id] = b;
+    });
+  }
+  function buyUpgrade(u){
+    if (state.money < u.cost || state.upgrades[u.id]) return;
+    state.money -= u.cost;
+    state.upgrades[u.id] = true;
+    sfx("upgrade");
+    logLine("UPGRADE: " + u.name.toUpperCase() + " — " + u.desc.toUpperCase() + " <b>-" + money(u.cost) + "</b>");
+    showToast(u.icon + " <b>" + u.name + "</b> installed — " + u.desc + ".");
+    render(); saveGame();
+  }
+  function renderShop(){
+    var any = false;
+    UPGRADES.forEach(function(u){
+      var b = upEls[u.id];
+      var show = upUnlocked(u);
+      b.hidden = !show;
+      if (show){
+        any = true;
+        var can = state.money >= u.cost;
+        b.classList.toggle("can", can);
+        b.disabled = !can;
+      }
+    });
+    shopEmpty.hidden = any;
+  }
+
+  // ---------- prestige ----------
+  var sellBtn = document.getElementById("sellBtn");
+  var repInfo = document.getElementById("repInfo");
+  var boostTag = document.getElementById("boostTag");
+  var sellArmed = false, sellArmTimer = null;
+  sellBtn.addEventListener("click", function(){
+    var gain = pendingRep();
+    if (gain < 1) return;
+    if (!sellArmed){
+      sellArmed = true;
+      sellBtn.classList.add("armed");
+      sellBtn.textContent = "CONFIRM: +" + gain + " REP";
+      clearTimeout(sellArmTimer);
+      sellArmTimer = setTimeout(disarmSell, 4000);
+      return;
+    }
+    // Confirmed: sell the business
+    var soldValue = state.total;
+    var mgrKept = mgrHired();
+    var palletReward = 3 + gain;
+    state.rep += gain;
+    state.prestiges++;
+    state.pallets += palletReward;
+    state.money = 0; state.total = 0;
+    var kept = {};
+    for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
+    state.upgrades = kept;
+    GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    sfx("prestige");
+    disarmSell();
+    el.log.innerHTML = "";
+    logLine("BUSINESS SOLD. REPUTATION +" + gain + ". NEW SITE OPENED.");
+    showSold(soldValue, gain, palletReward, mgrKept);
+    render(); saveGame();
+  });
+
+  var soldScreen = document.getElementById("soldScreen");
+  var soldRows = document.getElementById("soldRows");
+  document.getElementById("soldClose").addEventListener("click", function(){
+    soldScreen.hidden = true;
+  });
+  function showSold(value, gain, pallets, mgrs){
+    soldRows.innerHTML =
+      '<div><span>Sale valuation</span><b>' + money(value) + '</b></div>' +
+      '<div><span>Businesses sold</span><b>' + state.prestiges + '</b></div>' +
+      '<div class="hi"><span>Reputation earned</span><b>+' + gain + '</b></div>' +
+      '<div><span>Total reputation</span><b>' + state.rep + '</b></div>' +
+      '<div class="hi"><span>Output multiplier</span><b>×' + prestigeMult().toFixed(2) + '</b></div>' +
+      '<div><span>Pallets banked</span><b>+' + pallets + '</b></div>' +
+      '<div><span>Managers retained</span><b>' + mgrs + ' of 8</b></div>' +
+      '<div><span>Career rank</span><b>' + RANKS[rankIndex()].name + '</b></div>';
+    soldScreen.hidden = false;
+  }
+  function disarmSell(){
+    sellArmed = false;
+    sellBtn.classList.remove("armed");
+    clearTimeout(sellArmTimer);
+  }
+
+  // ---------- random events ----------
+  var rushBtn = document.getElementById("rushBtn");
+  var eventHideTimer = null;
+  var activeEvent = null;
+
+  var EVENTS = [
+    {id:"rush",       label:"RUSH ORDER",     cls:"ev-rush",  weight:26, window:10000,
+     line:"RUSH ORDER ACCEPTED. ALL LINES ×5 FOR 30s"},
+    {id:"overtime",   label:"OVERTIME",       cls:"ev-over",  weight:18, window:9000,
+     line:"OVERTIME APPROVED. TAP VALUE ×4 FOR 20s"},
+    {id:"bulk",       label:"BULK PALLET IN", cls:"ev-bulk",  weight:18, window:9000,
+     line:"BULK PALLET RECEIVED"},
+    {id:"stray",      label:"STRAY PALLET",   cls:"ev-pal",   weight:12, window:8000,
+     line:"STRAY PALLET RECOVERED FROM AISLE 9"},
+    {id:"inspection", label:"SAFETY CHECK",   cls:"ev-pal",   weight:10, window:8000,
+     line:"SAFETY INSPECTION PASSED"},
+    {id:"breakdown",  label:"BREAKDOWN!",     cls:"ev-bad",   weight:16, window:8000,
+     line:"BREAKDOWN REPAIRED IN TIME"}
+  ];
+
+  function pickEvent(){
+    var total = 0;
+    EVENTS.forEach(function(e){ total += e.weight; });
+    var roll = Math.random() * total;
+    for (var i = 0; i < EVENTS.length; i++){
+      roll -= EVENTS[i].weight;
+      if (roll <= 0) return EVENTS[i];
+    }
+    return EVENTS[0];
+  }
+
+  function scheduleEvent(){
+    setTimeout(function(){
+      if (totalRate() > 0 && !activeEvent){
+        activeEvent = pickEvent();
+        rushBtn.textContent = activeEvent.label;
+        rushBtn.className = activeEvent.cls;
+        rushBtn.hidden = false;
+        sfx(activeEvent.id === "breakdown" ? "rush" : "rush");
+        clearTimeout(eventHideTimer);
+        eventHideTimer = setTimeout(function(){ missEvent(); }, activeEvent.window);
+      } else {
+        scheduleEvent();
+      }
+    }, (40000 + Math.random() * 70000) * (state.perks.radio ? 0.45 : 1));
+  }
+
+  function missEvent(){
+    var e = activeEvent;
+    rushBtn.hidden = true;
+    activeEvent = null;
+    if (e && e.id === "breakdown"){
+      penaltyUntil = Date.now() + 30000;
+      logLine("BREAKDOWN MISSED. OUTPUT DOWN 45% FOR 30s");
+      showToast("A forklift's gone down — output cut until the fitter arrives.");
+    }
+    scheduleEvent();
+  }
+
+  rushBtn.addEventListener("click", function(){
+    var e = activeEvent;
+    if (!e) return;
+    rushBtn.hidden = true;
+    activeEvent = null;
+    clearTimeout(eventHideTimer);
+
+    if (e.id === "rush"){
+      boostUntil = Date.now() + 30000;
+      state.rushCaught++;
+      contractProgress("rush", 1);
+      if (state.rushCaught % 10 === 0){
+        state.pallets++;
+        showToast("Ten rush orders handled — <b>+1 pallet</b>.");
+      } else showToast("Rush order in! Production <b>×5</b> for 30 seconds.");
+    } else if (e.id === "overtime"){
+      tapBoostUntil = Date.now() + 20000;
+      showToast("Overtime! Tap value <b>×4</b> for 20 seconds.");
+    } else if (e.id === "bulk"){
+      var amt = Math.max(500, totalRate() * 90);
+      state.money += amt; state.total += amt; state.lifetime += amt;
+      contractProgress("earn", amt);
+      showToast("Bulk pallet cleared — <b>" + money(amt) + "</b>.");
+    } else if (e.id === "stray"){
+      state.pallets += 2;
+      showToast("Stray pallet recovered — <b>+2 pallets</b>.");
+    } else if (e.id === "inspection"){
+      state.pallets += 1;
+      boostUntil = Math.max(boostUntil, Date.now() + 10000);
+      showToast("Safety check passed — <b>+1 pallet</b> and a short ×5 burst.");
+    } else if (e.id === "breakdown"){
+      state.pallets += 1;
+      showToast("Quick repair! Breakdown avoided — <b>+1 pallet</b>.");
+    }
+    sfx("upgrade");
+    logLine(e.line);
+    render(); renderPallets(); saveGame();
+    scheduleEvent();
+  });
+  var scheduleRush = scheduleEvent;
+
+  // ---------- tabs ----------
+  var tabBtns = document.querySelectorAll(".tabs button");
+  var tabSections = {
+    floor: document.getElementById("tab-floor"),
+    equip: document.getElementById("tab-equip"),
+    upgrades: document.getElementById("tab-upgrades"),
+    pallets: document.getElementById("tab-pallets"),
+    office: document.getElementById("tab-office")
+  };
+  var currentTab = "floor";
+  tabBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var name = btn.getAttribute("data-tab");
+      currentTab = name;
+      tabBtns.forEach(function(b){ b.classList.toggle("on", b === btn); });
+      for (var k in tabSections) tabSections[k].hidden = (k !== name);
+      window.scrollTo(0, 0);
+      if (name === "floor") sizeCanvas();
+    });
+  });
+
+  // ---------- pallet shop UI ----------
+  var palletNum = document.getElementById("palletNum");
+  document.getElementById("palletIcon").innerHTML = icon("pallet");
+  var PC = "P";
+  var dailyBtn = document.getElementById("dailyBtn");
+  var perkList = document.getElementById("perkList");
+  var supplyList = document.getElementById("supplyList");
+  var themeList = document.getElementById("themeList");
+  var DAY_MS = 20 * 3600 * 1000;
+
+  function card(parent, item, tag){
+    var b = document.createElement("button");
+    b.className = "up";
+    var art = tag === "theme"
+      ? '<div class="plate"><span class="swatch" style="background:'+item.hivis+'"></span></div>'
+      : plate(item.ic);
+    b.innerHTML = art +
+      '<div><div class="uname">'+item.name+'</div>'+
+      '<div class="udesc">'+(item.desc || "Repaint the whole site")+'</div></div>'+
+      '<div class="ucost" data-r="cost"></div>';
+    b.addEventListener("click", function(){ buyPallet(item, tag); });
+    parent.appendChild(b);
+    return b;
+  }
+  var perkEls = {}, supplyEls = {}, themeEls = {};
+  PERKS.forEach(function(p){ perkEls[p.id] = card(perkList, p, "perk"); });
+  SUPPLIES.forEach(function(s){ supplyEls[s.id] = card(supplyList, s, "supply"); });
+  THEMES.forEach(function(t){ themeEls[t.id] = card(themeList, t, "theme"); });
+
+  function applyTheme(id){
+    var t = null;
+    THEMES.forEach(function(x){ if (x.id === id) t = x; });
+    if (!t) t = THEMES[0];
+    var r = document.documentElement.style;
+    r.setProperty("--hivis", t.hivis);
+    r.setProperty("--hazard", t.hazard);
+    HIVIS = t.hivis; HIVIS_D = t.hivisD; HAZARD = t.hazard;
+    var pb = document.getElementById("pickBtn");
+    if (pb) pb.style.boxShadow = "0 4px 0 " + t.hivisD;
+  }
+
+  function buyPallet(item, tag){
+    if (tag === "perk"){
+      if (state.perks[item.id] || state.pallets < item.cost) return;
+      state.pallets -= item.cost;
+      state.perks[item.id] = true;
+      showToast("<b>" + item.name + "</b> installed permanently.");
+      logLine("PALLETS SPENT: " + item.name.toUpperCase());
+    } else if (tag === "supply"){
+      if (state.pallets < item.cost) return;
+      if (item.id === "dispatch" && totalRate() <= 0){
+        showToast("Nothing to dispatch yet — buy some equipment first.");
+        return;
+      }
+      state.pallets -= item.cost;
+      if (item.id === "dispatch"){
+        var amt = totalRate() * 3600;
+        state.money += amt; state.total += amt; state.lifetime += amt;
+        showToast("One hour dispatched — <b>" + money(amt) + "</b> banked.");
+        logLine("INSTANT DISPATCH <b>+" + money(amt) + "</b>");
+      } else {
+        boostUntil = Date.now() + 30000;
+        rushBtn.hidden = true;
+        showToast("Rush order called in — <b>×5</b> for 30 seconds.");
+        logLine("RUSH ORDER CALLED IN. ALL LINES ×5");
+      }
+    } else {
+      if (item.cost > 0 && !state.perks["theme_" + item.id]){
+        if (state.pallets < item.cost) return;
+        state.pallets -= item.cost;
+        state.perks["theme_" + item.id] = true;
+        showToast("<b>" + item.name + "</b> unlocked.");
+      }
+      state.theme = item.id;
+      applyTheme(item.id);
+    }
+    sfx("upgrade");
+    render(); renderPallets(); saveGame();
+  }
+
+  dailyBtn.addEventListener("click", function(){
+    if (Date.now() - state.lastDaily < DAY_MS) return;
+    state.lastDaily = Date.now();
+    state.pallets += 3;
+    sfx("ach");
+    showToast("Daily delivery — <b>+3 pallets</b>.");
+    renderPallets(); saveGame();
+  });
+
+  function renderPallets(){
+    palletNum.textContent = state.pallets;
+    var ready = Date.now() - state.lastDaily >= DAY_MS;
+    dailyBtn.disabled = !ready;
+    if (!ready){
+      var hrs = Math.ceil((DAY_MS - (Date.now() - state.lastDaily)) / 3600000);
+      dailyBtn.textContent = "NEXT DELIVERY " + hrs + "H";
+    } else dailyBtn.textContent = "CLAIM DAILY +3";
+
+    PERKS.forEach(function(p){
+      var e = perkEls[p.id], owned = !!state.perks[p.id];
+      e.querySelector('[data-r="cost"]').textContent = owned ? "OWNED" : p.cost + " PAL";
+      e.classList.toggle("owned", owned);
+      e.classList.toggle("can", !owned && state.pallets >= p.cost);
+      e.disabled = owned || state.pallets < p.cost;
+    });
+    SUPPLIES.forEach(function(s){
+      var e = supplyEls[s.id];
+      e.querySelector('[data-r="cost"]').textContent = s.cost + " PAL";
+      e.classList.toggle("can", state.pallets >= s.cost);
+      e.disabled = state.pallets < s.cost;
+    });
+    THEMES.forEach(function(t){
+      var e = themeEls[t.id];
+      var unlocked = t.cost === 0 || !!state.perks["theme_" + t.id];
+      var active = state.theme === t.id;
+      e.querySelector('[data-r="cost"]').textContent =
+        active ? "IN USE" : (unlocked ? "EQUIP" : t.cost + " PAL");
+      e.classList.toggle("active", active);
+      e.classList.toggle("owned", unlocked && !active);
+      e.classList.toggle("can", !unlocked && state.pallets >= t.cost);
+      e.disabled = active || (!unlocked && state.pallets < t.cost);
+    });
+  }
+  setInterval(renderPallets, 2000);
+
+  // ---------- achievements UI ----------
+  var achPanel = document.getElementById("achPanel");
+  var achCountTag = document.getElementById("achCountTag");
+  var statsText = document.getElementById("statsText");
+  var badgeEls = {};
+  ACH.forEach(function(a){
+    var b = document.createElement("div");
+    b.className = "badge";
+    b.innerHTML = '<span class="bicon">'+icon(a.ic)+'</span>'+a.name;
+    achPanel.appendChild(b);
+    badgeEls[a.id] = b;
+  });
+  function achCount(){ var n=0; ACH.forEach(function(a){ if(state.ach[a.id]) n++; }); return n; }
+  function checkAch(){
+    ACH.forEach(function(a){
+      if (!state.ach[a.id] && a.test()){
+        state.ach[a.id] = true;
+        state.pallets++;
+        sfx("ach");
+        showToast("Achievement unlocked: <b>" + a.name + "</b> · +1 pallet");
+        logLine("ACHIEVEMENT UNLOCKED: " + a.name.toUpperCase());
+        saveGame();
+      }
+      badgeEls[a.id].classList.toggle("got", !!state.ach[a.id]);
+    });
+    achCountTag.textContent = achCount() + "/" + ACH.length;
+    checkContract();
+    renderContract();
+    renderShift();
+    renderRank();
+    var cn = document.getElementById("companyName");
+    if (cn && state.company) cn.textContent = state.company;
+    statsText.innerHTML =
+      "Career rank: <b>" + RANKS[rankIndex()].name + "</b><br>" +
+      "Lifetime earned: <b>" + money(state.lifetime) + "</b><br>" +
+      "Orders picked by hand: <b>" + state.taps + "</b><br>" +
+      "Equipment owned: <b>" + ownedCount() + "</b><br>" +
+      "Contracts fulfilled: <b>" + state.contractsDone + "</b><br>" +
+      "Best combo: <b>×" + state.bestCombo.toFixed(2) + "</b><br>" +
+      "Businesses sold: <b>" + state.prestiges + "</b><br>" +
+      "Rush orders caught: <b>" + state.rushCaught + "</b>";
+  }
+  setInterval(checkAch, 1000);
+
+  // ---------- mute ----------
+  var muteBtn = document.getElementById("muteBtn");
+  function renderMute(){ muteBtn.textContent = state.muted ? "SFX OFF" : "SFX ON"; muteBtn.classList.toggle("on", !state.muted); }
+  muteBtn.addEventListener("click", function(){
+    state.muted = !state.muted;
+    renderMute(); saveGame();
+  });
+
+  // ---------- qty toggle ----------
+  var q1 = document.getElementById("q1"), q10 = document.getElementById("q10");
+  q1.addEventListener("click", function(){ buyQty=1; q1.classList.add("on"); q10.classList.remove("on"); render(); });
+  q10.addEventListener("click", function(){ buyQty=10; q10.classList.add("on"); q1.classList.remove("on"); render(); });
+
+  // ---------- loops ----------
+  var last = Date.now();
+  setInterval(function(){
+    var now = Date.now(), dt = (now-last)/1000; last = now;
+    var earned = totalRate() * dt;
+    state.money += earned; state.total += earned; state.lifetime += earned;
+    contractProgress("earn", earned);
+    render();
+  }, 100);
+  setInterval(saveGame, 10000);
+  document.addEventListener("visibilitychange", function(){
+    if (document.visibilityState === "hidden") saveGame();
+  });
+  document.addEventListener("pause", saveGame, false);
+  window.addEventListener("pagehide", saveGame);
+  window.addEventListener("blur", function(){ saveGame();
+  });
+
+  // ---------- living warehouse view ----------
+  var cv = document.getElementById("wcanvas");
+  var cx = cv.getContext("2d");
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var CW = 300, CH = 140;
+
+  function sizeCanvas(){
+    var w = cv.clientWidth || 300, h = cv.clientHeight || 140;
+    if (!w) return;
+    CW = w; CH = h;
+    cv.width = Math.floor(w * DPR);
+    cv.height = Math.floor(h * DPR);
+    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener("resize", sizeCanvas);
+
+  var sprites = [];
+  var lastCounts = "";
+  var beltOffset = 0;
+  var pickBoxes = [];
+
+  function desiredCounts(){
+    var o = state.owned;
+    return {
+      worker: Math.min(4, Math.ceil((o.picker/10) + (o.trolley/8))),
+      fork:   Math.min(4, Math.ceil((o.forklift/5) + (o.reach/5))),
+      robot:  Math.min(4, Math.ceil((o.sorter/4) + (o.crane/3) + (o.hub/2))),
+      belt:   o.conveyor > 0 ? 1 : 0
+    };
+  }
+
+  function rebuildSprites(){
+    var c = desiredCounts();
+    var key = c.worker + "-" + c.fork + "-" + c.robot + "-" + c.belt;
+    if (key === lastCounts) return;
+    lastCounts = key;
+    sprites = [];
+    function add(type, n){
+      for (var i = 0; i < n; i++){
+        var back = (i % 2 === 1);
+        sprites.push({
+          type: type,
+          x: Math.random() * CW,
+          back: back,
+          s: back ? 0.72 : 1,
+          sp: (back ? 16 : 26) + Math.random() * 10,
+          bob: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    add("worker", c.worker);
+    add("fork", c.fork);
+    add("robot", c.robot);
+    sprites.sort(function(a, b){ return (a.back ? 0 : 1) - (b.back ? 0 : 1); });
+  }
+
+  // --- sprite painters (origin = feet, centre) ---
+  function paintBox(x, y, w, h){
+    cx.fillStyle = "#c08a4e"; cx.fillRect(x, y, w, h);
+    cx.fillStyle = "#8a6437";
+    cx.fillRect(x, y + h * 0.45, w, Math.max(1, h * 0.1));
+    cx.fillRect(x + w * 0.45, y, Math.max(1, w * 0.1), h);
+  }
+
+  function paintWorker(x, y, s, t){
+    var step = Math.sin(t * 9) * 2 * s;
+    cx.fillStyle = "#22252a";
+    cx.fillRect(x - 4*s, y - 9*s + step*0.2, 3*s, 9*s);
+    cx.fillRect(x + 1*s, y - 9*s - step*0.2, 3*s, 9*s);
+    cx.fillStyle = HIVIS;
+    cx.fillRect(x - 5*s, y - 20*s, 10*s, 11*s);
+    cx.fillStyle = "#f5f5f5";
+    cx.fillRect(x - 5*s, y - 16*s, 10*s, 1.6*s);
+    cx.fillStyle = "#e0b088";
+    cx.fillRect(x - 3*s, y - 25*s, 6*s, 5*s);
+    cx.fillStyle = HAZARD;
+    cx.fillRect(x - 4*s, y - 27*s, 8*s, 2.5*s);
+    paintBox(x + 4*s, y - 19*s, 8*s, 8*s);
+  }
+
+  function paintFork(x, y, s, t){
+    var jig = Math.sin(t * 14) * 0.4 * s;
+    cx.fillStyle = "#8b929c";
+    cx.fillRect(x - 14*s, y - 2.5*s + jig, 10*s, 2*s);
+    paintBox(x - 13*s, y - 12*s + jig, 9*s, 9*s);
+    cx.fillStyle = HIVIS_D;
+    cx.fillRect(x - 5*s, y - 26*s + jig, 2.4*s, 24*s);
+    cx.fillStyle = HIVIS;
+    cx.fillRect(x - 2*s, y - 15*s, 15*s, 12*s);
+    cx.fillRect(x + 1*s, y - 27*s, 2.2*s, 12*s);
+    cx.fillRect(x + 10*s, y - 27*s, 2.2*s, 12*s);
+    cx.fillRect(x + 1*s, y - 27*s, 11.2*s, 2.2*s);
+    cx.fillStyle = HIVIS_D;
+    cx.fillRect(x + 7*s, y - 23*s, 3*s, 8*s);
+    cx.fillStyle = "#1c1f23";
+    [[x + 1.5*s, 4*s], [x + 11*s, 3.2*s]].forEach(function(w){
+      cx.beginPath(); cx.arc(w[0], y - w[1], w[1], 0, 6.284); cx.fill();
+    });
+  }
+
+  function paintRobot(x, y, s, t){
+    var hov = Math.sin(t * 5) * 1.2 * s;
+    cx.fillStyle = "#3a3f46";
+    cx.fillRect(x - 8*s, y - 13*s + hov, 16*s, 10*s);
+    cx.fillStyle = HIVIS;
+    cx.fillRect(x - 8*s, y - 8*s + hov, 16*s, 1.8*s);
+    cx.fillStyle = CASH;
+    cx.beginPath(); cx.arc(x + 5*s, y - 11*s + hov, 1.6*s, 0, 6.284); cx.fill();
+    paintBox(x - 6*s, y - 22*s + hov, 12*s, 9*s);
+    cx.fillStyle = "#1c1f23";
+    [-5, 0, 5].forEach(function(dx){
+      cx.beginPath(); cx.arc(x + dx*s, y - 2*s + hov, 2*s, 0, 6.284); cx.fill();
+    });
+  }
+
+  function paintRacking(){
+    var bays = 5, bw = CW / bays;
+    for (var i = 0; i < bays; i++){
+      var bx = i * bw + 4;
+      cx.fillStyle = "#31353a";
+      cx.fillRect(bx, 12, 3, CH - 46);
+      cx.fillRect(bx + bw - 10, 12, 3, CH - 46);
+      for (var r = 0; r < 2; r++){
+        var ry = 22 + r * 26;
+        cx.fillRect(bx, ry, bw - 10, 2.5);
+        var pallets = Math.min(3, Math.floor(ownedCount() / (6 + i * 4)) - r);
+        for (var p = 0; p < pallets; p++){
+          var px = bx + 6 + p * ((bw - 22) / 3);
+          cx.fillStyle = "#4a3d2c";
+          cx.fillRect(px, ry - 13, (bw - 26) / 3, 13);
+          cx.fillStyle = "#31353a";
+        }
+      }
+    }
+  }
+
+  function paintBelt(dt, speed){
+    var by = CH - 34;
+    cx.fillStyle = "#2f3339"; cx.fillRect(0, by, CW, 7);
+    beltOffset = (beltOffset + dt * speed * 34) % 14;
+    cx.fillStyle = "#454a51";
+    for (var x = -14 + beltOffset; x < CW; x += 14) cx.fillRect(x, by + 2.5, 7, 2);
+    for (var b = -30 + (beltOffset * 2.6) % 46; b < CW; b += 46) paintBox(b, by - 9, 9, 9);
+  }
+
+  function paintFloor(){
+    var fy = CH - 14;
+    cx.fillStyle = "#26282c"; cx.fillRect(0, fy, CW, 14);
+    cx.fillStyle = HAZARD;
+    for (var x = -14; x < CW + 14; x += 22){
+      cx.beginPath();
+      cx.moveTo(x, CH); cx.lineTo(x + 9, CH);
+      cx.lineTo(x + 9 + 7, fy); cx.lineTo(x + 7, fy);
+      cx.closePath(); cx.fill();
+    }
+    cx.fillStyle = "#3d4249"; cx.fillRect(0, fy, CW, 1.5);
+  }
+
+  function paintEmpty(){
+    cx.fillStyle = DIMC;
+    cx.font = "600 10px 'IBM Plex Mono', monospace";
+    cx.textAlign = "center";
+    cx.fillText("EMPTY FLOOR — HIRE SOME HELP", CW / 2, CH / 2 + 4);
+    cx.textAlign = "left";
+  }
+
+  var HIVIS = "#f2620f", HIVIS_D = "#a83d00", HAZARD = "#f0c000",
+      CASH = "#74c46e", DIMC = "#6a7079";
+
+  var lastFrame = 0, animT = 0;
+  function frame(ts){
+    requestAnimationFrame(frame);
+    if (currentTab !== "floor" || document.visibilityState === "hidden") { lastFrame = ts; return; }
+    if (!CW || cv.clientWidth !== CW) sizeCanvas();
+    var dt = Math.min(0.05, (ts - lastFrame) / 1000 || 0);
+    lastFrame = ts; animT += dt;
+
+    rebuildSprites();
+    var rush = boostActive();
+    var speed = rush ? 2.6 : 1;
+
+    cx.clearRect(0, 0, CW, CH);
+    cx.fillStyle = "#1a1c1f"; cx.fillRect(0, 0, CW, CH);
+    paintRacking();
+    if (state.owned.conveyor > 0) paintBelt(dt, speed);
+    paintFloor();
+
+    if (!sprites.length && state.owned.conveyor === 0) paintEmpty();
+
+    var groundBack = CH - 18, groundFront = CH - 6;
+    sprites.forEach(function(sp){
+      sp.x += sp.sp * speed * dt;
+      if (sp.x > CW + 30) sp.x = -30;
+      var y = sp.back ? groundBack : groundFront;
+      var s = sp.s * (CH / 140) * 1.05;
+      if (sp.type === "worker") paintWorker(sp.x, y, s, animT + sp.bob);
+      else if (sp.type === "fork") paintFork(sp.x, y, s, animT + sp.bob);
+      else paintRobot(sp.x, y, s, animT + sp.bob);
+    });
+
+    // order boxes spawned by tapping
+    for (var i = pickBoxes.length - 1; i >= 0; i--){
+      var pb = pickBoxes[i];
+      pb.t += dt;
+      pb.x += 90 * dt;
+      pb.y -= 34 * dt;
+      if (pb.t > 1.1){ pickBoxes.splice(i, 1); continue; }
+      cx.globalAlpha = Math.max(0, 1 - pb.t / 1.1);
+      paintBox(pb.x, pb.y, 9, 9);
+      cx.globalAlpha = 1;
+    }
+
+    if (rush){
+      cx.strokeStyle = "rgba(248,113,113,.55)";
+      cx.lineWidth = 3;
+      cx.strokeRect(1.5, 1.5, CW - 3, CH - 3);
+    }
+  }
+
+  function spawnPickBox(){
+    if (pickBoxes.length > 8) return;
+    pickBoxes.push({ x: CW * 0.15, y: CH - 34, t: 0 });
+  }
+
+  // ---------- career rank display ----------
+  var rankName = document.getElementById("rankName");
+  var rankBarFill = document.querySelector("#rankBar b");
+  function renderRank(){
+    var i = rankIndex();
+    rankName.textContent = RANKS[i].name;
+    var here = RANKS[i].at;
+    var next = (i + 1 < RANKS.length) ? RANKS[i + 1].at : null;
+    var pct = next ? ((state.lifetime - here) / (next - here)) * 100 : 100;
+    rankBarFill.style.width = Math.max(0, Math.min(100, pct)) + "%";
+    if (i > state.rank){
+      state.rank = i;
+      state.pallets += 3;
+      sfx("prestige");
+      showToast("Promoted to <b>" + RANKS[i].name + "</b> — +3% output and +3 pallets.");
+      logLine("PROMOTION: " + RANKS[i].name.toUpperCase());
+      saveGame();
+    }
+  }
+
+  // ---------- tap combo ----------
+  var COMBO_WINDOW = 1600;
+  var comboCount = 0, lastTap = 0;
+  var comboBar = document.getElementById("comboBar");
+  var comboText = document.getElementById("comboText");
+  function comboMult(){ return 1 + Math.min(comboCount, 30) * 0.05; }
+  function bumpCombo(){
+    var now = Date.now();
+    comboCount = (now - lastTap < COMBO_WINDOW) ? comboCount + 1 : 1;
+    lastTap = now;
+    var m = comboMult();
+    if (m > state.bestCombo) state.bestCombo = m;
+  }
+  function renderCombo(){
+    var left = Math.max(0, COMBO_WINDOW - (Date.now() - lastTap));
+    if (!left) comboCount = 0;
+    var m = comboMult();
+    comboBar.style.width = (left / COMBO_WINDOW * 100) + "%";
+    comboText.textContent = "COMBO ×" + m.toFixed(2);
+    comboText.classList.toggle("hot", m >= 1.5);
+  }
+  setInterval(renderCombo, 100);
+
+  // ---------- contracts ----------
+  var contractCard = document.getElementById("contractCard");
+  var cTitle = document.getElementById("contractTitle");
+  var cTime = document.getElementById("contractTime");
+  var cBar = document.getElementById("contractBar");
+  var cProg = document.getElementById("contractProg");
+  var cReward = document.getElementById("contractReward");
+
+  function newContract(){
+    var r = totalRate();
+    var kinds = ["tap", "buy"];
+    if (r > 0){ kinds.push("earn"); kinds.push("rush"); }
+    var k = kinds[Math.floor(Math.random() * kinds.length)];
+    var c = { kind: k, prog: 0 };
+    if (k === "earn"){
+      c.goal = Math.max(500, Math.floor(r * 60 * 6));
+      c.mins = 25; c.label = "Dispatch " + money(c.goal) + " of orders";
+    } else if (k === "tap"){
+      c.goal = 60 + Math.floor(Math.random() * 90);
+      c.mins = 20; c.label = "Hand-pick " + c.goal + " orders";
+    } else if (k === "buy"){
+      c.goal = 8 + Math.floor(Math.random() * 12);
+      c.mins = 30; c.label = "Add " + c.goal + " units of equipment";
+    } else {
+      c.goal = 1 + Math.floor(Math.random() * 2);
+      c.mins = 45; c.label = "Handle " + c.goal + " rush order" + (c.goal > 1 ? "s" : "");
+    }
+    c.deadline = Date.now() + c.mins * 60000;
+    c.pallets = 1 + Math.floor(Math.random() * 2);
+    c.cash = Math.max(250, Math.floor(r * 150));
+    return c;
+  }
+
+  function contractProgress(kind, amount){
+    var c = state.contract;
+    if (!c || c.kind !== kind) return;
+    c.prog += amount;
+  }
+
+  function checkContract(){
+    if (!state.contract){ state.contract = newContract(); saveGame(); }
+    var c = state.contract;
+    if (c.prog >= c.goal){
+      state.pallets += c.pallets;
+      state.money += c.cash; state.total += c.cash; state.lifetime += c.cash;
+      state.contractsDone++;
+      sfx("ach");
+      showToast("Contract complete — <b>" + money(c.cash) + "</b> and <b>" + c.pallets + " pallets</b>.");
+      logLine("CONTRACT FULFILLED: " + c.label.toUpperCase());
+      state.contract = newContract();
+      saveGame();
+      return;
+    }
+    if (Date.now() > c.deadline){
+      logLine("CONTRACT EXPIRED. NEW ORDER RECEIVED.");
+      state.contract = newContract();
+      saveGame();
+    }
+  }
+
+  function renderContract(){
+    var c = state.contract;
+    if (!c) return;
+    var pct = Math.min(100, (c.prog / c.goal) * 100);
+    cTitle.textContent = c.label;
+    cBar.style.width = pct + "%";
+    contractCard.classList.toggle("done", pct >= 100);
+    var mins = Math.max(0, Math.ceil((c.deadline - Date.now()) / 60000));
+    cTime.textContent = mins + " MIN LEFT";
+    cProg.textContent = (c.kind === "earn" ? money(Math.min(c.prog, c.goal)) + " / " + money(c.goal)
+      : Math.floor(Math.min(c.prog, c.goal)) + " / " + c.goal);
+    cReward.textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
+  }
+
+  // ---------- shift stats & next unlock ----------
+  var sessionStart = { money: 0, taps: 0, set: false };
+  var shiftEarned = document.getElementById("shiftEarned");
+  var shiftTaps = document.getElementById("shiftTaps");
+  var shiftCombo = document.getElementById("shiftCombo");
+  var nextUp = document.getElementById("nextUp");
+  function renderShift(){
+    if (!sessionStart.set){
+      sessionStart.money = state.lifetime; sessionStart.taps = state.taps; sessionStart.set = true;
+    }
+    shiftEarned.textContent = money(Math.max(0, state.lifetime - sessionStart.money));
+    shiftTaps.textContent = state.taps - sessionStart.taps;
+    shiftCombo.textContent = "×" + state.bestCombo.toFixed(2);
+
+    var next = null;
+    for (var i = 0; i < GENS.length; i++){
+      var g = GENS[i];
+      if (state.owned[g.id] === 0 && state.total < g.cost * 0.5){ next = g; break; }
+    }
+    if (next){
+      var need = Math.max(0, next.cost * 0.5 - state.total);
+      nextUp.hidden = false;
+      nextUp.innerHTML = "NEXT UNLOCK: <b>" + next.name + "</b> — " + money(need) + " of lifetime earnings to go";
+    } else nextUp.hidden = true;
+  }
+
+  // ---------- boot ----------
+  buildGens();
+  buildShop();
+  // ---------- Splash dismissal (bulletproof, runs regardless of load errors) ----------
+  var splash = document.getElementById("splash");
+  function dismissSplash(){
+    if (!splash) return;
+    splash.classList.add("hide");
+    splash.style.pointerEvents = "none";
+    setTimeout(function(){
+      if (splash && splash.parentNode){
+        splash.parentNode.removeChild(splash);
+        splash = null;
+      }
+    }, 500);
+  }
+  // Guaranteed dismissal regardless of whether load completed
+  setTimeout(dismissSplash, 2100);
+  // Belt-and-braces: force-hide after 5 seconds no matter what
+  setTimeout(function(){
+    if (splash && splash.parentNode){
+      splash.parentNode.removeChild(splash);
+      splash = null;
+    }
+  }, 5000);
+
+  loadGame().catch(function(e){ console.error("loadGame failed:", e); }).then(function(){
+    sessionStart.money = state.lifetime;
+    sessionStart.taps = state.taps;
+    sessionStart.set = true;
+    applyTheme(state.theme);
+    if (state.company){
+      var hName = document.querySelector("header h1");
+      if (hName) hName.innerHTML = state.company.replace(/</g,"&lt;");
+    }
+    render();
+    renderMute();
+    renderPallets();
+    checkAch();
+    logLine("SHIFT STARTED. SCANNER ONLINE.");
+    scheduleRush();
+    sizeCanvas();
+    requestAnimationFrame(frame);
+
+    // --- First-run: give the company a default name, that's it ---
+    if (!state.setupDone){
+      state.company = state.company || "FIRST SHIFT LOGISTICS";
+      state.setupDone = true;
+      var hFirst = document.querySelector("header h1");
+      if (hFirst) hFirst.innerHTML = state.company.replace(/</g,"&lt;");
+      saveGame();
+    }
+
+    // --- Rename control in the Office ---
+    var renameBtn = document.getElementById("renameBtn");
+    if (renameBtn){
+      renameBtn.addEventListener("click", function(){
+        var next = prompt("New company name:", state.company || "FIRST SHIFT LOGISTICS");
+        if (next == null) return;
+        next = String(next).trim().toUpperCase().slice(0, 24);
+        if (!next) return;
+        state.company = next;
+        var hR = document.querySelector("header h1");
+        if (hR) hR.innerHTML = next.replace(/</g,"&lt;");
+        saveGame();
+        showToast("Company renamed to <b>" + next + "</b>.");
+      });
+    }
+  });
+})();
+</script>
+</body>
+</html>
