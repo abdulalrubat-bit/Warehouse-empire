@@ -1,0 +1,92 @@
+name: Build Debug APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "warehouse-empire-android.html"
+      - ".github/workflows/build-debug.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Create Capacitor project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap init "Warehouse Empire" com.abdulgames.warehouseempire --web-dir=www
+          mkdir -p www
+          cp warehouse-empire-android.html www/index.html
+          npx cap add android
+
+      - name: Add AdMob plugin
+        run: |
+          npm install @capacitor-community/admob
+          npx cap sync android
+
+      # Without this meta-data the app crashes the instant it launches.
+      - name: Inject AdMob app ID into the manifest
+        run: |
+          sed -i 's|</application>|  <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-5195464450607116~9510776045"/>\n    </application>|' android/app/src/main/AndroidManifest.xml
+          echo "--- manifest check ---"
+          grep -B1 -A1 APPLICATION_ID android/app/src/main/AndroidManifest.xml
+
+      # Debug targets the same SDK as release, so what you test is what ships.
+      - name: Target Android 16
+        run: |
+          if grep -q "targetSdkVersion" android/variables.gradle; then
+            sed -i 's/compileSdkVersion = .*/compileSdkVersion = 36/' android/variables.gradle
+            sed -i 's/targetSdkVersion = .*/targetSdkVersion = 36/' android/variables.gradle
+          else
+            echo "WARNING: targetSdkVersion not found — check the Capacitor version"
+          fi
+          cat android/variables.gradle
+
+      - name: Fix Kotlin duplicate classes
+        run: |
+          cat >> android/app/build.gradle << 'EOF'
+
+          configurations.all {
+              resolutionStrategy {
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+                  force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+              }
+          }
+          EOF
+
+      - name: Verify target SDK before building
+        run: |
+          TARGET=$(grep -oP 'targetSdkVersion\s*=\s*\K\d+' android/variables.gradle || echo 0)
+          echo "targetSdkVersion = $TARGET"
+          if [ "$TARGET" -lt 36 ]; then
+            echo "::error::Play requires API 36 from 31 Aug 2026. Found $TARGET."
+            exit 1
+          fi
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-empire-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
