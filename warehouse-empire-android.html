@@ -17,7 +17,6 @@
   [hidden]{display:none !important;}
   input{-webkit-user-select:text; user-select:text;}
 
-  /* ---------- Fateful Games Splash ---------- */
   #splash{position:fixed; inset:0; z-index:60; background:#232529;
     display:flex; align-items:center; justify-content:center;
     transition:opacity .5s ease;}
@@ -48,7 +47,8 @@
   html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
     font-family:var(--font-mono); height:100%;}
   body{display:block; max-width:520px; margin:0 auto; min-height:100vh;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+    padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px));}
 
   .topbar{position:sticky; top:0; z-index:5; background:var(--bg);
     padding-top:env(safe-area-inset-top, 0px);
@@ -78,6 +78,7 @@
 
   .pickwrap{position:fixed; left:50%; transform:translateX(-50%);
     width:100%; max-width:520px; z-index:5;
+    bottom:calc(54px + env(safe-area-inset-bottom, 0px));
     padding:9px 14px 11px; background:var(--bg);
     border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.45);
     pointer-events:none;}
@@ -96,7 +97,7 @@
   .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px;
     background:transparent; color:var(--hivis); font-family:var(--font-cond);
     font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase;
-    cursor:pointer;}
+    cursor:pointer; transition:opacity .2s;}
   .adbtn small{display:block; font-family:var(--font-mono); font-weight:400;
     font-size:8.5px; letter-spacing:1px; opacity:.7; margin-top:2px;}
   .adbtn:disabled{opacity:.35; cursor:default;}
@@ -109,7 +110,6 @@
     transition:width .1s linear;}
   #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px;
     letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
-  #comboText.hot{color:var(--hivis);}
 
   .objective{margin:10px 14px 0; padding:10px 12px; background:#1c1e21;
     border:1px solid var(--line); border-left:4px solid var(--hazard);
@@ -127,12 +127,11 @@
 
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line);
     border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
-  .contract.done{border-left-color:var(--cash);}
   .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer;
     border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px;
     color:var(--hivis); font-family:var(--font-cond); font-weight:700;
     font-size:12px; letter-spacing:1.4px; text-transform:uppercase;
-    display:flex; flex-direction:column; align-items:center; gap:2px;}
+    display:flex; flex-direction:column; align-items:center; gap:2px; transition:opacity .2s;}
   .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px;
     color:var(--steel); text-transform:uppercase; font-weight:400;}
 
@@ -151,12 +150,9 @@
   .sphead span{display:block; font-size:9.5px; color:var(--steel); margin:3px 0 10px; line-height:1.5;}
   .splist{display:flex; flex-direction:column; gap:7px;}
   .sitecard{width:100%; text-align:left; background:#26282c; border:1px solid var(--line);
-    border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink);
-    font-family:var(--font-mono);}
+    border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
   .sitecard b{font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
   .sitecard .sblurb{font-size:9.5px; color:var(--dim); line-height:1.5; margin-top:2px;}
-  .sitecard .stags{font-size:8.5px; color:var(--steel); letter-spacing:.5px; margin-top:5px;}
-  .sitecard.mastered{border-left:3px solid var(--cash);}
 
   .netbar{margin:10px 14px 0; padding:8px 10px; background:#26282c;
     border:1px solid var(--line); border-left:3px solid var(--hazard);
@@ -165,7 +161,6 @@
   .netbar .nsite b{display:block; font-family:var(--font-cond); font-weight:700; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .netbar .nsite span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
   .netbar .nnet{font-size:9.5px; color:var(--cash); text-align:right; white-space:nowrap;}
-  .netbar .nnet i{font-style:normal; display:block; color:var(--steel); font-size:8px; letter-spacing:.8px; text-transform:uppercase;}
 
   .crow{display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:9.5px; color:var(--dim);}
   .ctitle{font-family:var(--font-cond); font-weight:600; font-size:14px; letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
@@ -186,9 +181,6 @@
   .scale .sv i{font-style:normal; font-size:10px; color:var(--steel);}
   .scale .sl{font-size:7.5px; letter-spacing:1px; text-transform:uppercase; color:var(--steel); margin-top:2px;}
 
-  .log{height:54px; overflow:hidden; margin:8px 14px 0; padding:6px 10px; background:#0d0f12; border:1px solid var(--line); border-radius:6px; font-size:10px; color:var(--dim); line-height:1.5;}
-  .log div b{color:var(--cash); font-weight:600;}
-
   .toolbar{display:flex; align-items:center; justify-content:space-between; padding:14px 14px 6px;}
   .toolbar .label{font-family:var(--font-cond); font-weight:800; letter-spacing:3px; font-size:13px; color:var(--steel); text-transform:uppercase; border-left:3px solid var(--hivis); padding-left:8px;}
   .qty{display:flex; gap:6px;}
@@ -199,12 +191,7 @@
   .plate svg{width:24px; height:24px; display:block;}
 
   .gens{padding:0 14px 8px; display:flex; flex-direction:column; gap:9px;}
-  .gen-card{
-    background:var(--panel); border:1px solid var(--line);
-    border-left:4px solid var(--steel); border-radius:6px;
-    padding:11px 12px; display:flex; flex-direction:column; gap:9px;
-    box-shadow:0 3px 8px rgba(0,0,0,.25); transition:border-color .2s ease;
-  }
+  .gen-card{background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--steel); border-radius:6px; padding:11px 12px; display:flex; flex-direction:column; gap:9px; box-shadow:0 3px 8px rgba(0,0,0,.25); transition:border-color .2s ease;}
   .gen-card.can{border-left-color:var(--cash);}
   .gen-card.near-ms{border-left-color:var(--hazard);}
   .gen-card.locked{opacity:.35; filter:grayscale(.8);}
@@ -251,7 +238,6 @@
   .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
   .swatch{width:20px; height:20px; border-radius:3px; display:block;}
 
-  body{padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px));}
   .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,#32363b,#282b2f); border-top:1px solid var(--line);}
   .tabs button{flex:1; background:none; border:none; color:var(--steel); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
   .tabs button svg{width:21px; height:21px;}
@@ -266,7 +252,7 @@
   #sellBtn.armed{background:var(--hazard); color:#20180a;}
   .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--steel); border-radius:4px; padding:10px; font-family:var(--font-cond); font-weight:800; font-size:13px; cursor:pointer;}
 
-  #toast{position:fixed; left:50%; bottom:96px; z-index:9; transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none; background:var(--panel2); border:1px solid var(--hazard); border-left:3px solid var(--hazard); border-radius:4px; padding:11px 14px; font-size:11px; max-width:calc(100% - 28px); transition:transform .3s ease, opacity .3s ease;}
+  #toast{position:fixed; left:50%; bottom:110px; z-index:9; transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none; background:var(--panel2); border:1px solid var(--hazard); border-left:3px solid var(--hazard); border-radius:4px; padding:11px 14px; font-size:11px; max-width:calc(100% - 28px); transition:transform .3s ease, opacity .3s ease;}
   #toast.show{transform:translateX(-50%) translateY(0); opacity:1;}
   .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600; font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
   @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
@@ -368,7 +354,7 @@
         <span id="contractProg">—</span>
         <span class="creward" id="contractReward"></span>
       </div>
-      <button class="rerollbtn" id="rerollBtn">Reroll contract<small>WATCH AD · GET A DIFFERENT JOB</small></button>
+      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small>WATCH AD · GET A DIFFERENT JOB</small></button>
     </div>
 
     <div class="shift">
@@ -446,7 +432,7 @@
       <div class="office-title">SELL THE BUSINESS</div>
       <div class="office-text">Cash out for permanent Reputation and retire this site into your Network.</div>
       <button id="sellBtn" disabled>SELL BUSINESS</button>
-      <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;">Call in a favour<small id="repAdSub">WATCH AD · +25% REPUTATION ON THIS SALE</small></button>
+      <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REPUTATION ON THIS SALE</small></button>
     </div>
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
@@ -528,6 +514,58 @@
       else if (type === "prestige"){ tone(523, t, 0.12, 0.08); tone(659, t+0.12, 0.12, 0.08); tone(784, t+0.24, 0.12, 0.08); tone(1046, t+0.36, 0.3, 0.08); }
     } catch(e){}
   }
+
+  // Local Notifications Engine
+  var Notifs = (function(){
+    var plugin = null;
+    function init(){
+      try {
+        var cap = window.Capacitor;
+        if (cap && cap.Plugins && cap.Plugins.LocalNotifications){
+          plugin = cap.Plugins.LocalNotifications;
+          plugin.requestPermissions();
+        }
+      } catch(e){}
+    }
+
+    function scheduleRetention(){
+      if (!plugin) return;
+      try {
+        plugin.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }] }).then(function(){
+          var capSecs = (state.perks && state.perks.night ? 24 : 8) * 3600;
+          plugin.schedule({
+            notifications: [
+              {
+                id: 1,
+                title: "Dispatch Bays Full! 📦",
+                body: "Your storage racking has hit maximum capacity. Clock in to bank your freight revenue.",
+                schedule: { at: new Date(Date.now() + capSecs * 1000) }
+              },
+              {
+                id: 2,
+                title: "Morning Shift Handover Ready 📋",
+                body: "Your corporate daily stipend and pallet bonuses are waiting at the terminal.",
+                schedule: { at: new Date(Date.now() + 20 * 3600 * 1000) }
+              },
+              {
+                id: 3,
+                title: "The Floor Needs Supervision 🏭",
+                body: "Automated sorting lines are waiting for leadership. Check in on your empire.",
+                schedule: { at: new Date(Date.now() + 72 * 3600 * 1000) }
+              }
+            ]
+          });
+        });
+      } catch(e){}
+    }
+
+    function cancelAll(){
+      if (!plugin) return;
+      try { plugin.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }] }); } catch(e){}
+    }
+
+    return { init:init, scheduleRetention:scheduleRetention, cancelAll:cancelAll };
+  })();
 
   var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', RS = 'var(--research)';
   var ICONS = {
@@ -687,6 +725,7 @@
   var boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0;
   var repBonusArmed = false;
   var sellArmed = false, sellArmTimer = null;
+  var sessionEarned = 0, maxCombo = 1.0;
 
   function fmt(n){
     if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
@@ -851,6 +890,30 @@
     return { init:init, show:show, available:function(){ return true; } };
   })();
 
+  function refreshAdUI(){
+    var rushBtn = document.getElementById("rushAdBtn");
+    if(rushBtn) rushBtn.disabled = boostActive();
+    
+    var dblBtn = document.getElementById("dblAdBtn");
+    if(dblBtn){
+      if(pendingOfflineBonus > 0){
+        dblBtn.hidden = false;
+        document.getElementById("dblAdSub").textContent = "WATCH AD · +" + money(pendingOfflineBonus);
+      } else {
+        dblBtn.hidden = true;
+      }
+    }
+
+    var rrBtn = document.getElementById("rerollBtn");
+    if(rrBtn && state.contract){
+      var elapsed = state.contract.mins * 60000 - (state.contract.deadline - Date.now());
+      rrBtn.hidden = !(elapsed > 60000 && (state.contract.prog / state.contract.goal) < 0.5);
+    }
+
+    var repBtn = document.getElementById("repAdBtn");
+    if(repBtn) repBtn.hidden = pendingRep() < 1 || repBonusArmed;
+  }
+
   function bindAdButtons(){
     var rush = document.getElementById("rushAdBtn");
     var dbl = document.getElementById("dblAdBtn");
@@ -858,6 +921,7 @@
     var ra = document.getElementById("repAdBtn");
 
     if (rush) rush.addEventListener("click", function(){
+      if (rush.disabled) return;
       Ads.show(function(){
         boostUntil = Math.max(boostUntil, Date.now() + 60000);
         sfx("upgrade");
@@ -969,7 +1033,8 @@
     card.hidden = false;
     document.getElementById("objTitle").textContent = cur.title;
     document.getElementById("objHint").innerHTML = cur.hint;
-    document.querySelector(".otag").textContent = "TASK " + idx + "/" + OBJECTIVES.length;
+    var tag = card.querySelector(".otag");
+    if(tag) tag.textContent = "TASK " + idx + "/" + OBJECTIVES.length;
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
@@ -1109,8 +1174,12 @@
         var sc = s.scales ? Math.ceil(s.cost * Math.pow(1.45, state.prestiges || 0)) : s.cost;
         if(state.pallets >= sc){
           state.pallets -= sc;
-          if(s.id === "dispatch"){ state.money += totalRate() * 3600; }
-          else { boostUntil = Date.now() + 30000; }
+          if(s.id === "dispatch"){
+            var dispatchCap = totalRate() * 3600;
+            state.money += dispatchCap; state.total += dispatchCap; state.lifetime += dispatchCap;
+          } else {
+            boostUntil = Date.now() + 30000;
+          }
           sfx("upgrade");
           showToast("Supply activated: <b>" + s.name + "</b>.");
           render(); saveGame();
@@ -1174,7 +1243,6 @@
     document.getElementById("scAch").innerHTML = count + "<i>/" + ACH.length + "</i>";
   }
 
-  // Site Chooser UI
   function buildSiteList(){
     var list = document.getElementById("siteList");
     list.innerHTML = "";
@@ -1202,13 +1270,16 @@
     document.getElementById("repInfo").textContent = "REP " + state.rep;
     document.getElementById("palletNum").textContent = state.pallets;
     document.getElementById("rpVal").textContent = Math.floor(state.rp);
+    
+    document.getElementById("shiftEarned").textContent = money(sessionEarned);
+    document.getElementById("shiftTaps").textContent = state.taps;
+    document.getElementById("shiftCombo").textContent = "×" + maxCombo.toFixed(2);
 
     var flow = flowEfficiency();
     document.getElementById("flowBar").style.width = Math.min(100, Math.max(10, flow * 90)) + "%";
     document.getElementById("flowPct").textContent = Math.round(flow * 100) + "%";
     document.getElementById("flowBar").style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
 
-    // Update Scale Strip
     var unl = 0;
     GENS.forEach(function(g){ if ((state.owned[g.id]||0) > 0 || state.total >= g.cost * 0.35) unl++; });
     document.getElementById("scGen").innerHTML = unl + "<i>/8</i>";
@@ -1220,7 +1291,6 @@
     }
     document.getElementById("scTask").innerHTML = taskIdx + "<i>/" + OBJECTIVES.length + "</i>";
 
-    // Modular Generator Cards
     GENS.forEach(function(g){
       var e = genEls[g.id];
       var owned = state.owned[g.id] || 0;
@@ -1255,7 +1325,6 @@
       e.bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
     });
 
-    // Upgrades
     UPGRADES.forEach(function(u){
       var b = upEls[u.id];
       if (b){
@@ -1271,7 +1340,6 @@
       }
     });
 
-    // R&D Techs
     RD_TECHS.forEach(function(t){
       var b = rdEls[t.id];
       if (b){
@@ -1283,7 +1351,6 @@
       }
     });
 
-    // Perks
     PERKS.forEach(function(p){
       var b = perkBtnEls[p.id];
       if (b){
@@ -1335,7 +1402,6 @@
       return;
     }
     
-    // Execute Prestige & Site Retirement
     state.rep += gain;
     state.prestiges++;
     repBonusArmed = false;
@@ -1360,7 +1426,6 @@
     render(); saveGame();
   });
 
-  // Office Rename & Mute Buttons
   document.getElementById("renameBtn").addEventListener("click", function(){
     var next = prompt("New company name:", state.company || "FIRST SHIFT LOGISTICS");
     if (next == null) return;
@@ -1413,7 +1478,9 @@
     var now = Date.now();
     comboCount = (now - lastTap < 1600) ? comboCount + 1 : 1;
     lastTap = now;
-    document.getElementById("comboText").textContent = "COMBO ×" + comboMult().toFixed(2);
+    var m = comboMult();
+    if(m > maxCombo) maxCombo = m;
+    document.getElementById("comboText").textContent = "COMBO ×" + m.toFixed(2);
     document.getElementById("comboBar").style.width = Math.min(100, (comboCount / 80) * 100) + "%";
   }
 
@@ -1433,11 +1500,21 @@
   function renderContract(){
     if (!state.contract) state.contract = newContract();
     var c = state.contract;
+    
+    if (Date.now() > c.deadline){
+      state.contract = newContract();
+      c = state.contract;
+    }
+
     var pct = Math.min(100, (c.prog / c.goal) * 100);
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
     document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
+    
+    var timeLeft = Math.max(0, Math.floor((c.deadline - Date.now())/1000));
+    var m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+    document.getElementById("contractTime").textContent = m + "m " + (s<10?"0":"") + s + "s";
   }
 
   var toastTimer = null;
@@ -1676,11 +1753,25 @@
     paintDock(dt, speed);
   }
 
+  // App Lifecycle Listeners for Notifications
+  document.addEventListener("visibilitychange", function(){
+    if (document.hidden){
+      saveGame();
+      Notifs.scheduleRetention();
+    } else {
+      Notifs.cancelAll();
+      grantOffline();
+      checkDailyLoginPopup();
+    }
+  });
+
+  // Loops
   var last = Date.now();
   setInterval(function(){
     var now = Date.now(), dt = (now-last)/1000; last = now;
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
+    sessionEarned += earned;
 
     var autoUnits = (state.owned.sorter||0) + (state.owned.crane||0) + (state.owned.hub||0);
     if (autoUnits > 0){
@@ -1698,6 +1789,8 @@
         state.contract = newContract();
       }
     }
+    
+    refreshAdUI();
     renderContract();
     render();
   }, 100);
@@ -1717,6 +1810,7 @@
     sizeCanvas();
     renderSkuUI();
     Ads.init();
+    Notifs.init();
     bindAdButtons();
     render();
     requestAnimationFrame(frame);
