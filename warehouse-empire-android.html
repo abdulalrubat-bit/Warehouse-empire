@@ -46,10 +46,17 @@
   }
 
   html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
-    font-family:var(--font-mono); height:100%;}
+    font-family:var(--font-mono);}
   body{display:block; max-width:520px; margin:0 auto; min-height:100vh;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
-    padding-bottom:calc(110px + env(safe-area-inset-bottom, 0px));}
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+
+  section {
+    padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px));
+  }
+  
+  #tab-floor {
+    padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px));
+  }
 
   .topbar{position:sticky; top:0; z-index:5; background:var(--bg);
     padding-top:env(safe-area-inset-top, 0px);
@@ -341,7 +348,7 @@
     </div>
 
     <div class="adrow" id="adRow">
-      <button id="rushAdBtn" class="adbtn">Overtime Shift<small>WATCH AD · RUSH ×5 FOR 60s</small></button>
+      <button id="rushAdBtn" class="adbtn">Overtime Shift<small>WATCH AD · RUSH ×8 FOR 90s</small></button>
       <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
     </div>
 
@@ -355,7 +362,7 @@
         <span id="contractProg">—</span>
         <span class="creward" id="contractReward"></span>
       </div>
-      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small>WATCH AD · GET A DIFFERENT JOB</small></button>
+      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small>WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
     </div>
 
     <div class="shift">
@@ -383,8 +390,6 @@
       </div>
       <div class="splist" id="siteList"></div>
     </div>
-
-    <div class="log" id="log"></div>
   </section>
 
   <section id="tab-equip" hidden>
@@ -433,7 +438,7 @@
       <div class="office-title">SELL THE BUSINESS</div>
       <div class="office-text">Cash out for permanent Reputation and retire this site into your Network.</div>
       <button id="sellBtn" disabled>SELL BUSINESS</button>
-      <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REPUTATION ON THIS SALE</small></button>
+      <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REP &amp; +10 PALLETS</small></button>
     </div>
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
@@ -636,8 +641,8 @@
 
   var BRANCHES = [
     { id:"labour", name:"Labour", desc:"Hands on the product" },
-    { id:"auto", name:"Automation", desc:"Output and running costs" },
-    { id:"logi", name:"Logistics", desc:"Contracts, events and offline" }
+    { id:"auto",   name:"Automation", desc:"Output and running costs" },
+    { id:"logi",   name:"Logistics", desc:"Contracts, events and offline" }
   ];
 
   var PERKS = [
@@ -651,7 +656,7 @@
 
   var SUPPLIES = [
     {id:"dispatch", ic:"box", name:"Instant Dispatch", cost:5, scales:true, desc:"Bank 1 hour of production now"},
-    {id:"callrush", ic:"flame", name:"Call a Rush", cost:2, desc:"Trigger a ×5 rush order instantly"}
+    {id:"callrush", ic:"flame", name:"Call a Rush", cost:2, desc:"Trigger a ×8 rush order instantly"}
   ];
 
   var THEMES = [
@@ -770,7 +775,7 @@
   function grossRate(){
     var r = 0;
     GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * rankBonus() * (boostActive() ? 5 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * rankBonus() * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -781,7 +786,7 @@
       w += genRate(g) * wageRate;
     });
     if (state.perks.maint) w *= 0.80;
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 5 : 1);
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1);
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -924,9 +929,9 @@
     if (rush) rush.addEventListener("click", function(){
       if (rush.disabled) return;
       Ads.show(function(){
-        boostUntil = Math.max(boostUntil, Date.now() + 60000);
+        boostUntil = Math.max(boostUntil, Date.now() + 90000);
         sfx("upgrade");
-        showToast("Overtime Shift! <b>Rush ×5 for 60 seconds</b>.");
+        showToast("Overtime Shift! <b>Rush ×8 for 90 seconds</b>.");
         render(); saveGame();
       });
     });
@@ -947,8 +952,9 @@
     if (rr) rr.addEventListener("click", function(){
       Ads.show(function(){
         state.contract = newContract();
+        state.contract.prog = state.contract.goal * 0.5; // 50% headstart buff
         sfx("upgrade");
-        showToast("Contract Board refreshed.");
+        showToast("Contract Board refreshed with +50% Progress.");
         renderContract(); render(); saveGame();
       });
     });
@@ -958,7 +964,7 @@
       Ads.show(function(){
         repBonusArmed = true;
         sfx("upgrade");
-        showToast("Favour armed — sale gets <b>+25% Reputation</b>.");
+        showToast("Favour armed — sale gets <b>+25% REP &amp; +10 PAL</b>.");
         renderOffice(); render(); saveGame();
       });
     });
@@ -1045,7 +1051,6 @@
     rate: document.getElementById("rate"),
     tapval: document.getElementById("tapval"),
     gens: document.getElementById("gens"),
-    log: document.getElementById("log"),
     toast: document.getElementById("toast"),
     pick: document.getElementById("pickBtn")
   };
@@ -1170,7 +1175,6 @@
     SUPPLIES.forEach(function(s){
       var b = document.createElement("button");
       b.className = "up";
-      // Fixed: Dynamic cost evaluated correctly at render-time.
       var sc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
       b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+sc+' PAL</div>';
       
@@ -1367,7 +1371,6 @@
       }
     });
 
-    // Refresh dynamic supply costs
     SUPPLIES.forEach(function(s){
         var elObj = supplyBtnEls[s.id];
         if (elObj && elObj.costElem){
@@ -1421,10 +1424,10 @@
     
     state.rep += gain;
     state.prestiges++;
+    state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
     repBonusArmed = false;
     sellArmed = false;
     sellBtn.classList.remove("armed");
-    state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2));
     
     if (!state.network) state.network = [];
     state.network.push({ id: state.site, peak: activeRate() });
@@ -1836,4 +1839,3 @@
 </script>
 </body>
 </html>
-
