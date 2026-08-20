@@ -17,6 +17,7 @@
   [hidden]{display:none !important;}
   input{-webkit-user-select:text; user-select:text;}
 
+  /* ---------- Fateful Games Splash ---------- */
   #splash{position:fixed; inset:0; z-index:60; background:#232529;
     display:flex; align-items:center; justify-content:center;
     transition:opacity .5s ease;}
@@ -1134,7 +1135,7 @@
     render(); saveGame();
   }
 
-  var perkBtnEls = {};
+  var perkBtnEls = {}, supplyBtnEls = {};
   function buildStore(){
     var pList = document.getElementById("perkList");
     var sList = document.getElementById("supplyList");
@@ -1169,11 +1170,14 @@
     SUPPLIES.forEach(function(s){
       var b = document.createElement("button");
       b.className = "up";
-      b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+s.cost+' PAL</div>';
+      // Fixed: Dynamic cost evaluated correctly at render-time.
+      var sc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+      b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+sc+' PAL</div>';
+      
       b.addEventListener("click", function(){
-        var sc = s.scales ? Math.ceil(s.cost * Math.pow(1.45, state.prestiges || 0)) : s.cost;
-        if(state.pallets >= sc){
-          state.pallets -= sc;
+        var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+        if(state.pallets >= currentSc){
+          state.pallets -= currentSc;
           if(s.id === "dispatch"){
             var dispatchCap = totalRate() * 3600;
             state.money += dispatchCap; state.total += dispatchCap; state.lifetime += dispatchCap;
@@ -1186,6 +1190,7 @@
         }
       });
       sList.appendChild(b);
+      supplyBtnEls[s.id] = {btn: b, costElem: b.querySelector('[data-r="cost"]')};
     });
 
     THEMES.forEach(function(t){
@@ -1362,6 +1367,18 @@
       }
     });
 
+    // Refresh dynamic supply costs
+    SUPPLIES.forEach(function(s){
+        var elObj = supplyBtnEls[s.id];
+        if (elObj && elObj.costElem){
+            var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+            elObj.costElem.textContent = currentSc + " PAL";
+            var can = state.pallets >= currentSc;
+            elObj.btn.classList.toggle("can", can);
+            elObj.btn.disabled = !can;
+        }
+    });
+
     renderOffice();
     renderObjective();
     checkAch();
@@ -1421,6 +1438,7 @@
     sfx("prestige");
     showToast("Business Sold! Site retired into your <b>Network</b>.");
     buildSiteList();
+    buildStore(); 
     document.getElementById("sitePick").hidden = false;
     switchTab("floor");
     render(); saveGame();
@@ -1543,7 +1561,6 @@
   document.getElementById("q1").addEventListener("click", function(){ buyQty = 1; this.classList.add("on"); document.getElementById("q10").classList.remove("on"); render(); });
   document.getElementById("q10").addEventListener("click", function(){ buyQty = 10; this.classList.add("on"); document.getElementById("q1").classList.remove("on"); render(); });
 
-  // P1: Canvas Click Detection (Accurate DPI Hotspots)
   var cv = document.getElementById("wcanvas"), cx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   var CW = 300, CH = 140;
