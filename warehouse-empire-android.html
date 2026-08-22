@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Warehouse Empire</title>
+<title>Warehouse Empire v3.1.1-Release</title>
 <style>
   :root{
     --bg:#232529; --panel:#2c2f34; --panel2:#383c42; --line:#474c53;
     --ink:#edeff1; --dim:#969ca4; --steel:#79818b;
     --hivis:#f2620f; --hivis-d:#a83d00; --hazard:#f0c000;
-    --cash:#74c46e; --bad:#e05252; --research:#38bdf8;
+    --cash:#74c46e; --bad:#e05252; --corp:#a855f7;
     --font-cond:'Roboto Condensed','Noto Sans Condensed','Liberation Sans Narrow','Arial Narrow',sans-serif;
     --font-mono:'Roboto Mono','Noto Sans Mono','Droid Sans Mono','DejaVu Sans Mono',monospace;
   }
@@ -17,159 +17,88 @@
   [hidden]{display:none !important;}
   input{-webkit-user-select:text; user-select:text;}
 
-  /* ---------- Fateful Games Splash ---------- */
-  #splash{position:fixed; inset:0; z-index:60; background:#232529;
-    display:flex; align-items:center; justify-content:center;
-    transition:opacity .5s ease;}
+  #splash{position:fixed; inset:0; z-index:60; background:#232529; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
   #splash.hide{opacity:0; pointer-events:none;}
-  .splashwrap{text-align:center; opacity:0; transform:translateY(6px);
-    animation:splashFade 1.4s .15s ease forwards;}
-  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px;
-    filter:drop-shadow(0 8px 18px rgba(0,0,0,.55));
-    animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
-  #splashName{font-family:var(--font-cond); font-weight:800;
-    font-size:38px; letter-spacing:6px; color:var(--ink); text-transform:uppercase;}
-  #splashSub{font-family:var(--font-cond); font-weight:600;
-    font-size:12px; letter-spacing:8px; color:var(--steel); margin-top:2px; text-transform:uppercase;}
-  #splashBand{width:180px; height:6px; margin:22px auto 14px;
-    background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,#141414 8px 16px);
-    border-radius:2px;
-    animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
-  #splashTag{font-family:var(--font-mono); font-size:9px;
-    letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
+  .splashwrap{text-align:center; opacity:0; transform:translateY(6px); animation:splashFade 1.4s .15s ease forwards;}
+  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px; filter:drop-shadow(0 8px 18px rgba(0,0,0,.55)); animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
+  #splashName{font-family:var(--font-cond); font-weight:800; font-size:38px; letter-spacing:6px; color:var(--ink); text-transform:uppercase;}
+  #splashSub{font-family:var(--font-cond); font-weight:600; font-size:12px; letter-spacing:8px; color:var(--steel); margin-top:2px; text-transform:uppercase;}
+  #splashBand{width:180px; height:6px; margin:22px auto 14px; background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,#141414 8px 16px); border-radius:2px; animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
+  #splashTag{font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
 
   @keyframes splashFade{ 0%{opacity:0; transform:translateY(6px);} 100%{opacity:1; transform:translateY(0);} }
   @keyframes markPop{ 0%{transform:scale(.6) rotate(-12deg); opacity:0;} 60%{transform:scale(1.06) rotate(2deg); opacity:1;} 100%{transform:scale(1) rotate(0);} }
   @keyframes bandGrow{ 0%{width:0; opacity:0;} 100%{width:180px; opacity:1;} }
-  @media (prefers-reduced-motion:reduce){
-    .splashwrap,#splashMark,#splashBand{animation:none; opacity:1; transform:none; width:180px;}
-  }
 
-  html,body{margin:0; padding:0; background:var(--bg); color:var(--ink);
-    font-family:var(--font-mono);}
-  body{display:block; max-width:520px; margin:0 auto; min-height:100vh;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:var(--font-mono);}
+  body{display:block; max-width:520px; margin:0 auto; min-height:100vh; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
 
-  section {
-    padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px));
-  }
-  
-  #tab-floor {
-    padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px));
-  }
+  section { padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
+  #tab-floor { padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px)); }
 
-  .topbar{position:sticky; top:0; z-index:5; background:var(--bg);
-    padding-top:env(safe-area-inset-top, 0px);
-    padding-bottom:8px; border-bottom:3px solid var(--hivis);
-    box-shadow:0 6px 14px rgba(0,0,0,.35);}
-
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 6px 14px rgba(0,0,0,.35);}
   header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
-  header h1{margin:0; font-family:var(--font-cond); font-weight:800;
-    font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
+  header h1{margin:0; font-family:var(--font-cond); font-weight:800; font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
   header h1 span{color:var(--ink);}
   #headMark svg{width:22px; height:22px; display:block;}
 
-  .terminal{margin:0 14px; background:linear-gradient(180deg,#1c1e21,#191b1e);
-    border:1px solid var(--line); border-radius:6px; padding:9px 12px;
-    position:relative; overflow:hidden;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
-  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums;
-    font-size:34px; font-weight:800; color:var(--ink); line-height:1;
-    letter-spacing:.5px;}
+  .terminal{margin:0 14px; background:linear-gradient(180deg,#1c1e21,#191b1e); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--ink); line-height:1; letter-spacing:.5px;}
   .rate{font-size:10.5px; color:var(--dim); margin-top:4px; letter-spacing:.3px;}
   .rate b{color:var(--cash); font-weight:600;}
-
   .logistics-flow{margin:6px 0 2px; display:flex; align-items:center; gap:8px; font-size:9.5px;}
   .flow-bar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
   .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
   .flow-tag{color:var(--dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
 
-  .pickwrap{position:fixed; left:50%; transform:translateX(-50%);
-    width:100%; max-width:520px; z-index:5;
-    bottom:calc(54px + env(safe-area-inset-bottom, 0px));
-    padding:9px 14px 11px; background:var(--bg);
-    border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.45);
-    pointer-events:none;}
+  .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.45); pointer-events:none;}
   .pickwrap > *{pointer-events:auto;}
-  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond);
-    font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase;
-    color:#20130a; background:linear-gradient(180deg,var(--hivis),#d85508);
-    border:none; border-radius:6px;
-    box-shadow:0 4px 0 var(--hivis-d), 0 6px 14px rgba(0,0,0,.4);
-    cursor:pointer; user-select:none;}
+  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),#d85508); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 6px 14px rgba(0,0,0,.4); cursor:pointer; user-select:none;}
   #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
-  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px;
-    font-family:var(--font-mono); font-weight:600; opacity:.75;}
+  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
 
   .adrow{display:flex; gap:8px; margin:10px 14px 0;}
-  .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px;
-    background:transparent; color:var(--hivis); font-family:var(--font-cond);
-    font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase;
-    cursor:pointer; transition:opacity .2s;}
-  .adbtn small{display:block; font-family:var(--font-mono); font-weight:400;
-    font-size:8.5px; letter-spacing:1px; opacity:.7; margin-top:2px;}
+  .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px; background:transparent; color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase; cursor:pointer; transition:opacity .2s;}
+  .adbtn small{display:block; font-family:var(--font-mono); font-weight:400; font-size:8.5px; letter-spacing:1px; opacity:.7; margin-top:2px;}
   .adbtn:disabled{opacity:.35; cursor:default;}
   .adbtn.alt{border-style:solid; border-color:var(--hazard); color:var(--hazard);}
 
   .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
-  .combobar{flex:1; height:5px; background:#1d2023; border-radius:3px; overflow:hidden;
-    border:1px solid var(--line);}
-  .combobar i{display:block; height:100%; width:0; background:var(--hivis);
-    transition:width .1s linear;}
-  #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px;
-    letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
+  .combobar{flex:1; height:5px; background:#1d2023; border-radius:3px; overflow:hidden; border:1px solid var(--line);}
+  .combobar i{display:block; height:100%; width:0; background:var(--hivis); transition:width .1s linear;}
+  #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
 
-  .objective{margin:10px 14px 0; padding:10px 12px; background:#1c1e21;
-    border:1px solid var(--line); border-left:4px solid var(--hazard);
-    border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer;
-    box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .1s;}
+  .objective{margin:10px 14px 0; padding:10px 12px; background:#1c1e21; border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .1s;}
   .objective:active{transform:scale(.99);}
-  .objective .otag{font-family:var(--font-cond); font-weight:800; font-size:9px;
-    letter-spacing:1.5px; color:var(--hazard); writing-mode:vertical-rl; transform:rotate(180deg);}
+  .objective .otag{font-family:var(--font-cond); font-weight:800; font-size:9px; letter-spacing:1.5px; color:var(--hazard); writing-mode:vertical-rl; transform:rotate(180deg);}
   .objective .obody{flex:1; min-width:0;}
-  .objective .otitle{font-family:var(--font-cond); font-weight:700; font-size:14px;
-    color:var(--ink); line-height:1.2; text-transform:uppercase;}
+  .objective .otitle{font-family:var(--font-cond); font-weight:700; font-size:14px; color:var(--ink); line-height:1.2; text-transform:uppercase;}
   .objective .ohint{font-size:9.5px; color:var(--dim); line-height:1.4; margin-top:3px;}
   .objective .ohint b{color:var(--hazard); font-weight:600;}
   .objective .ogo{font-family:var(--font-cond); font-weight:800; font-size:12px; color:var(--cash); letter-spacing:1px;}
 
-  .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line);
-    border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
-  .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer;
-    border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px;
-    color:var(--hivis); font-family:var(--font-cond); font-weight:700;
-    font-size:12px; letter-spacing:1.4px; text-transform:uppercase;
-    display:flex; flex-direction:column; align-items:center; gap:2px; transition:opacity .2s;}
-  .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px;
-    color:var(--steel); text-transform:uppercase; font-weight:400;}
+  .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
+  .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px; transition:opacity .2s;}
+  .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; font-weight:400;}
 
-  .skustrip{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line);
-    border-left:3px solid var(--cash); border-radius:4px; padding:9px 12px;
-    display:flex; justify-content:space-between; align-items:center;}
+  .skustrip{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cash); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;}
   .skustrip b{font-family:var(--font-cond); font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink); display:block;}
   .skustrip span{font-size:9px; color:var(--dim);}
-  .skubtn{background:none; border:1px solid var(--line); border-radius:4px; color:var(--cash);
-    font-family:var(--font-cond); font-weight:700; font-size:11px; padding:6px 10px; cursor:pointer; text-transform:uppercase;}
+  .skubtn{background:none; border:1px solid var(--line); border-radius:4px; color:var(--cash); font-family:var(--font-cond); font-weight:700; font-size:11px; padding:6px 10px; cursor:pointer; text-transform:uppercase;}
 
-  .sitepick{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line);
-    border-left:3px solid var(--hazard); border-radius:4px; padding:12px;}
-  .sphead b{display:block; font-family:var(--font-cond); font-weight:800; font-size:16px;
-    letter-spacing:1.2px; text-transform:uppercase; color:var(--ink);}
+  .sitepick{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:12px;}
+  .sphead b{display:block; font-family:var(--font-cond); font-weight:800; font-size:16px; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink);}
   .sphead span{display:block; font-size:9.5px; color:var(--steel); margin:3px 0 10px; line-height:1.5;}
   .splist{display:flex; flex-direction:column; gap:7px;}
-  .sitecard{width:100%; text-align:left; background:#26282c; border:1px solid var(--line);
-    border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
+  .sitecard{width:100%; text-align:left; background:#26282c; border:1px solid var(--line); border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
   .sitecard b{font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
   .sitecard .sblurb{font-size:9.5px; color:var(--dim); line-height:1.5; margin-top:2px;}
 
-  .netbar{margin:10px 14px 0; padding:8px 10px; background:#26282c;
-    border:1px solid var(--line); border-left:3px solid var(--hazard);
-    border-radius:4px; display:flex; align-items:center; gap:10px;}
+  .netbar{margin:10px 14px 0; padding:8px 10px; background:#26282c; border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px;}
   .netbar .nsite{flex:1; min-width:0;}
   .netbar .nsite b{display:block; font-family:var(--font-cond); font-weight:700; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .netbar .nsite span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
   .netbar .nnet{font-size:9.5px; color:var(--cash); text-align:right; white-space:nowrap;}
-
   .crow{display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:9.5px; color:var(--dim);}
   .ctitle{font-family:var(--font-cond); font-weight:600; font-size:14px; letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
   .ctime{color:var(--steel); white-space:nowrap;}
@@ -178,11 +107,9 @@
   .cbar i{display:block; height:100%; background:var(--hazard); transition:width .3s;}
 
   .shift{display:flex; gap:7px; margin:8px 14px 0;}
-  .shift div{flex:1; background:var(--panel); border:1px solid var(--line);
-    border-radius:4px; padding:8px 4px; text-align:center;}
+  .shift div{flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:8px 4px; text-align:center;}
   .shift b{display:block; font-family:var(--font-cond); font-weight:800; font-size:17px; color:var(--cash); line-height:1.1;}
   .shift span{font-size:8px; color:var(--dim); letter-spacing:.5px; text-transform:uppercase;}
-
   .scale{display:flex; gap:1px; margin:10px 14px 0; background:var(--line); border:1px solid var(--line); border-radius:4px; overflow:hidden;}
   .scale div{flex:1; background:#26282c; padding:6px 4px; text-align:center;}
   .scale .sv{font-family:var(--font-cond); font-weight:800; font-size:14px; color:var(--ink); line-height:1.1;}
@@ -237,8 +164,8 @@
   .badge.got .bicon{opacity:1;}
   #achPanel{margin:8px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:7px;}
 
-  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#1a1c1f; position:relative;}
-  .floorview canvas{display:block; width:100%; height:clamp(210px, 40vh, 380px); cursor:crosshair;}
+  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#181a1f; position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
+  .floorview canvas{display:block; width:100%; height:clamp(210px, 40vh, 380px); cursor:crosshair; touch-action:none;}
 
   .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
@@ -265,7 +192,6 @@
   .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600; font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
   @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
 
-  /* Modals */
   .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(12,13,15,.92);}
   .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--hivis); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
   .modal-title{font-family:var(--font-cond); font-weight:800; font-size:22px; letter-spacing:2px; text-transform:uppercase; color:var(--ink); margin-bottom:4px;}
@@ -328,7 +254,6 @@
       </div>
     </div>
 
-    <!-- P0: Interactive Objective Card -->
     <div class="objective" id="objective">
       <div class="otag">TASK</div>
       <div class="obody">
@@ -338,7 +263,6 @@
       <div class="ogo" id="objGo">GO →</div>
     </div>
 
-    <!-- SKU Manifest Strip -->
     <div class="skustrip">
       <div>
         <b id="activeSkuName">FMCG Groceries</b>
@@ -403,13 +327,7 @@
     <div class="gens" id="gens"></div>
   </section>
 
-  <!-- P3: Upgrades & R&D Tech Tree -->
   <section id="tab-upgrades" hidden>
-    <div class="toolbar">
-      <div class="label">R&amp;D Tech Tree</div>
-      <div style="font-size:11px; color:var(--research); font-weight:700;">RP: <span id="rpVal">0</span></div>
-    </div>
-    <div class="shop" id="rdShop" style="margin-bottom:14px;"></div>
     <div class="toolbar"><div class="label">Equipment Upgrades &amp; Managers</div></div>
     <div class="shop" id="shop"></div>
   </section>
@@ -434,17 +352,31 @@
       <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
       <button id="renameBtn" class="renamebtn">RENAME COMPANY</button>
     </div>
-    <div class="office-block">
+    
+    <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--corp);">Corporate Real Estate</div></div>
+    <div class="office-block" style="border-left-color: var(--corp); margin-top:0;">
+      <div class="office-text" style="margin-top:0;">Expand your global footprint. Buy adjacent land plots to build permanent megacorp structures. Rendered live on the 2.5D canvas. Level 10 unlocks a <b>Mastery Perk</b>.</div>
+    </div>
+    <div class="shop" id="corpShop" style="margin-top:8px; padding:0 14px;"></div>
+
+    <div class="office-block" style="margin-top:24px;">
       <div class="office-title">SELL THE BUSINESS</div>
       <div class="office-text">Cash out for permanent Reputation and retire this site into your Network.</div>
       <button id="sellBtn" disabled>SELL BUSINESS</button>
       <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REP &amp; +10 PALLETS</small></button>
     </div>
+    
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
     </div>
     <div class="office-block"><div class="office-title">STATS</div><div class="office-text" id="statsText"></div></div>
+    
+    <div class="office-block" style="border-left-color: var(--bad); margin-top: 24px;">
+      <div class="office-title" style="color: var(--bad);">DANGER ZONE</div>
+      <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
+      <button id="hardResetBtn" class="renamebtn" style="color: var(--bad); border-color: var(--bad);">HARD RESET SAVE</button>
+    </div>
   </section>
 
   <nav class="tabs">
@@ -455,7 +387,7 @@
     <button data-tab="office"><svg viewBox="0 0 24 24"><rect x="4" y="3.6" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="currentColor"/><rect x="7" y="10" width="10" height="1.6" fill="currentColor"/><rect x="7" y="14" width="7" height="1.6" fill="currentColor"/></svg><span>Office</span></button>
   </nav>
 
-  <!-- Modal: 7-Day Shift Briefing -->
+  <!-- Modals -->
   <div id="modalDaily" class="modal-screen" hidden>
     <div class="modal-box">
       <div class="modal-title">Morning Shift Handover</div>
@@ -465,7 +397,22 @@
     </div>
   </div>
 
-  <!-- Modal: SKU / Freight Select -->
+  <div id="modalOffline" class="modal-screen" hidden>
+    <div class="modal-box" style="border-top-color:var(--cash);">
+      <div class="modal-title" style="color:var(--cash);">Welcome Back</div>
+      <div class="modal-sub">While you were away, your shift managers kept the freight moving.</div>
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Base Earnings</div>
+        <b id="offlineBaseTxt" style="font-family:var(--font-cond); font-size:28px; color:var(--ink);"></b>
+      </div>
+      <button class="modal-btn" id="btnDoubleOffline" style="background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; margin-bottom:10px; display:flex; flex-direction:column; align-items:center; gap:2px;">
+        <span>CLAIM DOUBLE</span>
+        <small style="font-family:var(--font-mono); font-size:8.5px; letter-spacing:1px; opacity:0.8; font-weight:400;">WATCH AD · INSTANT 2× BONUS</small>
+      </button>
+      <button class="renamebtn" id="btnClaimOffline" style="border-style:dashed;">Claim Standard Earnings</button>
+    </div>
+  </div>
+
   <div id="modalSku" class="modal-screen" hidden>
     <div class="modal-box">
       <div class="modal-title">Freight Manifest (SKU)</div>
@@ -475,20 +422,44 @@
     </div>
   </div>
 
+  <div id="modalReset" class="modal-screen" hidden>
+    <div class="modal-box" style="border-top-color:var(--bad);">
+      <div class="modal-title" style="color:var(--bad);">DANGER ZONE</div>
+      <div class="modal-sub">This will permanently delete your entire save file. Type <b>WIPE</b> to confirm.</div>
+      <input type="text" id="wipeInput" style="width:100%; padding:10px; margin-bottom:14px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); text-align:center; font-size:16px; border-radius:4px;" placeholder="Type WIPE" autocomplete="off" autocorrect="off">
+      <button class="modal-btn" id="btnConfirmWipe" style="background:var(--bad); color:#fff;">CONFIRM DELETION</button>
+      <button class="renamebtn" id="btnCancelWipe" style="margin-top:12px;">Cancel</button>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
 <script>
 (function(){
   "use strict";
 
-  if (!window.storage) {
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+    var Prefs = window.Capacitor.Plugins.Preferences;
+    window.storage = {
+      get: function(k) { return Prefs.get({ key: k }); },
+      set: function(k, v) { return Prefs.set({ key: k, value: v }); }
+    };
+    try {
+      var legacyData = localStorage.getItem("warehouse-empire-save");
+      if (legacyData) {
+        Prefs.set({ key: "warehouse-empire-save", value: legacyData }).then(function(){
+          localStorage.removeItem("warehouse-empire-save");
+        });
+      }
+    } catch(e) {}
+  } else {
     window.storage = {
       get: function(k){
-        try { var v = localStorage.getItem(k); return Promise.resolve(v === null ? null : { key:k, value:v }); }
+        try { var v = localStorage.getItem(k); return Promise.resolve(v === null ? null : { value:v }); }
         catch(e){ return Promise.reject(e); }
       },
       set: function(k, v){
-        try { localStorage.setItem(k, v); return Promise.resolve({ key:k, value:v }); }
+        try { localStorage.setItem(k, v); return Promise.resolve(); }
         catch(e){ return Promise.reject(e); }
       }
     };
@@ -497,9 +468,17 @@
   var SAVE_KEY = "warehouse-empire-save";
   var COST_GROWTH = 1.15;
   var OFFLINE_CAP_HOURS = 8;
-  var MILESTONES = [25, 50, 75, 100, 150, 200];
+  var renderActive = true; 
 
-  // Sound Engine
+  var haptic = function(type) {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+          try {
+              if (type === "light") window.Capacitor.Plugins.Haptics.impact({ style: 'Light' });
+              else if (type === "heavy") window.Capacitor.Plugins.Haptics.impact({ style: 'Heavy' });
+          } catch(e) {}
+      }
+  };
+
   var AC = null;
   function sfx(type){
     if (state.muted) return;
@@ -514,66 +493,16 @@
         g.gain.exponentialRampToValueAtTime(0.001, st + dur);
         o.start(st); o.stop(st + dur);
       }
-      if (type === "tap") tone(1250, t, 0.05, 0.05);
+      if (type === "tap"){ tone(1250, t, 0.05, 0.05); haptic("light"); }
       else if (type === "buy"){ tone(300, t, 0.09, 0.09); tone(220, t+0.06, 0.12, 0.09); }
-      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); }
+      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); haptic("heavy"); }
       else if (type === "prestige"){ tone(523, t, 0.12, 0.08); tone(659, t+0.12, 0.12, 0.08); tone(784, t+0.24, 0.12, 0.08); tone(1046, t+0.36, 0.3, 0.08); }
+      else if (type === "shatter"){ tone(1500, t, 0.05, 0.08); tone(2000, t+0.03, 0.08, 0.05); haptic("heavy"); }
+      else if (type === "build"){ tone(150, t, 0.1, 0.1, "sawtooth"); tone(90, t+0.1, 0.35, 0.15, "square"); haptic("heavy"); }
     } catch(e){}
   }
 
-  // Local Notifications Engine
-  var Notifs = (function(){
-    var plugin = null;
-    function init(){
-      try {
-        var cap = window.Capacitor;
-        if (cap && cap.Plugins && cap.Plugins.LocalNotifications){
-          plugin = cap.Plugins.LocalNotifications;
-          plugin.requestPermissions();
-        }
-      } catch(e){}
-    }
-
-    function scheduleRetention(){
-      if (!plugin) return;
-      try {
-        plugin.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }] }).then(function(){
-          var capSecs = (state.perks && state.perks.night ? 24 : 8) * 3600;
-          plugin.schedule({
-            notifications: [
-              {
-                id: 1,
-                title: "Dispatch Bays Full! 📦",
-                body: "Your storage racking has hit maximum capacity. Clock in to bank your freight revenue.",
-                schedule: { at: new Date(Date.now() + capSecs * 1000) }
-              },
-              {
-                id: 2,
-                title: "Morning Shift Handover Ready 📋",
-                body: "Your corporate daily stipend and pallet bonuses are waiting at the terminal.",
-                schedule: { at: new Date(Date.now() + 20 * 3600 * 1000) }
-              },
-              {
-                id: 3,
-                title: "The Floor Needs Supervision 🏭",
-                body: "Automated sorting lines are waiting for leadership. Check in on your empire.",
-                schedule: { at: new Date(Date.now() + 72 * 3600 * 1000) }
-              }
-            ]
-          });
-        });
-      } catch(e){}
-    }
-
-    function cancelAll(){
-      if (!plugin) return;
-      try { plugin.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }] }); } catch(e){}
-    }
-
-    return { init:init, scheduleRetention:scheduleRetention, cancelAll:cancelAll };
-  })();
-
-  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', RS = 'var(--research)';
+  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', RS = 'var(--research)', CP = 'var(--corp)';
   var ICONS = {
     glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/><rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/><rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/><rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>',
     trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/><rect x="3" y="14" width="15" height="2" fill="'+S+'"/><rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/><circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
@@ -590,14 +519,13 @@
     scanner:'<rect x="6" y="2.5" width="12" height="15" rx="2" fill="'+S+'"/>',
     radio:'<rect x="5" y="10" width="11" height="10" rx="1.6" fill="'+S+'"/>',
     clip:'<rect x="4" y="3.6" width="16" height="18" rx="2" fill="'+S+'"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="'+A+'"/>',
-    rocket:'<path d="M12 2c3.4 2.6 5 6.4 5 10.4l-2.6 3H9.6L7 12.4C7 8.4 8.6 4.6 12 2z" fill="'+A+'"/>',
-    moon:'<path d="M17 15.5A8 8 0 0 1 8.5 7a7 7 0 1 0 8.5 8.5z" fill="'+HZ+'"/>',
-    crown:'<path d="M3 18h18l-1.6-9-4.4 3.4L12 6l-3 6.4L4.6 9z" fill="'+HZ+'"/>',
     cycle:'<path d="M5 12a7 7 0 0 1 12-4.9" stroke="'+A+'" stroke-width="2.4" fill="none"/>',
     cash:'<rect x="2" y="6" width="20" height="12" rx="2" fill="'+CS+'"/>',
     box:'<rect x="3.5" y="6" width="17" height="13" fill="'+BX+'"/><rect x="3.5" y="11" width="17" height="1.8" fill="'+BXD+'"/><rect x="11" y="6" width="2" height="13" fill="'+BXD+'"/>',
     flame:'<path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.6-1-2.4-1-4 2.4 1.6 4 4 4 7a6 6 0 0 1-12 0c0-5 4-7 6-12z" fill="var(--bad)"/>',
-    chip:'<rect x="5" y="5" width="14" height="14" rx="2" fill="'+RS+'"/><rect x="8" y="8" width="8" height="8" fill="#1c1e21"/><rect x="2" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="15" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="15" width="3" height="1.5" fill="'+S+'"/>'
+    moon:'<path d="M17 15.5A8 8 0 0 1 8.5 7a7 7 0 1 0 8.5 8.5z" fill="'+HZ+'"/>',
+    chip:'<rect x="5" y="5" width="14" height="14" rx="2" fill="'+RS+'"/><rect x="8" y="8" width="8" height="8" fill="#1c1e21"/><rect x="2" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="15" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="15" width="3" height="1.5" fill="'+S+'"/>',
+    building:'<path d="M4 22V6l8-4 8 4v16H4zm4-4h2v-2H8v2zm0-4h2v-2H8v2zm0-4h2V8H8v2zm4 8h2v-2h-2v2zm0-4h2v-2h-2v2zm0-4h2V8h-2v2z" fill="'+CP+'"/>'
   };
 
   function icon(name){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[name]||ICONS.box)+'</svg>'; }
@@ -615,7 +543,6 @@
     {id:"crane",    name:"Automated Crane",  ic:"crane",    cost:20000000,  rate:7800,  desc:"Full-height AS/RS crane"},
     {id:"hub",      name:"Distribution Hub", ic:"hub",      cost:330000000, rate:44000, desc:"Fully autonomous facility"}
   ];
-
   var WAGE = { picker:0.275, trolley:0.20, forklift:0.15, reach:0.125, conveyor:0.05, sorter:0.035, crane:0.025, hub:0.015 };
 
   var U1 = {picker:"Ergonomic Gloves", trolley:"Greased Bearings", forklift:"Fresh Batteries", reach:"Tilt Cameras", conveyor:"High-Speed Belts", sorter:"Firmware Patch", crane:"Dual Hoists", hub:"Night Shift Crew"};
@@ -630,24 +557,16 @@
   });
   UPGRADES.push({id:"tap1", name:"Barcode Scanner", ic:"scanner", cost:500, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value"});
   UPGRADES.push({id:"tap2", name:"RF Gun", ic:"scanner", cost:60000, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value again"});
-  UPGRADES.push({id:"tap3", name:"Voice Picking", ic:"radio", cost:8000000, target:"tap", mult:3, reqGen:null, reqCount:0, desc:"Triples hand pick value"});
 
-  var RD_TECHS = [
-    { id:"crossdock", name:"Cross-Docking Protocol", ic:"chip", cost:25, desc:"Bypasses storage. Active output +20% forever." },
-    { id:"agv_opt", name:"AGV Pathfinding AI", ic:"chip", cost:75, desc:"Sorting robots & cranes wage cut by 40%." },
-    { id:"predict", name:"Predictive Demand Engine", ic:"chip", cost:180, desc:"Contract cash & pallet rewards +50%." },
-    { id:"auto_hub", name:"Lights-Out Automation", ic:"chip", cost:450, desc:"All output +40%, unlocks advanced fleet cert." }
-  ];
-
-  var BRANCHES = [
-    { id:"labour", name:"Labour", desc:"Hands on the product" },
-    { id:"auto",   name:"Automation", desc:"Output and running costs" },
-    { id:"logi",   name:"Logistics", desc:"Contracts, events and offline" }
+  var CORP_BUILDINGS = [
+    {id: "hr", name: "HR Annex", ic: "building", baseCost: 500e6, desc: "Global Wage Reduction", mastery: "Level 10: 72 Hour Offline Yield"},
+    {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
+    {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Immune to Hazards"},
+    {id: "server", name: "Server Farm", ic: "building", baseCost: 1e12, desc: "Combo Extender & Decelerator", mastery: "Level 10: Combo Never Decays"}
   ];
 
   var PERKS = [
     {id:"gloves", br:"labour", req:null, ic:"glove", name:"Padded Gloves", cost:8, desc:"Tap value +25%, forever"},
-    {id:"twohand", br:"labour", req:"gloves", ic:"glove", name:"Two-Handed Picking", cost:22, desc:"Tap value +40% on top"},
     {id:"lean", br:"auto", req:null, ic:"ruler", name:"Lean Layout", cost:16, desc:"All output +10%, forever"},
     {id:"maint", br:"auto", req:"lean", ic:"cycle", name:"Preventive Maintenance", cost:42, desc:"Wage bill cut by 20%"},
     {id:"radio", br:"logi", req:null, ic:"radio", name:"Radio Dispatch", cost:26, desc:"Rush orders arrive far more often"},
@@ -678,59 +597,43 @@
   ];
 
   var DAILY_REWARDS = [
-    { day:1, pallets:2, desc:"Stipend" },
-    { day:2, pallets:3, desc:"Overtime" },
-    { day:3, pallets:4, desc:"Bulk Inbound" },
-    { day:4, pallets:5, desc:"Express" },
-    { day:5, pallets:6, desc:"Grant" },
-    { day:6, pallets:8, desc:"Priority" },
-    { day:7, pallets:15, desc:"Mastery" }
+    { day:1, pallets:2, desc:"Stipend" }, { day:2, pallets:3, desc:"Overtime" }, { day:3, pallets:4, desc:"Bulk Inbound" },
+    { day:4, pallets:5, desc:"Express" }, { day:5, pallets:6, desc:"Grant" }, { day:6, pallets:8, desc:"Priority" }, { day:7, pallets:15, desc:"Mastery" }
   ];
 
   var OBJECTIVES = [
     { title: "Pick your first order", tab: "floor", hint: "Tap the <b>PICK ORDER</b> button to start generating capital.", done: function(){ return state.taps >= 10; } },
     { title: "Hire a Casual Picker", tab: "equip", hint: "Open <b>FLEET</b> and hire your first worker to earn passive cash.", done: function(){ return (state.owned.picker||0) >= 1; } },
-    { title: "Reach 25 Pickers (Milestone)", tab: "equip", hint: "Every <b>25 units</b> doubles output. Push to 25 pickers.", done: function(){ return (state.owned.picker||0) >= 25; } },
-    { title: "Install Equipment Overhaul", tab: "upgrades", hint: "Open <b>UPGRADES</b> and buy your first tier upgrade.", done: function(){ return Object.keys(state.upgrades).length >= 1; } },
-    { title: "Add Pallet Trolleys", tab: "equip", hint: "Unlock and purchase your first <b>Pallet Trolley</b>.", done: function(){ return (state.owned.trolley||0) >= 1; } },
     { title: "Complete Freight Contract", tab: "floor", hint: "Fulfill a contract on the <b>FLOOR</b> tab for cash + pallets.", done: function(){ return state.contractsDone >= 1; } },
     { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to build your Network.", done: function(){ return state.prestiges >= 1; } }
   ];
 
   var RANKS = [
-    {name:"Casual Hand", at:0},
-    {name:"Storeman", at:5e4},
-    {name:"Leading Hand", at:2e6},
-    {name:"Shift Supervisor", at:1e8},
-    {name:"Inventory Controller", at:5e9},
-    {name:"Site Manager", at:2.5e11},
-    {name:"Regional Manager", at:1e13},
-    {name:"National Director", at:5e14},
-    {name:"Board Chair", at:2.5e16},
-    {name:"Logistics Legend", at:1e18}
+    {name:"Casual Hand", at:0}, {name:"Storeman", at:5e4}, {name:"Leading Hand", at:2e6},
+    {name:"Shift Supervisor", at:1e8}, {name:"Inventory Controller", at:5e9}, {name:"Site Manager", at:2.5e11}
   ];
   function rankIndex(){
-    var i = 0;
-    for (var k = 0; k < RANKS.length; k++) if (state.lifetime >= RANKS[k].at) i = k;
+    var i = 0; for (var k = 0; k < RANKS.length; k++) if (state.lifetime >= RANKS[k].at) i = k;
     return i;
   }
-  function rankBonus(){ return 1 + rankIndex() * 0.03; }
 
   var state = {
     money: 0, total: 0, lifetime: 0, rep: 0, taps: 0, rp: 0,
-    owned: {}, upgrades: {}, rdTechs: {}, ach: {}, pallets: 0, perks: {},
-    site: "general", sku: "fmcg", network: [], peak: 0, muted: false,
-    prestiges: 0, rushCaught: 0, contract: null, contractsDone: 0,
-    bestCombo: 1, rank: 0, company: "FIRST SHIFT LOGISTICS",
-    lastSeen: Date.now(), lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
+    owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
+    corp: { hr: 0, tower: 0, solar: 0, server: 0 },
+    site: "general", sku: "fmcg", network: [], muted: false,
+    prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
+    company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(),
+    lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
+  
+  window.state = state;
+  window.render = render;
+  
   GENS.forEach(function(g){ state.owned[g.id] = 0; });
 
-  var buyQty = 1;
-  var ordNum = Math.floor(Math.random()*9000)+1000;
-  var boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0;
-  var repBonusArmed = false;
-  var sellArmed = false, sellArmTimer = null;
+  var buyQty = 1, boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0;
+  var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
   var sessionEarned = 0, maxCombo = 1.0;
 
   function fmt(n){
@@ -743,68 +646,72 @@
 
   function multFor(count){
     var m = 1;
-    if (count >= 25) m *= 2;
-    if (count >= 50) m *= 2;
-    if (count >= 75) m *= 1.5;
-    if (count >= 100) m *= 2;
-    if (count >= 150) m *= 1.5;
-    if (count >= 200) m *= 2;
+    if (count >= 25) m *= 2; if (count >= 50) m *= 2; if (count >= 75) m *= 1.5; if (count >= 100) m *= 2;
     return m;
   }
   function upMult(target){
     var m = 1;
     UPGRADES.forEach(function(u){ if (state.upgrades[u.id] && u.target === target) m *= u.mult; });
-    if (state.rdTechs && state.rdTechs.crossdock) m *= 1.20;
-    if (state.rdTechs && state.rdTechs.auto_hub) m *= 1.40;
     return m;
   }
   function getSku(){ for(var i=0;i<SKUS.length;i++) if(SKUS[i].id === state.sku) return SKUS[i]; return SKUS[0]; }
-  function currentSite(){ for(var i=0;i<SITES.length;i++) if(SITES[i].id === state.site) return SITES[i]; return SITES[0]; }
-  function genRate(g){ return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id); }
+  
+  function currentSite(){ 
+    for(var i=0;i<SITES.length;i++) if(SITES[i].id === state.site) return SITES[i]; 
+    return SITES[0]; 
+  }
+  
+  function genRate(g){ 
+      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id); 
+  }
+  
   function prestigeMult(){ return (1 + state.rep * 0.0085) * (1 + Math.sqrt(state.prestiges || 0) * 0.08); }
   function boostActive(){ return Date.now() < boostUntil; }
-  function tapBoostActive(){ return Date.now() < tapBoostUntil; }
   function incidentActive(){ return Date.now() < incidentSpeedUntil; }
 
   function flowEfficiency(){
-    var units = ownedCount();
+    var units = 0; GENS.forEach(function(g){ units+=(state.owned[g.id]||0); });
     if (units === 0) return 1.0;
     return Math.min(1.15, Math.max(0.70, 1.0 + (Math.sin(Date.now() / 8000) * 0.15)));
   }
 
   function grossRate(){
-    var r = 0;
-    GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * rankBonus() * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    var r = 0; GENS.forEach(function(g){ r += genRate(g); });
+    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
     var w = 0;
     GENS.forEach(function(g){
       var wageRate = WAGE[g.id] || 0;
-      if (state.rdTechs && state.rdTechs.agv_opt && (g.id === "sorter" || g.id === "crane")) wageRate *= 0.60;
       w += genRate(g) * wageRate;
     });
     if (state.perks.maint) w *= 0.80;
+    var hrReduction = Math.min(0.50, (state.corp.hr || 0) * 0.05);
+    w *= (1 - hrReduction);
     return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1);
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
   function networkRate(){
-    if (!state.network || !state.network.length) return 0;
-    var raw = 0;
-    for (var i=0;i<state.network.length;i++) raw += (state.network[i].peak || 0) * 0.15;
-    return Math.min(raw, activeRate() * 0.40);
+    var raw = state.rep * 2.5; 
+    if (state.network && state.network.length > 0) {
+        for (var i=0;i<state.network.length;i++) raw += (state.network[i].peak || 0) * 0.15;
+    }
+    return Math.min(raw, activeRate() * 0.40) || raw;
   }
   function totalRate(){ return activeRate() + networkRate(); }
 
-  function tapValue(){
-    return (1 + totalRate() * 0.05) * upMult("tap") * currentSite().tap * getSku().tapMult * (tapBoostActive() ? 4 : 1);
+  function tapValue(){ 
+      var basePassiveVal = (totalRate() * 0.05) / Math.sqrt(Math.max(1, comboMult()));
+      return (1 + basePassiveVal) * upMult("tap") * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult(); 
   }
-
+  
   function costOf(g, qty){
     var owned = state.owned[g.id] || 0, sum = 0;
-    for (var i=0;i<qty;i++) sum += g.cost * Math.pow(COST_GROWTH, owned+i);
+    var solarRed = Math.min(0.015, (state.corp.solar || 0) * 0.0015);
+    var actualGrowth = Math.max(1.135, COST_GROWTH - solarRed);
+    for (var i=0;i<qty;i++) sum += g.cost * Math.pow(actualGrowth, owned+i);
     return Math.ceil(sum * currentSite().cost);
   }
 
@@ -812,165 +719,120 @@
   function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
   function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
 
-  function saveGame(){
-    state.lastSeen = Date.now();
-    window.storage.set(SAVE_KEY, JSON.stringify(state));
-  }
+  function saveGame(){ state.lastSeen = Date.now(); window.storage.set(SAVE_KEY, JSON.stringify(state)); }
 
   var pendingOfflineBonus = 0;
-
-  async function loadGame(){
-    try {
-      var res = await window.storage.get(SAVE_KEY);
-      if (res && res.value){
-        var s = JSON.parse(res.value);
-        Object.assign(state, s);
+  function loadGame(){
+    return window.storage.get(SAVE_KEY).then(function(res){
+      if (res && res.value){ var s = JSON.parse(res.value); Object.assign(state, s); }
+      if (!state.upgrades) state.upgrades = {};
+      if (!state.perks) state.perks = {};
+      if (!state.ach) state.ach = {};
+      if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
+      
+      var validSite = false;
+      for (var i = 0; i < SITES.length; i++) { if (SITES[i].id === state.site) validSite = true; }
+      if (state.site === "leo" || !validSite) {
+          state.site = "general";
+          state.theme = "hivis";
+          if (state.money < 15) state.money = 15; 
       }
-    } catch(e){}
-    if (!state.rdTechs) state.rdTechs = {};
-    if (!state.upgrades) state.upgrades = {};
-    if (!state.perks) state.perks = {};
-    grantOffline();
-    checkDailyLoginPopup();
+      
+      document.getElementById("hardResetBtn").addEventListener("click", function(){
+        document.getElementById("wipeInput").value = "";
+        document.getElementById("modalReset").hidden = false;
+      });
+      document.getElementById("btnCancelWipe").addEventListener("click", function(){
+        document.getElementById("modalReset").hidden = true;
+        showToast("Reset aborted.");
+      });
+      document.getElementById("btnConfirmWipe").addEventListener("click", function(){
+        if (document.getElementById("wipeInput").value === "WIPE"){
+          localStorage.removeItem(SAVE_KEY);
+          location.reload();
+        } else {
+          showToast("Type WIPE to confirm.");
+        }
+      });
+      
+      var secs = (Date.now() - state.lastSeen) / 1000;
+      if (secs > 60){ 
+        var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+        secs = Math.min(secs, capHours * 3600);
+        var earned = totalRate() * secs;
+        
+        if (earned >= 10){
+          document.getElementById("offlineBaseTxt").textContent = money(earned);
+          document.getElementById("modalOffline").hidden = false;
+          
+          var claimBtn = document.getElementById("btnClaimOffline");
+          var doubleBtn = document.getElementById("btnDoubleOffline");
+          var newClaim = claimBtn.cloneNode(true); claimBtn.parentNode.replaceChild(newClaim, claimBtn);
+          var newDouble = doubleBtn.cloneNode(true); doubleBtn.parentNode.replaceChild(newDouble, doubleBtn);
+          
+          newClaim.addEventListener("click", function(){
+            state.money += earned; state.total += earned; state.lifetime += earned;
+            document.getElementById("modalOffline").hidden = true;
+            sfx("buy"); render(); saveGame();
+          });
+          
+          newDouble.addEventListener("click", function(){
+            newDouble.disabled = true;
+            Ads.show(function(){
+              var doubled = earned * 2;
+              state.money += doubled; state.total += doubled; state.lifetime += doubled;
+              document.getElementById("modalOffline").hidden = true;
+              sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
+              render(); saveGame();
+            });
+          });
+        }
+      }
+      
+      checkDailyLoginPopup();
+    }).catch(function(e){ console.error(e); });
   }
 
-  function grantOffline(){
-    var secs = (Date.now() - state.lastSeen) / 1000;
-    if (secs < 30) return;
-    secs = Math.min(secs, (state.perks.night ? 24 : OFFLINE_CAP_HOURS) * 3600);
-    var earned = totalRate() * secs;
-    if (earned < 1) return;
-    state.money += earned; state.total += earned; state.lifetime += earned;
-    pendingOfflineBonus = earned;
-    showToast("While away, your crew dispatched <b>" + money(earned) + "</b>.");
-  }
-
-  // Rewarded Ads Logic
   var Ads = (function(){
-    var plugin = null, ready = false, loading = false, lastShown = 0;
-    var REWARDED_ID = "ca-app-pub-5195464450607116/7630718166";
-    var REWARDED_TEST = "ca-app-pub-3940256099942544/5224354917";
-    var USE_TEST_ADS = false;
-
-    function init(){
-      try {
-        var cap = window.Capacitor;
-        if (!cap || !cap.Plugins || !cap.Plugins.AdMob) return;
-        plugin = cap.Plugins.AdMob;
-        plugin.initialize({ initializeForTesting: USE_TEST_ADS })
-          .then(function(){ preload(); })
-          .catch(function(){ plugin = null; });
-      } catch(e){ plugin = null; }
-    }
-
-    function preload(){
-      if (!plugin || loading || ready) return;
-      loading = true;
-      plugin.prepareRewardVideoAd({ adId: USE_TEST_ADS ? REWARDED_TEST : REWARDED_ID })
-        .then(function(){ ready = true; loading = false; })
-        .catch(function(){ loading = false; setTimeout(preload, 30000); });
-    }
-
-    function show(onReward){
-      if (!plugin){
-        onReward();
-        lastShown = Date.now();
-        return true;
-      }
-      ready = false;
-      var paid = false, sub = null;
-      try { if (plugin.addListener) sub = plugin.addListener("onRewardedVideoAdReward", function(){ paid = true; }); } catch(e){}
-      plugin.showRewardVideoAd()
-        .then(function(res){
-          if (paid || (res && (res.amount || res.type))) onReward();
-          else showToast("Ad closed early — no reward.");
-        })
-        .catch(function(){ onReward(); })
-        .then(function(){
-          try { if (sub && sub.remove) sub.remove(); } catch(e){}
-          lastShown = Date.now();
-          setTimeout(preload, 1000);
-        });
-      return true;
-    }
-    return { init:init, show:show, available:function(){ return true; } };
+    var plugin = null;
+    function init(){ preload(); }
+    function preload(){ }
+    function show(onReward){ onReward(); return true; }
+    return { init:init, preload:preload, show:show };
   })();
-
-  function refreshAdUI(){
-    var rushBtn = document.getElementById("rushAdBtn");
-    if(rushBtn) rushBtn.disabled = boostActive();
-    
-    var dblBtn = document.getElementById("dblAdBtn");
-    if(dblBtn){
-      if(pendingOfflineBonus > 0){
-        dblBtn.hidden = false;
-        document.getElementById("dblAdSub").textContent = "WATCH AD · +" + money(pendingOfflineBonus);
-      } else {
-        dblBtn.hidden = true;
-      }
-    }
-
-    var rrBtn = document.getElementById("rerollBtn");
-    if(rrBtn && state.contract){
-      var elapsed = state.contract.mins * 60000 - (state.contract.deadline - Date.now());
-      rrBtn.hidden = !(elapsed > 60000 && (state.contract.prog / state.contract.goal) < 0.5);
-    }
-
-    var repBtn = document.getElementById("repAdBtn");
-    if(repBtn) repBtn.hidden = pendingRep() < 1 || repBonusArmed;
-  }
 
   function bindAdButtons(){
     var rush = document.getElementById("rushAdBtn");
-    var dbl = document.getElementById("dblAdBtn");
-    var rr = document.getElementById("rerollBtn");
-    var ra = document.getElementById("repAdBtn");
-
     if (rush) rush.addEventListener("click", function(){
       if (rush.disabled) return;
       Ads.show(function(){
-        boostUntil = Math.max(boostUntil, Date.now() + 90000);
-        sfx("upgrade");
-        showToast("Overtime Shift! <b>Rush ×8 for 90 seconds</b>.");
+        boostUntil = Math.max(boostUntil, Date.now() + 90000); 
+        sfx("upgrade"); showToast("Overtime Shift! <b>Rush ×8 for 90 seconds</b>.");
         render(); saveGame();
       });
     });
 
-    if (dbl) dbl.addEventListener("click", function(){
-      if (pendingOfflineBonus <= 0) return;
-      var amt = pendingOfflineBonus;
-      Ads.show(function(){
-        state.money += amt; state.total += amt; state.lifetime += amt;
-        pendingOfflineBonus = 0;
-        sfx("upgrade");
-        showToast("Night shift doubled! <b>+" + money(amt) + "</b>.");
-        dbl.hidden = true;
-        render(); saveGame();
-      });
-    });
-
+    var rr = document.getElementById("rerollBtn");
     if (rr) rr.addEventListener("click", function(){
       Ads.show(function(){
         state.contract = newContract();
-        state.contract.prog = state.contract.goal * 0.5; // 50% headstart buff
-        sfx("upgrade");
-        showToast("Contract Board refreshed with +50% Progress.");
+        state.contract.prog = state.contract.goal * 0.5; 
+        sfx("upgrade"); showToast("Contract Board refreshed with +50% Progress.");
         renderContract(); render(); saveGame();
       });
     });
 
+    var ra = document.getElementById("repAdBtn");
     if (ra) ra.addEventListener("click", function(){
       if (pendingRep() < 1) return;
       Ads.show(function(){
-        repBonusArmed = true;
-        sfx("upgrade");
+        repBonusArmed = true; sfx("upgrade");
         showToast("Favour armed — sale gets <b>+25% REP &amp; +10 PAL</b>.");
         renderOffice(); render(); saveGame();
       });
     });
   }
 
-  // Daily Login Calendar
   function checkDailyLoginPopup(){
     var now = Date.now();
     var DAY_MS = 20 * 3600 * 1000;
@@ -982,8 +844,7 @@
   }
 
   function renderDailyCalendar(){
-    var grid = document.getElementById("calGrid");
-    grid.innerHTML = "";
+    var grid = document.getElementById("calGrid"); grid.innerHTML = "";
     DAILY_REWARDS.forEach(function(r){
       var d = document.createElement("div");
       var isCur = r.day === state.dailyStreak;
@@ -996,45 +857,35 @@
 
   document.getElementById("btnClaimDaily").addEventListener("click", function(){
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
-    state.pallets += reward.pallets;
-    state.lastDailyClaim = Date.now();
+    state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
     document.getElementById("modalDaily").hidden = true;
-    sfx("upgrade");
-    showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>.");
+    sfx("upgrade"); showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>.");
     render(); saveGame();
   });
 
-  // SKU Management
   function renderSkuUI(){
     var s = getSku();
     document.getElementById("activeSkuName").textContent = s.name;
     document.getElementById("activeSkuDesc").textContent = s.desc;
-    var container = document.getElementById("skuList");
-    container.innerHTML = "";
+    var container = document.getElementById("skuList"); container.innerHTML = "";
     SKUS.forEach(function(skuItem){
       var c = document.createElement("div");
       c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "");
       c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>";
       c.addEventListener("click", function(){
-        state.sku = skuItem.id;
-        document.getElementById("modalSku").hidden = true;
-        sfx("upgrade");
-        showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
+        sfx("upgrade"); showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
         renderSkuUI(); render(); saveGame();
       });
       container.appendChild(c);
     });
   }
-
   document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
   document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
 
-  // P0: Objective System Driver
   function renderObjective(){
     var cur = null, idx = 0;
-    for (var i = 0; i < OBJECTIVES.length; i++){
-      if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; }
-    }
+    for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
     var card = document.getElementById("objective");
     if (!cur){ card.hidden = true; return; }
     card.hidden = false;
@@ -1045,194 +896,164 @@
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
-  // UI Setup & Rendering
-  var el = {
-    money: document.getElementById("money"),
-    rate: document.getElementById("rate"),
-    tapval: document.getElementById("tapval"),
-    gens: document.getElementById("gens"),
-    toast: document.getElementById("toast"),
-    pick: document.getElementById("pickBtn")
-  };
-
+  var el = { money: document.getElementById("money"), rate: document.getElementById("rate"), tapval: document.getElementById("tapval"), gens: document.getElementById("gens"), toast: document.getElementById("toast"), pick: document.getElementById("pickBtn") };
   var genEls = {};
+  
   function buildGens(){
     el.gens.innerHTML = "";
     GENS.forEach(function(g){
       var card = document.createElement("div");
       card.className = "gen-card locked";
       card.innerHTML =
-        '<div class="gen-card-header">'+
-          plate(g.ic)+
-          '<div class="gen-card-title">'+
-            '<div class="name">'+g.name+'<span class="count" data-r="count"></span></div>'+
-            '<div class="desc">'+g.desc+'</div>'+
-          '</div>'+
-        '</div>'+
-        '<div class="gen-card-body">'+
-          '<div class="gen-card-metrics">'+
-            '<div class="prod"><b data-r="prod">$0</b>/s</div>'+
-            '<div class="pay" data-r="pay"></div>'+
-          '</div>'+
-          '<button class="gen-card-buy">'+
-            '<span data-r="cost">$0</span>'+
-            '<small data-r="qty">BUY ×1</small>'+
-          '</button>'+
-        '</div>'+
+        '<div class="gen-card-header">'+plate(g.ic)+'<div class="gen-card-title"><div class="name">'+g.name+'<span class="count" data-r="count"></span></div><div class="desc">'+g.desc+'</div></div></div>'+
+        '<div class="gen-card-body"><div class="gen-card-metrics"><div class="prod"><b data-r="prod">$0</b>/s</div><div class="pay" data-r="pay"></div></div><button class="gen-card-buy"><span data-r="cost">$0</span><small data-r="qty">BUY ×1</small></button></div>'+
         '<div class="gen-card-progress"><i data-r="bar" style="width:0%"></i></div>';
-
       card.querySelector(".gen-card-buy").addEventListener("click", function(){ buyGen(g); });
       el.gens.appendChild(card);
-      genEls[g.id] = {
-        card: card,
-        count: card.querySelector('[data-r="count"]'),
-        prod: card.querySelector('[data-r="prod"]'),
-        cost: card.querySelector('[data-r="cost"]'),
-        qty: card.querySelector('[data-r="qty"]'),
-        bar: card.querySelector('[data-r="bar"]'),
-        pay: card.querySelector('[data-r="pay"]'),
-        btn: card.querySelector(".gen-card-buy")
-      };
+      genEls[g.id] = { card: card, count: card.querySelector('[data-r="count"]'), prod: card.querySelector('[data-r="prod"]'), cost: card.querySelector('[data-r="cost"]'), qty: card.querySelector('[data-r="qty"]'), bar: card.querySelector('[data-r="bar"]'), pay: card.querySelector('[data-r="pay"]'), btn: card.querySelector(".gen-card-buy") };
     });
   }
 
-  var upEls = {}, rdEls = {};
-  function buildShop(){
-    var shop = document.getElementById("shop");
-    shop.innerHTML = "";
-    UPGRADES.forEach(function(u){
+  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {};
+  
+  function buildCorpShop(){
+    var corpShop = document.getElementById("corpShop");
+    corpShop.innerHTML = "";
+    CORP_BUILDINGS.forEach(function(cb){
       var b = document.createElement("button");
       b.className = "up";
-      b.innerHTML = plate(u.ic)+'<div><div class="uname">'+u.name+'</div><div class="udesc">'+u.desc+'</div></div><div class="ucost">'+money(u.cost)+'</div>';
-      b.addEventListener("click", function(){ buyUpgrade(u); });
-      shop.appendChild(b);
-      upEls[u.id] = b;
-    });
-
-    var rdShop = document.getElementById("rdShop");
-    rdShop.innerHTML = "";
-    RD_TECHS.forEach(function(t){
-      var b = document.createElement("button");
-      b.className = "up";
-      b.innerHTML = plate(t.ic)+'<div><div class="uname">'+t.name+'</div><div class="udesc">'+t.desc+'</div></div><div class="ucost" style="color:var(--research);">'+t.cost+' RP</div>';
-      b.addEventListener("click", function(){ buyRDTech(t); });
-      rdShop.appendChild(b);
-      rdEls[t.id] = b;
-    });
-  }
-
-  function buyUpgrade(u){
-    if (state.money < u.cost || state.upgrades[u.id]) return;
-    state.money -= u.cost;
-    state.upgrades[u.id] = true;
-    sfx("upgrade");
-    showToast("<b>" + u.name + "</b> installed.");
-    render(); saveGame();
-  }
-
-  function buyRDTech(t){
-    if (state.rp < t.cost || (state.rdTechs && state.rdTechs[t.id])) return;
-    state.rp -= t.cost;
-    if (!state.rdTechs) state.rdTechs = {};
-    state.rdTechs[t.id] = true;
-    sfx("upgrade");
-    showToast("R&D Protocol Activated: <b>" + t.name + "</b>.");
-    render(); saveGame();
-  }
-
-  var perkBtnEls = {}, supplyBtnEls = {};
-  function buildStore(){
-    var pList = document.getElementById("perkList");
-    var sList = document.getElementById("supplyList");
-    var tList = document.getElementById("themeList");
-    pList.innerHTML = ""; sList.innerHTML = ""; tList.innerHTML = "";
-
-    BRANCHES.forEach(function(br){
-      var h = document.createElement("div");
-      h.className = "branchhead";
-      h.innerHTML = '<b>' + br.name + '</b><span>' + br.desc + '</span>';
-      pList.appendChild(h);
-      PERKS.forEach(function(p){
-        if (p.br === br.id){
-          var b = document.createElement("button");
-          b.className = "up";
-          b.innerHTML = plate(p.ic) + '<div><div class="uname">'+p.name+'</div><div class="udesc">'+p.desc+'</div></div><div class="ucost">'+p.cost+' PAL</div>';
-          b.addEventListener("click", function(){
-            if(state.pallets >= p.cost && !state.perks[p.id]){
-              state.pallets -= p.cost;
-              state.perks[p.id] = true;
-              sfx("upgrade");
-              showToast("Perk unlocked: <b>" + p.name + "</b>.");
-              render(); saveGame();
-            }
-          });
-          pList.appendChild(b);
-          perkBtnEls[p.id] = b;
+      b.innerHTML = '<div class="plate" style="border-color:var(--corp); color:var(--corp);">' + icon(cb.ic) + '</div>' + 
+                    '<div><div class="uname">' + cb.name + ' <span data-r="lvl" style="color:var(--corp);">LVL 0</span></div><div class="udesc" style="color:var(--steel);">' + cb.desc + '<br><b style="color:var(--corp); font-size:8px;">' + cb.mastery + '</b></div></div>' +
+                    '<div class="ucost" data-r="cost">$0</div>';
+      
+      b.addEventListener("click", function(){
+        var lvl = state.corp[cb.id] || 0;
+        if (lvl >= 10) return;
+        var cost = cb.baseCost * Math.pow(6, lvl);
+        if (state.money >= cost) {
+          state.money -= cost;
+          state.corp[cb.id] = lvl + 1;
+          sfx("build");
+          if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
+          else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
+          render(); saveGame();
         }
       });
+      corpShop.appendChild(b);
+      corpBtnEls[cb.id] = { btn: b, costEl: b.querySelector('[data-r="cost"]'), lvlEl: b.querySelector('[data-r="lvl"]') };
+    });
+  }
+
+  function buildShop(){
+    var shop = document.getElementById("shop"); shop.innerHTML = "";
+    UPGRADES.forEach(function(u){
+      var b = document.createElement("button"); b.className = "up";
+      b.innerHTML = plate(u.ic)+'<div><div class="uname">'+u.name+'</div><div class="udesc">'+u.desc+'</div></div><div class="ucost">'+money(u.cost)+'</div>';
+      b.addEventListener("click", function(){
+        if (state.money < u.cost || state.upgrades[u.id]) return;
+        state.money -= u.cost; state.upgrades[u.id] = true; sfx("upgrade");
+        showToast("<b>" + u.name + "</b> installed."); render(); saveGame();
+      });
+      shop.appendChild(b); upEls[u.id] = b;
     });
 
+    var pList = document.getElementById("perkList"); pList.innerHTML = "";
+    PERKS.forEach(function(p){
+      var b = document.createElement("button"); b.className = "up";
+      b.innerHTML = plate(p.ic) + '<div><div class="uname">'+p.name+'</div><div class="udesc">'+p.desc+'</div></div><div class="ucost">'+p.cost+' PAL</div>';
+      b.addEventListener("click", function(){
+        if(state.pallets >= p.cost && !state.perks[p.id]){
+          state.pallets -= p.cost; state.perks[p.id] = true; sfx("upgrade");
+          showToast("Perk unlocked: <b>" + p.name + "</b>."); render(); saveGame();
+        }
+      });
+      pList.appendChild(b); perkBtnEls[p.id] = b;
+    });
+
+    var sList = document.getElementById("supplyList"); sList.innerHTML = "";
     SUPPLIES.forEach(function(s){
-      var b = document.createElement("button");
-      b.className = "up";
+      var b = document.createElement("button"); b.className = "up";
       var sc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
       b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+sc+' PAL</div>';
-      
       b.addEventListener("click", function(){
         var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
         if(state.pallets >= currentSc){
           state.pallets -= currentSc;
-          if(s.id === "dispatch"){
-            var dispatchCap = totalRate() * 3600;
-            state.money += dispatchCap; state.total += dispatchCap; state.lifetime += dispatchCap;
-          } else {
-            boostUntil = Date.now() + 30000;
-          }
-          sfx("upgrade");
-          showToast("Supply activated: <b>" + s.name + "</b>.");
-          render(); saveGame();
+          if(s.id === "dispatch"){ var cap = totalRate() * 3600; state.money += cap; state.total += cap; state.lifetime += cap; } 
+          else { boostUntil = Date.now() + 30000; }
+          sfx("upgrade"); showToast("Supply activated: <b>" + s.name + "</b>."); render(); saveGame();
         }
       });
-      sList.appendChild(b);
-      supplyBtnEls[s.id] = {btn: b, costElem: b.querySelector('[data-r="cost"]')};
+      sList.appendChild(b); supplyBtnEls[s.id] = {btn: b, costElem: b.querySelector('[data-r="cost"]')};
     });
-
-    THEMES.forEach(function(t){
-      var b = document.createElement("button");
-      b.className = "up";
-      b.innerHTML = '<div class="plate"><span class="swatch" style="background:'+t.hivis+'"></span></div><div><div class="uname">'+t.name+'</div><div class="udesc">Site Livery</div></div><div class="ucost">'+(t.cost===0?"FREE":t.cost+" PAL")+'</div>';
-      b.addEventListener("click", function(){
-        state.theme = t.id;
-        document.documentElement.style.setProperty("--hivis", t.hivis);
-        document.documentElement.style.setProperty("--hazard", t.hazard);
-        sfx("upgrade");
-        showToast("Theme applied: <b>" + t.name + "</b>.");
-        render(); saveGame();
+    
+    var tList = document.getElementById("themeList"); 
+    if (tList) {
+      tList.innerHTML = "";
+      THEMES.forEach(function(t){
+        var b = document.createElement("button"); b.className = "up";
+        var costTxt = t.cost === 0 ? "FREE" : t.cost + " PAL";
+        b.innerHTML = '<div class="swatch" style="background:'+t.hivis+';"></div><div><div class="uname">'+t.name+'</div></div><div class="ucost">'+costTxt+'</div>';
+        b.addEventListener("click", function(){
+          if (state.theme === t.id) return; 
+          if (state.pallets >= t.cost || t.cost === 0) {
+            if (t.cost > 0) state.pallets -= t.cost;
+            state.theme = t.id; 
+            sfx("upgrade");
+            showToast("Livery applied: <b>" + t.name + "</b>."); 
+            render(); 
+            saveGame();
+          }
+        });
+        tList.appendChild(b);
       });
-      tList.appendChild(b);
-    });
+    }
   }
 
-  var ACH = [
-    {id:"tap100",   ic:"glove",    name:"Fast Hands",        test:function(){return state.taps>=100;}},
-    {id:"cash100k", ic:"cash",     name:"First 100K",         test:function(){return state.lifetime>=1e5;}},
-    {id:"cash10m",  ic:"cash",     name:"Serious Operation",  test:function(){return state.lifetime>=1e7;}},
-    {id:"own50",    ic:"forklift", name:"Fleet Manager",      test:function(){return ownedCount()>=50;}},
-    {id:"pres1",    ic:"cycle",    name:"Serial Entrepreneur",test:function(){return state.prestiges>=1;}},
-    {id:"con5",     ic:"clip",     name:"Reliable Carrier",   test:function(){return state.contractsDone>=5;}}
-  ];
   function ownedCount(){ var n=0; GENS.forEach(function(g){ n+=(state.owned[g.id]||0); }); return n; }
+
+  var ACH = [
+    {id:"tap1", ic:"glove", name:"Fast Hands", test:function(){return state.taps>=100;}},
+    {id:"tap2", ic:"glove", name:"Blurry Hands", test:function(){return state.taps>=1000;}},
+    {id:"tap3", ic:"glove", name:"Machine Hands", test:function(){return state.taps>=5000;}},
+    {id:"tap4", ic:"glove", name:"Sonic Hands", test:function(){return state.taps>=25000;}},
+    {id:"cash1", ic:"cash", name:"First 100K", test:function(){return state.lifetime>=1e5;}},
+    {id:"cash2", ic:"cash", name:"First Million", test:function(){return state.lifetime>=1e6;}},
+    {id:"cash3", ic:"cash", name:"Ten Million", test:function(){return state.lifetime>=1e7;}},
+    {id:"cash4", ic:"cash", name:"Big Business", test:function(){return state.lifetime>=1e8;}},
+    {id:"cash5", ic:"cash", name:"Billionaire", test:function(){return state.lifetime>=1e9;}},
+    {id:"cash6", ic:"cash", name:"Empire Status", test:function(){return state.lifetime>=1e10;}},
+    {id:"own1", ic:"forklift", name:"Small Fleet", test:function(){return ownedCount()>=10;}},
+    {id:"own2", ic:"forklift", name:"Fleet Manager", test:function(){return ownedCount()>=50;}},
+    {id:"own3", ic:"forklift", name:"Logistics Pro", test:function(){return ownedCount()>=150;}},
+    {id:"own4", ic:"forklift", name:"Automation", test:function(){return ownedCount()>=300;}},
+    {id:"own5", ic:"forklift", name:"Skynet", test:function(){return ownedCount()>=600;}},
+    {id:"pres1", ic:"cycle", name:"New Beginnings", test:function(){return state.prestiges>=1;}},
+    {id:"pres2", ic:"cycle", name:"Serial Tycoon", test:function(){return state.prestiges>=5;}},
+    {id:"pres3", ic:"cycle", name:"Megacorp", test:function(){return state.prestiges>=15;}},
+    {id:"pres4", ic:"cycle", name:"Monopoly", test:function(){return state.prestiges>=30;}},
+    {id:"con1", ic:"clip", name:"Reliable Carrier", test:function(){return state.contractsDone>=5;}},
+    {id:"con2", ic:"clip", name:"Trusted Partner", test:function(){return state.contractsDone>=25;}},
+    {id:"con3", ic:"clip", name:"Contract King", test:function(){return state.contractsDone>=75;}},
+    {id:"con4", ic:"clip", name:"Global Freight", test:function(){return state.contractsDone>=150;}},
+    {id:"upg1", ic:"wrench", name:"Tinkerer", test:function(){return Object.keys(state.upgrades).length>=5;}},
+    {id:"upg2", ic:"wrench", name:"Engineer", test:function(){return Object.keys(state.upgrades).length>=15;}},
+    {id:"upg3", ic:"wrench", name:"Director", test:function(){return Object.keys(state.upgrades).length>=30;}},
+    {id:"pal1", ic:"box", name:"Stockpiler", test:function(){return state.pallets>=10;}},
+    {id:"pal2", ic:"box", name:"Hoarder", test:function(){return state.pallets>=50;}},
+    {id:"pal3", ic:"box", name:"Warehouse Full", test:function(){return state.pallets>=150;}},
+    {id:"combo1", ic:"flame", name:"Hot Streak", test:function(){return maxCombo>=2.0;}},
+    {id:"combo2", ic:"flame", name:"Unstoppable", test:function(){return maxCombo>=3.5;}},
+    {id:"combo3", ic:"flame", name:"Godlike", test:function(){return maxCombo>=4.6;}}
+  ];
 
   var badgeEls = {};
   function buildAch(){
-    var p = document.getElementById("achPanel");
-    p.innerHTML = "";
+    var p = document.getElementById("achPanel"); if(!p) return; p.innerHTML = "";
     ACH.forEach(function(a){
-      var b = document.createElement("div");
-      b.className = "badge";
+      var b = document.createElement("div"); b.className = "badge";
       b.innerHTML = '<span class="bicon">'+icon(a.ic)+'</span>'+a.name;
-      p.appendChild(b);
-      badgeEls[a.id] = b;
+      p.appendChild(b); badgeEls[a.id] = b;
     });
   }
 
@@ -1240,24 +1061,20 @@
     var count = 0;
     ACH.forEach(function(a){
       if(!state.ach[a.id] && a.test()){
-        state.ach[a.id] = true;
-        state.pallets++;
-        sfx("upgrade");
+        state.ach[a.id] = true; state.pallets++; sfx("upgrade");
         showToast("Award Unlocked: <b>" + a.name + "</b> (+1 Pallet)");
       }
       if(state.ach[a.id]) count++;
       if(badgeEls[a.id]) badgeEls[a.id].classList.toggle("got", !!state.ach[a.id]);
     });
-    document.getElementById("achCountTag").textContent = count + "/" + ACH.length;
-    document.getElementById("scAch").innerHTML = count + "<i>/" + ACH.length + "</i>";
+    var act = document.getElementById("achCountTag"); if(act) act.textContent = count + "/" + ACH.length;
+    var sca = document.getElementById("scAch"); if(sca) sca.innerHTML = count + "<i>/" + ACH.length + "</i>";
   }
 
   function buildSiteList(){
-    var list = document.getElementById("siteList");
-    list.innerHTML = "";
+    var list = document.getElementById("siteList"); if(!list) return; list.innerHTML = "";
     SITES.forEach(function(st){
-      var b = document.createElement("button");
-      b.className = "sitecard";
+      var b = document.createElement("button"); b.className = "sitecard";
       b.innerHTML = "<b>" + st.name + "</b><div class=\"sblurb\">" + st.blurb + "</div>";
       b.addEventListener("click", function(){ chooseSite(st.id); });
       list.appendChild(b);
@@ -1265,20 +1082,48 @@
   }
 
   function chooseSite(id){
-    state.site = id;
-    document.getElementById("sitePick").hidden = true;
-    sfx("upgrade");
-    showToast("New Site Commissioned: <b>" + currentSite().name + "</b>.");
+    state.site = id; 
+    var sp = document.getElementById("sitePick"); if(sp) sp.hidden = true;
+    sfx("upgrade"); showToast("New Site Commissioned: <b>" + currentSite().name + "</b>.");
     render(); saveGame();
   }
 
   function render(){
-    el.money.textContent = money(state.money);
-    el.rate.textContent = money(totalRate());
+    el.money.textContent = money(state.money); el.rate.textContent = money(totalRate());
     el.tapval.textContent = money(tapValue());
     document.getElementById("repInfo").textContent = "REP " + state.rep;
     document.getElementById("palletNum").textContent = state.pallets;
-    document.getElementById("rpVal").textContent = Math.floor(state.rp);
+    
+    var currentWages = wageBill();
+    var wageEl = document.getElementById("wageTag");
+    if (wageEl) {
+      if (currentWages > 0) {
+        wageEl.innerHTML = "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> ";
+      } else {
+        wageEl.innerHTML = "";
+      }
+    }
+
+    CORP_BUILDINGS.forEach(function(cb){
+      var elObj = corpBtnEls[cb.id];
+      if (elObj && elObj.btn){
+        var lvl = state.corp[cb.id] || 0;
+        var cost = cb.baseCost * Math.pow(6, lvl);
+        elObj.lvlEl.textContent = "LVL " + lvl;
+        if (lvl >= 10) {
+          elObj.costEl.textContent = "MAX";
+          elObj.btn.classList.add("owned");
+          elObj.btn.classList.remove("can");
+          elObj.btn.disabled = true;
+        } else {
+          elObj.costEl.textContent = money(cost);
+          var canBuy = state.money >= cost;
+          elObj.btn.classList.toggle("can", canBuy);
+          elObj.btn.classList.toggle("owned", lvl > 0);
+          elObj.btn.disabled = !canBuy;
+        }
+      }
+    });
     
     document.getElementById("shiftEarned").textContent = money(sessionEarned);
     document.getElementById("shiftTaps").textContent = state.taps;
@@ -1289,86 +1134,30 @@
     document.getElementById("flowPct").textContent = Math.round(flow * 100) + "%";
     document.getElementById("flowBar").style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
 
-    var unl = 0;
-    GENS.forEach(function(g){ if ((state.owned[g.id]||0) > 0 || state.total >= g.cost * 0.35) unl++; });
-    document.getElementById("scGen").innerHTML = unl + "<i>/8</i>";
-    document.getElementById("scRank").innerHTML = (rankIndex() + 1) + "<i>/10</i>";
-
-    var taskIdx = 1;
-    for (var i = 0; i < OBJECTIVES.length; i++){
-      if (!OBJECTIVES[i].done()){ taskIdx = i + 1; break; }
-    }
-    document.getElementById("scTask").innerHTML = taskIdx + "<i>/" + OBJECTIVES.length + "</i>";
-
     GENS.forEach(function(g){
       var e = genEls[g.id];
+      if(!e) return;
       var owned = state.owned[g.id] || 0;
       var unlocked = owned > 0 || state.total >= g.cost * 0.35;
-
       e.card.classList.toggle("locked", !unlocked);
       e.count.textContent = owned > 0 ? "×"+owned : "";
-      e.prod.textContent = money(genRate(g) * (1 - (WAGE[g.id]||0)));
-
-      var c = costOf(g, buyQty);
-      e.cost.textContent = money(c);
-      e.qty.textContent = "BUY ×" + buyQty;
-
-      var nextMs = 0, prevMs = 0;
-      for (var mi=0; mi<MILESTONES.length; mi++){ if (owned < MILESTONES[mi]){ nextMs = MILESTONES[mi]; break; } }
-      for (var pj=MILESTONES.length-1; pj>=0; pj--){ if (owned >= MILESTONES[pj]){ prevMs = MILESTONES[pj]; break; } }
-
-      var toGo = nextMs ? nextMs - owned : 0;
-      if (!unlocked){ e.pay.textContent = "Locked"; e.pay.className = "pay"; }
-      else if (toGo > 0 && toGo <= 30){
-        e.pay.textContent = toGo + " to next boost";
-        e.pay.className = "pay ms";
-      } else { e.pay.textContent = "Operating steady"; e.pay.className = "pay good"; }
-
+      
+      var gross = genRate(g);
+      var wRate = WAGE[g.id] || 0;
+      e.prod.textContent = money(gross * (1 - wRate));
+      
+      if (gross > 0) {
+        e.pay.textContent = "Wages: -" + money(gross * wRate) + "/s";
+        e.pay.style.color = "var(--bad)";
+      } else {
+        e.pay.textContent = "Overhead: " + (wRate * 100).toFixed(1) + "%";
+        e.pay.style.color = "var(--dim)";
+      }
+      
+      var c = costOf(g, buyQty); e.cost.textContent = money(c); e.qty.textContent = "BUY ×" + buyQty;
       var can = state.money >= c && unlocked;
-      e.btn.disabled = !can;
-      e.btn.classList.toggle("can", can);
+      e.btn.disabled = !can; e.btn.classList.toggle("can", can);
       e.card.classList.toggle("can", can);
-      e.card.classList.toggle("near-ms", toGo > 0 && toGo <= 15);
-
-      var pct = nextMs ? ((owned - prevMs) / (nextMs - prevMs)) * 100 : 100;
-      e.bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
-    });
-
-    UPGRADES.forEach(function(u){
-      var b = upEls[u.id];
-      if (b){
-        if (state.upgrades[u.id]){ b.hidden = true; }
-        else {
-          var show = !u.reqGen || (state.owned[u.reqGen]||0) >= u.reqCount;
-          b.hidden = false;
-          b.classList.toggle("lock", !show);
-          var can = state.money >= u.cost && show;
-          b.classList.toggle("can", can);
-          b.disabled = !can;
-        }
-      }
-    });
-
-    RD_TECHS.forEach(function(t){
-      var b = rdEls[t.id];
-      if (b){
-        var owned = !!(state.rdTechs && state.rdTechs[t.id]);
-        b.classList.toggle("owned", owned);
-        b.classList.toggle("can", !owned && state.rp >= t.cost);
-        b.disabled = owned || state.rp < t.cost;
-        if (owned) b.querySelector(".ucost").textContent = "INSTALLED";
-      }
-    });
-
-    PERKS.forEach(function(p){
-      var b = perkBtnEls[p.id];
-      if (b){
-        var owned = !!(state.perks && state.perks[p.id]);
-        b.classList.toggle("owned", owned);
-        b.classList.toggle("can", !owned && state.pallets >= p.cost);
-        b.disabled = owned || state.pallets < p.cost;
-        if (owned) b.querySelector(".ucost").textContent = "OWNED";
-      }
     });
 
     SUPPLIES.forEach(function(s){
@@ -1377,32 +1166,29 @@
             var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
             elObj.costElem.textContent = currentSc + " PAL";
             var can = state.pallets >= currentSc;
-            elObj.btn.classList.toggle("can", can);
-            elObj.btn.disabled = !can;
+            elObj.btn.classList.toggle("can", can); elObj.btn.disabled = !can;
         }
     });
 
-    renderOffice();
-    renderObjective();
-    checkAch();
+    renderOffice(); renderObjective(); update3DPalette(); checkAch();
   }
 
   function renderOffice(){
+    var st = document.getElementById("statsText");
+    if(st) {
+      st.innerHTML = "Lifetime Capital: <b style='color:var(--cash);'>" + money(state.lifetime) + "</b><br>" +
+                     "Total Hand Picks: <b>" + state.taps + "</b><br>" +
+                     "Contracts Fulfilled: <b>" + state.contractsDone + "</b><br>" +
+                     "Best Shift Combo: <b>×" + maxCombo.toFixed(2) + "</b><br>" +
+                     "Pallets in Reserve: <b>" + state.pallets + "</b>";
+    }
+
     var sellBtn = document.getElementById("sellBtn");
     var gain = repBonusArmed ? repWithFavour(pendingRep()) : pendingRep();
     sellBtn.disabled = gain < 1;
     if (!sellArmed){
-      sellBtn.textContent = gain < 1
-        ? "SELL BUSINESS — REACH $20K LIFETIME"
-        : "SELL: +" + gain + " REP" + (repBonusArmed ? " (FAVOUR)" : "");
+      sellBtn.textContent = gain < 1 ? "SELL BUSINESS — REACH $20K LIFETIME" : "SELL: +" + gain + " REP" + (repBonusArmed ? " (FAVOUR)" : "");
     }
-
-    document.getElementById("statsText").innerHTML =
-      "Career rank: <b>" + RANKS[rankIndex()].name + "</b><br>" +
-      "Lifetime earned: <b>" + money(state.lifetime) + "</b><br>" +
-      "Orders picked: <b>" + state.taps + "</b><br>" +
-      "Research Points: <b>" + Math.floor(state.rp) + " RP</b><br>" +
-      "Businesses sold: <b>" + state.prestiges + "</b>";
   }
 
   var sellBtn = document.getElementById("sellBtn");
@@ -1410,432 +1196,715 @@
     var gain = repBonusArmed ? repWithFavour(pendingRep()) : pendingRep();
     if (gain < 1) return;
     if (!sellArmed){
-      sellArmed = true;
-      sellBtn.classList.add("armed");
-      sellBtn.textContent = "CONFIRM: +" + gain + " REP";
-      clearTimeout(sellArmTimer);
-      sellArmTimer = setTimeout(function(){
-        sellArmed = false;
-        sellBtn.classList.remove("armed");
-        renderOffice();
-      }, 4000);
+      sellArmed = true; sellBtn.classList.add("armed"); sellBtn.textContent = "CONFIRM: +" + gain + " REP";
+      clearTimeout(sellArmTimer); sellArmTimer = setTimeout(function(){ sellArmed = false; sellBtn.classList.remove("armed"); renderOffice(); }, 4000);
       return;
     }
     
-    state.rep += gain;
-    state.prestiges++;
+    state.rep += gain; state.prestiges++;
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
-    repBonusArmed = false;
-    sellArmed = false;
-    sellBtn.classList.remove("armed");
+    repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
     
-    if (!state.network) state.network = [];
-    state.network.push({ id: state.site, peak: activeRate() });
+    if (!state.network) state.network = []; state.network.push({ id: state.site, peak: activeRate() });
     state.money = 0; state.total = 0;
     
-    var kept = {};
-    for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
-    state.upgrades = kept;
-    GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
+    state.upgrades = kept; GENS.forEach(function(g){ state.owned[g.id] = 0; });
     
-    sfx("prestige");
-    showToast("Business Sold! Site retired into your <b>Network</b>.");
-    buildSiteList();
-    buildStore(); 
-    document.getElementById("sitePick").hidden = false;
-    switchTab("floor");
-    render(); saveGame();
-  });
-
-  document.getElementById("renameBtn").addEventListener("click", function(){
-    var next = prompt("New company name:", state.company || "FIRST SHIFT LOGISTICS");
-    if (next == null) return;
-    next = String(next).trim().toUpperCase().slice(0, 24);
-    if (!next) return;
-    state.company = next;
-    document.getElementById("companyName").textContent = next;
-    var hName = document.querySelector("header h1");
-    if (hName) hName.innerHTML = next.replace(/</g, "&lt;");
-    showToast("Company renamed to <b>" + next + "</b>.");
-    saveGame();
-  });
-
-  document.getElementById("muteBtn").addEventListener("click", function(){
-    state.muted = !state.muted;
-    this.textContent = state.muted ? "SFX OFF" : "SFX ON";
-    this.classList.toggle("on", !state.muted);
-    saveGame();
+    sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
+    
+    buildSiteList(); document.getElementById("sitePick").hidden = false;
+    switchTab("floor"); render(); saveGame();
   });
 
   function buyGen(g){
     var c = costOf(g, buyQty);
     if (state.money < c) return;
-    state.money -= c;
-    state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
-    sfx("buy");
-    render(); saveGame();
+    state.money -= c; state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    sfx("buy"); render(); saveGame();
   }
-
-  function onPick(ev){
-    sfx("tap");
-    bumpCombo();
-    var v = tapValue() * comboMult();
-    state.money += v; state.total += v; state.lifetime += v; state.taps++;
-    ordNum = (ordNum + 1) % 100000;
-    var x = (ev.touches? ev.touches[0].clientX : ev.clientX) || window.innerWidth/2;
-    var y = (ev.touches? ev.touches[0].clientY : ev.clientY) || 200;
-    var f = document.createElement("div");
-    f.className = "float"; f.textContent = "+" + money(v);
-    f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
-    document.body.appendChild(f);
-    setTimeout(function(){ if (f && f.parentNode) f.remove(); }, 800);
-    render();
-  }
-  el.pick.addEventListener("pointerdown", onPick);
 
   var comboCount = 0, lastTap = 0;
-  function comboMult(){ return 1 + Math.min(comboCount, 80) * 0.045; }
-  function bumpCombo(){
-    var now = Date.now();
-    comboCount = (now - lastTap < 1600) ? comboCount + 1 : 1;
-    lastTap = now;
-    var m = comboMult();
-    if(m > maxCombo) maxCombo = m;
-    document.getElementById("comboText").textContent = "COMBO ×" + m.toFixed(2);
-    document.getElementById("comboBar").style.width = Math.min(100, (comboCount / 80) * 100) + "%";
+  function comboMult(){ 
+      var srv = state.corp.server || 0;
+      var maxC = 80 + (srv * 20);
+      return 1 + Math.min(comboCount, maxC) * 0.045; 
   }
+  function bumpCombo(){
+    var now = Date.now(); 
+    if ((state.corp.server || 0) >= 10) {
+        comboCount += 1;
+        lastTap = now;
+    } else {
+        var timeout = 1600 + ((state.corp.server || 0) * 400);
+        comboCount = (now - lastTap < timeout) ? comboCount + 1 : 1; 
+        lastTap = now;
+    }
+    var m = comboMult(); if(m > maxCombo) maxCombo = m;
+    document.getElementById("comboText").textContent = "COMBO ×" + m.toFixed(2);
+    document.getElementById("comboBar").style.width = Math.min(100, (comboCount / (80 + ((state.corp.server||0)*20))) * 100) + "%";
+  }
+
+  el.pick.addEventListener("pointerdown", function(ev){
+    sfx("tap"); bumpCombo();
+    var v = tapValue();
+    state.money += v; state.total += v; state.lifetime += v; state.taps++;
+    
+    var x = (ev.touches? ev.touches[0].clientX : ev.clientX) || window.innerWidth/2;
+    var y = (ev.touches? ev.touches[0].clientY : ev.clientY) || 200;
+    var f = document.createElement("div"); f.className = "float"; f.textContent = "+" + money(v);
+    f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
+    document.body.appendChild(f); setTimeout(function(){ if (f && f.parentNode) f.remove(); }, 800);
+    render();
+  });
 
   function newContract(){
     var r = totalRate();
-    var mins = 15;
+    var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
     var goal = Math.max(500, Math.floor(r * 60 * mins * getSku().conMult * (currentSite().conMult || 1)));
-    return {
-      goal: goal, prog: 0, mins: mins,
-      deadline: Date.now() + mins * 60000,
-      label: "Dispatch " + money(goal) + " of freight",
-      cash: Math.max(400, Math.floor(r * 60 * 6 * getSku().conMult * (state.rdTechs && state.rdTechs.predict ? 1.5 : 1))),
-      pallets: state.rdTechs && state.rdTechs.predict ? 4 : 3
+    var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * getSku().conMult)) * towerMult;
+    
+    return { 
+      goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000, 
+      label: "Dispatch " + money(goal) + " of freight", 
+      cash: cashReward, pallets: 3 
     };
   }
 
   function renderContract(){
     if (!state.contract) state.contract = newContract();
     var c = state.contract;
-    
-    if (Date.now() > c.deadline){
-      state.contract = newContract();
-      c = state.contract;
-    }
-
+    if (Date.now() > c.deadline){ state.contract = newContract(); c = state.contract; }
     var pct = Math.min(100, (c.prog / c.goal) * 100);
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
     document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
-    
-    var timeLeft = Math.max(0, Math.floor((c.deadline - Date.now())/1000));
-    var m = Math.floor(timeLeft / 60), s = timeLeft % 60;
-    document.getElementById("contractTime").textContent = m + "m " + (s<10?"0":"") + s + "s";
   }
 
   var toastTimer = null;
   function showToast(html){
-    el.toast.innerHTML = html;
-    el.toast.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4000);
+    el.toast.innerHTML = html; el.toast.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4000);
   }
 
   function switchTab(name){
     tabBtns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-tab") === name); });
-    ["floor","equip","upgrades","pallets","office"].forEach(function(t){
-      document.getElementById("tab-"+t).hidden = (t !== name);
-    });
+    ["floor","equip","upgrades","pallets","office"].forEach(function(t){ document.getElementById("tab-"+t).hidden = (t !== name); });
     document.querySelector(".pickwrap").style.display = (name === "floor") ? "" : "none";
-    if (name === "floor") sizeCanvas();
+    renderActive = (name === "floor"); 
+    if (renderActive) setTimeout(sizeCanvas, 20); 
     render();
   }
-
+  
   var tabBtns = document.querySelectorAll(".tabs button");
-  tabBtns.forEach(function(btn){
-    btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
-  });
-
+  tabBtns.forEach(function(btn){ btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); }); });
   document.getElementById("q1").addEventListener("click", function(){ buyQty = 1; this.classList.add("on"); document.getElementById("q10").classList.remove("on"); render(); });
   document.getElementById("q10").addEventListener("click", function(){ buyQty = 10; this.classList.add("on"); document.getElementById("q1").classList.remove("on"); render(); });
 
-  var cv = document.getElementById("wcanvas"), cx = cv.getContext("2d");
+  // ==========================================
+  // V4.2 FINAL CORPORATE ISOMETRIC ENGINE (TAP FIXED)
+  // ==========================================
+  var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
-  var CW = 300, CH = 140;
-  var floorHotspots = [];
+  var CW = 0, CH = 0, cx = 150, cy = 40;
+  var TW = 24, TH = 12; 
 
   function sizeCanvas(){
-    var w = cv.clientWidth || 300, h = cv.clientHeight || 140;
-    if (!w) return;
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h || w === 0 || h === 0) return; 
+    if (w === CW && h === CH) return; 
+
     CW = w; CH = h;
-    cv.width = Math.floor(w * DPR);
-    cv.height = Math.floor(h * DPR);
-    cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    TW = Math.max(5, Math.min(10, CW / 55)); 
+    TH = TW / 2;
+    cx = CW * 0.40; 
+    cy = CH * 0.15; 
   }
   window.addEventListener("resize", sizeCanvas);
 
-  cv.addEventListener("pointerdown", function(ev){
+  var PALETTES = {
+    steel:  { top: '#5d636b', left: '#474c53', right: '#2c2f34' },
+    dark:   { top: '#383c42', left: '#2c2f34', right: '#1c1e21' },
+    box:    { top: '#e0b088', left: '#c08a4e', right: '#8a6437' },
+    hivis:  { top: '#ff7b00', left: '#f2620f', right: '#c94e08' },
+    spill:  { top: '#ff5a5a', left: '#e05252', right: '#a32929' },
+    audit:  { top: '#7ce3ff', left: '#38bdf8', right: '#0284c7' },
+    hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
+    slab:   { top: '#2a2d34', left: '#24272d', right: '#1a1c20' },
+    wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' }
+  };
+
+  function update3DPalette() {
+    if (state.theme === "nightshift") {
+      PALETTES.hivis = { top: '#63aaff', left: '#3f8fd8', right: '#1d5285' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    } else if (state.theme === "safety") {
+      PALETTES.hivis = { top: '#a7e058', left: '#8dc63f', right: '#4e7a1e' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    } else {
+      PALETTES.hivis = { top: '#ff7b00', left: '#f2620f', right: '#c94e08' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    }
+  }
+
+  var workerPool = [];
+  for (var w=0; w<36; w++) {
+      workerPool.push([
+          {layer: 2, type:'shadow', x:0, y:0, z:0, w:0.8, d:0.8},
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.6, d:0.6, h:0.8, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.8, d:0.8, h:0.8, c:PALETTES.hivis}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.4, d:0.4, h:0.4, c:PALETTES.box}
+      ]);
+  }
+
+  var forkliftPool = [];
+  for(var f=0; f<18; f++) {
+      forkliftPool.push([
+          {layer: 2, type:'shadow', x:0, y:0, z:0, w:2.2, d:1.6},
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.5, d:1.4, h:0.4, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.5, d:1.4, h:0.4, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:1.6, d:1.2, h:1.0, c:PALETTES.hivis}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.1, d:1.2, h:1.2, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.1, d:1.2, h:1.2, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.7, d:1.2, h:0.1, c:PALETTES.dark}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.2, d:1.4, h:3.0, c:PALETTES.steel}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.6, d:0.2, h:0.1, c:PALETTES.steel}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.6, d:0.2, h:0.1, c:PALETTES.steel}, 
+          {layer: 2, type:'prism', x:0, y:0, z:0, w:0.8, d:1.0, h:0.8, c:PALETTES.box}
+      ]);
+  }
+
+  var semiPool = [
+      {layer: 1, type:'shadow', x:0, y:0, z:0, w:6, d:2.5},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:1.5, d:1.9, h:1.5, c:PALETTES.hivis},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:0.8, d:1.9, h:0.8, c:PALETTES.dark},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:0.6, d:2.7, h:0.5, c:PALETTES.dark},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:0.8, d:2.7, h:0.5, c:PALETTES.dark},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:0.8, d:2.7, h:0.5, c:PALETTES.dark},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:4.5, d:2.3, h:0.1, c:PALETTES.steel},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:4.5, d:2.3, h:0.1, c:PALETTES.steel},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:4.5, d:0.1, h:2.3, c:PALETTES.steel},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:4.5, d:0.1, h:2.3, c:PALETTES.steel},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:0.1, d:2.1, h:2.3, c:PALETTES.steel},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:1.2, d:1.2, h:1.0, c:PALETTES.box},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:1.0, d:1.0, h:0.8, c:PALETTES.box},
+      {layer: 1, type:'prism', x:0, y:0, z:0, w:1.2, d:1.4, h:0.05, c:PALETTES.steel}
+  ];
+
+  var staticRacks = [], interactiveEvents = [], isoParticles = [];
+
+  var pt = function(px, py, pz) { 
+      return { x: cx + (px - py) * TW, y: cy + (px + py) * TH - (pz * TW) }; 
+  };
+
+  function drawPrism(e) {
+    var p100 = pt(e.x+e.w, e.y, e.z), p110 = pt(e.x+e.w, e.y+e.d, e.z), p010 = pt(e.x, e.y+e.d, e.z);
+    var p001 = pt(e.x, e.y, e.z+e.h), p101 = pt(e.x+e.w, e.y, e.z+e.h), p111 = pt(e.x+e.w, e.y+e.d, e.z+e.h), p011 = pt(e.x, e.y+e.d, e.z+e.h);
+
+    ctx.fillStyle = e.c.left;
+    ctx.beginPath(); ctx.moveTo(p010.x, p010.y); ctx.lineTo(p110.x, p110.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.fill();
+    if(Math.abs(p111.y - p110.y) > 0.5) {
+        var gradL = ctx.createLinearGradient(0, p111.y, 0, p110.y);
+        gradL.addColorStop(0, 'rgba(0,0,0,0)'); gradL.addColorStop(1, 'rgba(0,0,0,0.3)');
+        ctx.fillStyle = gradL; ctx.fill();
+    }
+    ctx.fillStyle = e.c.right;
+    ctx.beginPath(); ctx.moveTo(p100.x, p100.y); ctx.lineTo(p110.x, p110.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p101.x, p101.y); ctx.fill();
+    if(Math.abs(p111.y - p110.y) > 0.5) {
+        var gradR = ctx.createLinearGradient(0, p111.y, 0, p110.y);
+        gradR.addColorStop(0, 'rgba(0,0,0,0)'); gradR.addColorStop(1, 'rgba(0,0,0,0.45)');
+        ctx.fillStyle = gradR; ctx.fill();
+    }
+    ctx.fillStyle = e.c.top;
+    ctx.beginPath(); ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.fill();
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.closePath();
+    ctx.moveTo(p111.x, p111.y); ctx.lineTo(p110.x, p110.y); ctx.stroke();
+  }
+
+  function drawShadow(e) {
+    var c_pt = pt(e.x + e.w/2, e.y + e.d/2, 0);
+    var sw = (e.w + e.d) * TW * 0.35, sh = (e.w + e.d) * TH * 0.35;
+    ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0, 0.45 - e.z * 0.08) + ')';
+    ctx.beginPath(); ctx.ellipse(c_pt.x, c_pt.y, sw, sh, 0, 0, Math.PI*2); ctx.fill();
+  }
+
+  function buildRack(ex, ey) {
+    var res = [];
+    res.push({layer: 2, type:'prism', x:ex, y:ey, z:0, w:0.4, d:0.6, h:6.5, c:PALETTES.steel});
+    res.push({layer: 2, type:'prism', x:ex+3.6, y:ey, z:0, w:0.4, d:0.6, h:6.5, c:PALETTES.steel});
+    res.push({layer: 2, type:'prism', x:ex, y:ey+1.6, z:0, w:0.4, d:0.6, h:6.5, c:PALETTES.steel});
+    res.push({layer: 2, type:'prism', x:ex+3.6, y:ey+1.6, z:0, w:0.4, d:0.6, h:6.5, c:PALETTES.steel});
+    
+    var shelves = [1.5, 3.5, 5.5]; 
+    for(var s=0; s<shelves.length; s++) {
+      var sz = shelves[s];
+      res.push({layer: 2, type:'prism', x:ex, y:ey, z:sz, w:4, d:2, h:0.2, c:PALETTES.steel});
+      
+      if (Math.random() > 0.15) {
+          res.push({layer: 2, type:'prism', x:ex+0.5, y:ey+0.3, z:sz+0.2, w:1.2, d:1.2, h:1.0, c:PALETTES.box});
+          if (Math.random() > 0.5) res.push({layer: 2, type:'prism', x:ex+0.6, y:ey+0.4, z:sz+1.2, w:1.0, d:1.0, h:0.8, c:PALETTES.box});
+      }
+      
+      if (Math.random() > 0.25) {
+          res.push({layer: 2, type:'prism', x:ex+2.2, y:ey+0.3, z:sz+0.2, w:1.2, d:1.2, h:1.1, c:PALETTES.box});
+          if (Math.random() > 0.6) res.push({layer: 2, type:'prism', x:ex+2.3, y:ey+0.4, z:sz+1.3, w:1.0, d:1.0, h:0.8, c:PALETTES.box});
+      }
+    }
+    return res;
+  }
+  
+  // WAREHOUSE BOUNDARIES
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:34, d:0.5, h:10, c:PALETTES.wall}); 
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:0.5, d:6.5, h:10, c:PALETTES.wall});
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:7.5, z:0, w:0.5, d:4, h:10, c:PALETTES.wall});
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:14.5, z:0, w:0.5, d:4, h:10, c:PALETTES.wall});
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:21.5, z:0, w:0.5, d:4, h:10, c:PALETTES.wall});
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:28.5, z:0, w:0.5, d:1.5, h:10, c:PALETTES.wall});
+
+  // MASSIVELY DENSER RACKING (60 Units)
+  for(var col=0; col<4; col++) {
+    for(var row=0; row<15; row++) {
+      var rx = 9 + col * 6.5;
+      var ry = 2 + row * 1.8;
+      Array.prototype.push.apply(staticRacks, buildRack(rx, ry));
+    }
+  }
+
+  // OUTBOUND STAGING PALLETS
+  var stagingY = [2, 3, 5, 9, 10, 12, 16, 17, 19, 23, 24, 26];
+  for (var i = 0; i < stagingY.length; i++) {
+      var py = stagingY[i];
+      staticRacks.push({layer: 2, type:'prism', x: 2.5, y: py, z: 0, w: 1.8, d: 1.8, h: 0.2, c: PALETTES.steel});
+      staticRacks.push({layer: 2, type:'prism', x: 2.6, y: py+0.1, z: 0.2, w: 1.6, d: 1.6, h: 1.2, c: PALETTES.box});
+      if (Math.random() > 0.5) {
+           staticRacks.push({layer: 2, type:'prism', x: 4.5, y: py, z: 0, w: 1.8, d: 1.8, h: 0.2, c: PALETTES.steel});
+           staticRacks.push({layer: 2, type:'prism', x: 4.6, y: py+0.1, z: 0.2, w: 1.6, d: 1.6, h: 1.0, c: PALETTES.box});
+      }
+  }
+
+  function handleCanvasTap(ev){
+    if (!renderActive) return; 
     var rect = cv.getBoundingClientRect();
-    var x = (ev.clientX - rect.left), y = (ev.clientY - rect.top);
-    for (var i = floorHotspots.length - 1; i >= 0; i--){
-      var h = floorHotspots[i];
-      if (Math.hypot(x - h.x, y - h.y) < 36){
-        floorHotspots.splice(i, 1);
-        sfx("upgrade");
-        if (h.type === "spill"){
+    var cx_val = ev.clientX;
+    var cy_val = ev.clientY;
+    if (ev.touches && ev.touches.length > 0) {
+        cx_val = ev.touches[0].clientX;
+        cy_val = ev.touches[0].clientY;
+    } else if (ev.changedTouches && ev.changedTouches.length > 0) {
+        cx_val = ev.changedTouches[0].clientX;
+        cy_val = ev.changedTouches[0].clientY;
+    }
+    
+    // Coordinates use CSS logical pixels
+    var x = cx_val - rect.left;
+    var y = cy_val - rect.top;
+    
+    for (var i = interactiveEvents.length - 1; i >= 0; i--){
+      var h = interactiveEvents[i];
+      var p = pt(h.gx + 0.5, h.gy + 0.5, h.z || 0); 
+      var dx = x - p.x;
+      var dy = y - p.y;
+      
+      if (Math.sqrt(dx*dx + dy*dy) < 40){ 
+        var evType = h.type;
+        interactiveEvents.splice(i, 1);
+        sfx("shatter");
+        
+        var color = evType === "spill" ? PALETTES.spill.left : PALETTES.audit.left;
+        for(var jp=0; jp<16; jp++){
+            isoParticles.push({
+                x: h.gx + 0.5, y: h.gy + 0.5, z: (h.z || 0) + 0.5,
+                vx: (Math.random()-0.5)*3.5, vy: (Math.random()-0.5)*3.5, vz: Math.random()*5,
+                color: color, life: 1.0
+            });
+        }
+
+        if (evType === "spill"){
           var reward = Math.max(50, totalRate() * 45);
           state.money += reward; state.total += reward; state.lifetime += reward;
-          showToast("Spill Cleaned! <b>+" + money(reward) + "</b> Hazard Pay.");
+          showToast("Hazard Cleared! <b>+" + money(reward) + "</b> Hazard Pay.");
         } else {
           incidentSpeedUntil = Date.now() + 15000;
-          showToast("QA Audit Passed! <b>+50% Speed for 15s</b>.");
+          showToast("Data Cube Secured! <b>+50% Speed for 15s</b>.");
         }
         render();
-        break;
+        return; 
       }
     }
-  });
 
-  var sprites = [];
-  var lastCounts = "";
-  var beltOffset = 0;
-  var truck = { x: 0, phase: "away", t: 0, loaded: 0 };
+    var dX = x - cx;
+    var dY = y - cy;
+    var tapPx = 0.5 * (dX / TW + dY / TH);
+    var tapPy = 0.5 * (dY / TH - dX / TW);
 
-  function desiredCounts(){
-    var o = state.owned;
-    return {
-      worker: Math.min(4, Math.ceil(((o.picker||0)/10) + ((o.trolley||0)/8))),
-      fork:   Math.min(4, Math.ceil(((o.forklift||0)/5) + ((o.reach||0)/5))),
-      robot:  Math.min(4, Math.ceil(((o.sorter||0)/4) + ((o.crane||0)/3) + ((o.hub||0)/2))),
-      belt:   (o.conveyor||0) > 0 ? 1 : 0
-    };
-  }
+    var tappedCorp = null;
+    if (tapPx >= 3 && tapPx <= 18 && tapPy >= 31 && tapPy <= 46) tappedCorp = "hr";
+    else if (tapPx >= 3 && tapPx <= 18 && tapPy >= -19 && tapPy <= -4) tappedCorp = "tower";
+    else if (tapPx >= 21 && tapPx <= 36 && tapPy >= -19 && tapPy <= -4) tappedCorp = "solar";
+    else if (tapPx >= 35 && tapPx <= 50 && tapPy >= 5 && tapPy <= 20) tappedCorp = "server";
 
-  function rebuildSprites(){
-    var c = desiredCounts();
-    var key = c.worker + "-" + c.fork + "-" + c.robot + "-" + c.belt;
-    if (key === lastCounts) return;
-    lastCounts = key;
-    sprites = [];
-    function add(type, n){
-      for (var i = 0; i < n; i++){
-        var back = (i % 2 === 1);
-        sprites.push({
-          type: type,
-          x: Math.random() * (CW * 0.6),
-          back: back,
-          s: back ? 0.72 : 1,
-          sp: (back ? 16 : 26) + Math.random() * 10,
-          bob: Math.random() * Math.PI * 2
-        });
-      }
-    }
-    add("worker", c.worker);
-    add("fork", c.fork);
-    add("robot", c.robot);
-  }
-
-  function paintBox(x, y, w, h){
-    cx.fillStyle = "#c08a4e"; cx.fillRect(x, y, w, h);
-    cx.fillStyle = "#8a6437";
-    cx.fillRect(x, y + h * 0.45, w, Math.max(1, h * 0.1));
-    cx.fillRect(x + w * 0.45, y, Math.max(1, w * 0.1), h);
-  }
-
-  function paintWorker(x, y, s, t){
-    var step = Math.sin(t * 9) * 2 * s;
-    cx.fillStyle = "#22252a"; cx.fillRect(x - 4*s, y - 9*s + step*0.2, 3*s, 9*s); cx.fillRect(x + 1*s, y - 9*s - step*0.2, 3*s, 9*s);
-    cx.fillStyle = "#f2620f"; cx.fillRect(x - 5*s, y - 20*s, 10*s, 11*s);
-    cx.fillStyle = "#e0b088"; cx.fillRect(x - 3*s, y - 25*s, 6*s, 5*s);
-    cx.fillStyle = "#f0c000"; cx.fillRect(x - 4*s, y - 27*s, 8*s, 2.5*s);
-    paintBox(x + 4*s, y - 19*s, 8*s, 8*s);
-  }
-
-  function paintFork(x, y, s, t){
-    var jig = Math.sin(t * 14) * 0.4 * s;
-    cx.fillStyle = "#8b929c"; cx.fillRect(x - 14*s, y - 2.5*s + jig, 10*s, 2*s);
-    paintBox(x - 13*s, y - 12*s + jig, 9*s, 9*s);
-    cx.fillStyle = "#a83d00"; cx.fillRect(x - 5*s, y - 26*s + jig, 2.4*s, 24*s);
-    cx.fillStyle = "#f2620f"; cx.fillRect(x - 2*s, y - 15*s, 15*s, 12*s);
-    cx.fillRect(x + 1*s, y - 27*s, 11.2*s, 2.2*s);
-    cx.fillStyle = "#1c1f23";
-    cx.beginPath(); cx.arc(x + 1.5*s, y - 4*s, 4*s, 0, 6.284); cx.fill();
-    cx.beginPath(); cx.arc(x + 11*s, y - 3.2*s, 3.2*s, 0, 6.284); cx.fill();
-  }
-
-  function paintRobot(x, y, s, t){
-    var hov = Math.sin(t * 5) * 1.2 * s;
-    cx.fillStyle = "#3a3f46"; cx.fillRect(x - 8*s, y - 13*s + hov, 16*s, 10*s);
-    cx.fillStyle = "#f2620f"; cx.fillRect(x - 8*s, y - 8*s + hov, 16*s, 1.8*s);
-    cx.fillStyle = "#74c46e"; cx.beginPath(); cx.arc(x + 5*s, y - 11*s + hov, 1.6*s, 0, 6.284); cx.fill();
-    paintBox(x - 6*s, y - 22*s + hov, 12*s, 9*s);
-  }
-
-  function paintRacking(){
-    var floorW = CW * 0.62;
-    var bays = 4, bw = floorW / bays;
-    for (var i = 0; i < bays; i++){
-      var bx = i * bw + 4;
-      cx.fillStyle = "#31353a";
-      cx.fillRect(bx, 12, 3, CH - 46); cx.fillRect(bx + bw - 10, 12, 3, CH - 46);
-      var pitch = (CH - 58) / 3;
-      for (var r = 0; r < 3; r++){
-        var ry = 22 + r * pitch;
-        cx.fillRect(bx, ry, bw - 10, 2.5);
-        paintBox(bx + 6, ry - 10, (bw - 26)/2, 10);
+    if (tappedCorp) {
+      var cb = CORP_BUILDINGS.find(function(c){ return c.id === tappedCorp; });
+      if (cb) {
+         var lvl = state.corp[cb.id] || 0;
+         if (lvl >= 10) {
+             showToast("<b>" + cb.name + "</b> is operating at MAX CAPACITY.");
+         } else {
+             var cost = cb.baseCost * Math.pow(6, lvl);
+             if (state.money >= cost) {
+                 state.money -= cost;
+                 state.corp[cb.id] = lvl + 1;
+                 sfx("build");
+                 if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
+                 else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
+                 render(); saveGame();
+             } else {
+                 showToast("Need <b>" + money(cost) + "</b> to expand the " + cb.name + ".");
+             }
+         }
       }
     }
   }
 
-  function paintBelt(dt, speed){
-    var floorW = CW * 0.62, by = CH - 34;
-    cx.fillStyle = "#2f3339"; cx.fillRect(0, by, floorW, 7);
-    beltOffset = (beltOffset + dt * speed * 34) % 14;
-    cx.fillStyle = "#454a51";
-    for (var x = -14 + beltOffset; x < floorW; x += 14) cx.fillRect(x, by + 2.5, 7, 2);
-  }
-
-  function paintDock(dt, speed){
-    var floorW = CW * 0.62, dw = CW - floorW;
-    cx.fillStyle = "#202327"; cx.fillRect(floorW, 0, dw, CH);
-    cx.fillStyle = "#2b2f34"; cx.fillRect(floorW - 3, 0, 4, CH);
-    var bayX = floorW + dw * 0.10;
-    truck.t += dt * speed;
-    if (truck.phase === "away"){
-      if (truck.t > 3){ truck.phase = "arriving"; truck.t = 0; truck.x = CW + 40; truck.loaded = 0; }
-    } else if (truck.phase === "arriving"){
-      truck.x += (bayX - truck.x) * Math.min(1, dt * 2.2);
-      if (Math.abs(truck.x - bayX) < 2){ truck.phase = "loading"; truck.t = 0; }
-    } else if (truck.phase === "loading"){
-      truck.loaded = Math.min(4, truck.t * 0.85);
-      if (truck.t > 5){ truck.phase = "leaving"; truck.t = 0; }
-    } else {
-      truck.x += 70 * dt * speed;
-      if (truck.x > CW + 60){ truck.phase = "away"; truck.t = 0; }
-    }
-
-    if (truck.phase !== "away"){
-      var apron = CH - 14, bodyH = CH * 0.22, bodyW = dw * 0.65, by = apron - bodyH - 4;
-      cx.fillStyle = "#c9ccd1"; cx.fillRect(truck.x, by, bodyW, bodyH);
-      cx.fillStyle = "#e8532a"; cx.fillRect(truck.x + bodyW, by + bodyH * 0.3, bodyW * 0.25, bodyH * 0.7);
-      cx.fillStyle = "#17191c";
-      cx.fillRect(truck.x + 8, apron - 6, 8, 8); cx.fillRect(truck.x + bodyW - 12, apron - 6, 8, 8);
-    }
-  }
+  cv.addEventListener("mousedown", handleCanvasTap);
+  cv.addEventListener("touchstart", handleCanvasTap, {passive: true});
 
   var animT = 0, lastFrame = 0, nextHotspot = 12;
+
   function frame(ts){
     requestAnimationFrame(frame);
-    if (!CW || cv.clientWidth !== CW) sizeCanvas();
+    
+    if (!renderActive || !CW || CW === 0) return; 
+    
     var dt = Math.min(0.05, (ts - lastFrame) / 1000 || 0);
     lastFrame = ts; animT += dt;
-
-    rebuildSprites();
     var speed = (boostActive() || incidentActive()) ? 2.5 : 1;
 
-    cx.clearRect(0, 0, CW, CH);
-    cx.fillStyle = "#1a1c1f"; cx.fillRect(0, 0, CW, CH);
-    paintRacking();
-    if ((state.owned.conveyor||0) > 0) paintBelt(dt, speed);
+    ctx.fillStyle = '#181a1f'; 
+    ctx.fillRect(0, 0, CW, CH);
+    
+    var entities = staticRacks.slice();
 
-    var floorW = CW * 0.62;
-    cx.fillStyle = "#26282c"; cx.fillRect(0, CH - 14, floorW, 14);
-
-    var s = Math.max(0.85, Math.min(1.3, (CW / 300)));
-    sprites.forEach(function(sp){
-      sp.x += sp.sp * speed * dt;
-      if (sp.x > floorW + 20) sp.x = -20;
-      var y = sp.back ? CH - 16 : CH - 6;
-      if (sp.type === "worker") paintWorker(sp.x, y, s, animT + sp.bob);
-      else if (sp.type === "fork") paintFork(sp.x, y, s, animT + sp.bob);
-      else paintRobot(sp.x, y, s, animT + sp.bob);
-    });
-
-    nextHotspot -= dt;
-    if (nextHotspot <= 0 && floorHotspots.length < 2){
-      floorHotspots.push({
-        x: 30 + Math.random() * (floorW - 60),
-        y: CH - 22,
-        type: Math.random() < 0.6 ? "spill" : "audit"
-      });
-      nextHotspot = 25 + Math.random() * 20;
+    var corpMat = PALETTES.slab;
+    var roadMat = {top: '#202226', left: '#1a1c20', right: '#141518'};
+    
+    // Plot 1: HR Annex
+    entities.push({layer: 0, type:'prism', x:3, y:31, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
+    entities.push({layer: 0, type:'prism', x:8, y:28, z:-0.55, w:4, d:3, h:0.4, c:roadMat}); 
+    if ((state.corp.hr || 0) > 0) {
+        var hrLvl = state.corp.hr;
+        entities.push({layer: 1, type:'prism', x:5, y:33, z:0, w:11, d:11, h:2 + hrLvl*1.5, c:{top:'#60a5fa', left:'#2563eb', right:'#1d4ed8'}});
+        entities.push({layer: 1, type:'prism', x:4, y:44, z:0, w:1.4, d:2.6, h:0.8, c:PALETTES.steel});
+        entities.push({layer: 1, type:'prism', x:7, y:44, z:0, w:1.4, d:2.6, h:0.8, c:PALETTES.hivis});
+    } else {
+        entities.push({layer: 0, type:'prism', x:3, y:31, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
     }
-    floorHotspots.forEach(function(h){
-      cx.fillStyle = h.type === "spill" ? "#e05252" : "#38bdf8";
-      cx.beginPath(); cx.arc(h.x, h.y, 6 + Math.sin(animT * 6) * 1.5, 0, 6.28); cx.fill();
+
+    // Plot 2: Dispatch Tower
+    entities.push({layer: 0, type:'prism', x:3, y:-19, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
+    entities.push({layer: 0, type:'prism', x:8, y:-4, z:-0.55, w:4, d:2, h:0.4, c:roadMat}); 
+    if ((state.corp.tower || 0) > 0) {
+        var tLvl = state.corp.tower;
+        entities.push({layer: 1, type:'prism', x:8, y:-14, z:0, w:5, d:5, h:4+tLvl, c:PALETTES.dark});
+        entities.push({layer: 1, type:'prism', x:9.5, y:-12.5, z:4+tLvl, w:2, d:2, h:8+tLvl*1.5, c:PALETTES.steel});
+        var rX = 8.5 + Math.sin(animT * 2.5) * 1.5;
+        var rY = -13.5 + Math.cos(animT * 2.5) * 1.5;
+        entities.push({layer: 1, type:'prism', x:rX, y:rY, z:12+tLvl*2.5, w:4, d:4, h:0.6, c:PALETTES.hivis});
+    } else {
+        entities.push({layer: 0, type:'prism', x:3, y:-19, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
+    }
+
+    // Plot 3: Solar Array
+    entities.push({layer: 0, type:'prism', x:21, y:-19, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
+    entities.push({layer: 0, type:'prism', x:26, y:-4, z:-0.55, w:4, d:2, h:0.4, c:roadMat}); 
+    if ((state.corp.solar || 0) > 0) {
+        var sLvl = state.corp.solar;
+        for(var row=0; row<3; row++){
+            for(var col=0; col<3; col++){
+                if (row*3 + col < sLvl) {
+                     entities.push({layer: 1, type:'prism', x:22 + row*4, y:-18 + col*4, z:0, w:3, d:3, h:1.5, c:{top:'#3b82f6', left:'#2563eb', right:'#1d4ed8'}});
+                }
+            }
+        }
+    } else {
+        entities.push({layer: 0, type:'prism', x:21, y:-19, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
+    }
+
+    // Plot 4: Server Farm
+    entities.push({layer: 0, type:'prism', x:35, y:5, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
+    entities.push({layer: 0, type:'prism', x:32, y:10, z:-0.55, w:3, d:4, h:0.4, c:roadMat}); 
+    if ((state.corp.server || 0) > 0) {
+        var srvLvl = state.corp.server;
+        var roofZ = 3+srvLvl*0.8;
+        entities.push({layer: 1, type:'prism', x:37, y:7, z:0, w:11, d:11, h:roofZ, c:PALETTES.dark});
+        entities.push({layer: 1, type:'prism', x:36.9, y:6.9, z:1.5, w:11.2, d:11.2, h:0.2, c:{top:'#a855f7', left:'#8b5cf6', right:'#6d28d9'}});
+        
+        var led1 = Math.sin(animT * 4) > 0 ? '#a855f7' : '#141518';
+        var led2 = Math.cos(animT * 5) > 0 ? '#38bdf8' : '#141518';
+        entities.push({layer: 1, type:'prism', x:39, y:9, z:roofZ, w:1.5, d:1.5, h:0.5, c:{top:led1, left:led1, right:led1}});
+        entities.push({layer: 1, type:'prism', x:43, y:14, z:roofZ, w:1.5, d:1.5, h:0.5, c:{top:led2, left:led2, right:led2}});
+    } else {
+        entities.push({layer: 0, type:'prism', x:35, y:5, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
+    }
+
+    var apronCol = {top:'#1c1e22', left:'#141619', right:'#0f1013'};
+    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:apronCol});
+    
+    var lineCol = PALETTES.hazard;
+    for(var i2=2; i2<28; i2+=4) { 
+        entities.push({layer: 0, type:'prism', x:-20, y:i2, z:-0.58, w:3, d:0.4, h:0.02, c:lineCol});
+    }
+
+    entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
+
+    entities.push({layer: 1, type:'shadow', x:-10, y:4.5, z:0, w:8, d:2.5});
+    entities.push({layer: 1, type:'prism', x:-12, y:4.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
+    entities.push({layer: 1, type:'shadow', x:-10, y:18.5, z:0, w:8, d:2.5});
+    entities.push({layer: 1, type:'prism', x:-12, y:18.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
+    entities.push({layer: 1, type:'shadow', x:-10, y:25.5, z:0, w:8, d:2.5});
+    entities.push({layer: 1, type:'prism', x:-12, y:25.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
+
+    for(var bx=0; bx<4; bx++){
+        entities.push({layer: 0, type:'prism', x:0, y:4 + bx*7, z:-0.49, w:2, d:4, h:0.02, c:lineCol}); 
+    }
+
+    ctx.strokeStyle = 'rgba(252, 211, 77, 0.15)'; 
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(var i1=0; i1<30; i1+=2) {
+      var p1 = pt(2, i1, 0), p2 = pt(30, i1, 0); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+      var p3 = pt(i1, 2, 0), p4 = pt(i1, 30, 0); ctx.moveTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+    }
+    ctx.stroke();
+
+    var cycle = animT % 24;
+    var doorOpen = 0;
+    var truckX = -25; 
+
+    if (cycle > 1 && cycle <= 4) doorOpen = (cycle - 1) / 3;
+    else if (cycle > 4 && cycle <= 18) doorOpen = 1;
+    else if (cycle > 18 && cycle <= 21) doorOpen = 1 - ((cycle - 18) / 3);
+    
+    if (cycle > 3 && cycle <= 8) truckX = -25 + ((cycle - 3) / 5) * 17;
+    else if (cycle > 8 && cycle <= 15) truckX = -8; 
+    else if (cycle > 15 && cycle <= 19) truckX = -8 - ((cycle - 15) / 4) * 17; 
+
+    var doorH = 5 * (1 - doorOpen);
+    var doorZ = 5 * doorOpen;
+    if (doorH > 0.1) {
+        entities.push({layer: 1, type:'prism', x:-2, y:11.5, z:doorZ, w:0.5, d:3, h:doorH, c:PALETTES.dark});
+    }
+
+    var lightColor = (truckX === -8) ? '#22c55e' : '#ef4444'; 
+    entities.push({layer: 1, type:'prism', x:-2.1, y:14, z:6, w:0.2, d:0.5, h:0.5, c:{top:lightColor, left:lightColor, right:lightColor}});
+
+    if (truckX > -24) {
+        var s = semiPool;
+        var loadVibe = (cycle > 8 && cycle < 15) ? Math.random() * 0.04 : 0;
+        var truckColors = [PALETTES.hivis, {top:'#3b82f6',left:'#2563eb',right:'#1d4ed8'}, {top:'#ef4444',left:'#dc2626',right:'#b91c1c'}];
+        var loopIdx = Math.floor(animT / 24);
+        var cabColor = truckColors[loopIdx % truckColors.length];
+
+        s[0].x = truckX; s[0].y = 11.6; s[0].z = loadVibe;
+        s[1].x = truckX; s[1].y = 11.9; s[1].z = loadVibe+0.4; s[1].c = cabColor;
+        s[2].x = truckX+0.5; s[2].y = 11.9; s[2].z = loadVibe+1.9; s[2].c = PALETTES.dark;
+        s[3].x = truckX+0.2; s[3].y = 11.5; s[3].z = loadVibe; s[3].c = PALETTES.dark;
+        s[4].x = truckX+2.0; s[4].y = 11.5; s[4].z = loadVibe; s[4].c = PALETTES.dark;
+        s[5].x = truckX+4.5; s[5].y = 11.5; s[5].z = loadVibe; s[5].c = PALETTES.dark;
+        s[6].x = truckX+1.5; s[6].y = 11.7; s[6].z = loadVibe+0.5;
+        s[7].x = truckX+1.5; s[7].y = 11.7; s[7].z = loadVibe+2.9;
+        s[8].x = truckX+1.5; s[8].y = 11.7; s[8].z = loadVibe+0.6;
+        s[9].x = truckX+1.5; s[9].y = 13.9; s[9].z = loadVibe+0.6;
+        s[10].x = truckX+1.5; s[10].y = 11.8; s[10].z = loadVibe+0.6;
+        s[11].x = truckX+3.5; s[11].y = 12.1; s[11].z = loadVibe+0.6;
+        s[12].x = truckX+4.8; s[12].y = 12.1; s[12].z = loadVibe+0.6;
+        s[13].x = truckX+6.0; s[13].y = 12.1; s[13].z = loadVibe+0.05;
+        
+        Array.prototype.push.apply(entities, s);
+    }
+
+    if ((state.owned.conveyor || 0) > 0) {
+        var beltZ = 4;
+        entities.push({layer: 2, type:'prism', x:0, y:1.0, z:beltZ, w:32, d:1.5, h:0.2, c:PALETTES.steel});
+        for (var px = 2; px < 30; px += 4) {
+            entities.push({layer: 2, type:'prism', x:px, y:1.2, z:0, w:0.2, d:0.2, h:beltZ, c:PALETTES.steel});
+        }
+        for (var i3 = 0; i3 < 6; i3++) {
+            var bx_conv = ((animT * 4 * speed) + i3 * 5.5) % 34 - 2;
+            if (bx_conv > 0 && bx_conv < 31) { 
+                entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:beltZ+0.2, w:1.0, d:1.0, h:1.0, c:PALETTES.box});
+            }
+        }
+        if ((state.owned.sorter || 0) > 0) {
+            for (var spx = 6; spx < 28; spx += 8) {
+                entities.push({layer: 2, type:'prism', x:spx-0.5, y:0.8, z:beltZ+0.2, w:2, d:2, h:2, c:PALETTES.dark});
+                var scanAlpha = 0.25 + Math.sin(animT*10 + spx)*0.2;
+                var sCol = 'rgba(56,189,248,'+scanAlpha+')';
+                entities.push({layer: 2, type:'prism', x:spx, y:1.0, z:beltZ+0.2, w:1, d:1.5, h:1.8, c:{top:sCol, left:sCol, right:sCol}});
+            }
+        }
+    }
+
+    var baseUnits = (state.owned.picker || 0) + (state.owned.trolley || 0);
+    var maxW = Math.min(36, Math.ceil(baseUnits / 4));
+    for(var iw=0; iw<maxW; iw++) {
+        var wx, wy, wz;
+        wz = Math.abs(Math.cos((animT + iw) * 4 * speed)) * 0.15;
+        wy = 3.9 + (iw % 14) * 1.8;
+        wx = 16.0 + Math.sin(animT*0.4 + iw) * 14.0;
+        
+        var w = workerPool[iw];
+        w[0].x = wx; w[0].y = wy; w[0].z = wz;
+        w[1].x = wx+0.1; w[1].y = wy+0.1; w[1].z = wz; w[1].c = PALETTES.dark;
+        w[2].x = wx; w[2].y = wy; w[2].z = wz+0.8; w[2].c = PALETTES.hivis;
+        w[3].x = wx+0.2; w[3].y = wy+0.2; w[3].z = wz+1.6; w[3].c = PALETTES.box;
+        
+        Array.prototype.push.apply(entities, w);
+    }
+
+    var midUnits = (state.owned.forklift || 0) + (state.owned.reach || 0);
+    var maxF = Math.min(18, Math.ceil(midUnits / 4));
+    for(var ifk=0; ifk<maxF; ifk++) {
+        var fx, fy, fz;
+        var fAisles_X = [7.0, 14.0, 21.0, 28.0];
+        fx = fAisles_X[ifk % 4];
+        fy = 14.5 + Math.sin(animT*0.5 + ifk) * 12.0;
+        
+        var f = forkliftPool[ifk];
+        fz = Math.abs(Math.sin((animT + ifk) * 15 * speed)) * 0.06;
+        f[0].x = fx; f[0].y = fy; f[0].z = fz;
+        f[1].x = fx+0.6; f[1].y = fy+0.1; f[1].z = fz; f[1].c = PALETTES.dark;
+        f[2].x = fx+1.4; f[2].y = fy+0.1; f[2].z = fz; f[2].c = PALETTES.dark;
+        f[3].x = fx+0.4; f[3].y = fy+0.2; f[3].z = fz+0.3; f[3].c = PALETTES.hivis;
+        f[4].x = fx+1.4; f[4].y = fy+0.2; f[4].z = fz+1.3; f[4].c = PALETTES.dark;
+        f[5].x = fx+0.8; f[5].y = fy+0.2; f[5].z = fz+1.3; f[5].c = PALETTES.dark;
+        f[6].x = fx+0.8; f[6].y = fy+0.2; f[6].z = fz+2.5; f[6].c = PALETTES.dark;
+        f[7].x = fx+0.2; f[7].y = fy+0.1; f[7].z = fz+0.1; f[7].c = PALETTES.steel;
+        f[8].x = fx-0.4; f[8].y = fy+0.2; f[8].z = fz+0.2; f[8].c = PALETTES.steel;
+        f[9].x = fx-0.4; f[9].y = fy+1.2; f[9].z = fz+0.2; f[9].c = PALETTES.steel;
+        f[10].x = fx-0.4; f[10].y = fy+0.3; f[10].z = fz+0.3; f[10].c = PALETTES.box;
+        
+        Array.prototype.push.apply(entities, f);
+    }
+
+    if ((state.corp.solar || 0) < 10) {
+        nextHotspot -= dt;
+        if (nextHotspot <= 0 && interactiveEvents.length < 2){
+          interactiveEvents.push({
+            gx: 3 + Math.random() * 21, gy: 3 + Math.random() * 21,
+            type: Math.random() < 0.6 ? "spill" : "audit", t: 0
+          });
+          nextHotspot = 20 + Math.random() * 20;
+        }
+    }
+
+    interactiveEvents.forEach(function(h) {
+        h.t += dt;
+        if (h.type === "spill") {
+            h.z = 0;
+            var pulse = 1.0 + Math.sin(h.t * 8) * 0.1;
+            entities.push({layer: 3, type:'shadow', x:h.gx, y:h.gy, z:0, w:0.8, d:0.8});
+            entities.push({layer: 3, type:'prism', x:h.gx, y:h.gy, z:0, w:0.8 * pulse, d:0.8 * pulse, h:1.0, c:PALETTES.spill});
+        } else {
+            h.z = 1.2 + Math.sin(h.t * 4) * 0.4;
+            entities.push({layer: 3, type:'shadow', x:h.gx, y:h.gy, z:0, w:0.8, d:0.8});
+            entities.push({layer: 3, type:'prism', x:h.gx, y:h.gy, z:h.z, w:0.8, d:0.8, h:0.8, c:PALETTES.audit});
+        }
     });
 
-    paintDock(dt, speed);
+    entities.forEach(function(e) {
+        e.cx = e.x + (e.w || 0)/2; 
+        e.cy = e.y + (e.d || 0)/2; 
+        e.sortKey = (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0) + (e.type === 'shadow' ? -1 : 0);
+    });
+    
+    entities.sort(function(a,b){ return a.sortKey - b.sortKey; });
+
+    entities.forEach(function(e) {
+        if (e.type === 'shadow') drawShadow(e);
+        else if (e.type === 'prism') drawPrism(e);
+    });
+
+    for(var ip = isoParticles.length - 1; ip >= 0; ip--){
+        var p = isoParticles[ip];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        
+        if (p.x < -30 || p.x > 50 || p.y < -30 || p.y > 50) {
+            isoParticles.splice(ip, 1);
+            continue;
+        }
+
+        p.vz -= 18 * dt; 
+        p.life -= dt;
+        if(p.z <= 0) { 
+            p.z = 0; 
+            p.vz *= -0.4; 
+            p.vx *= 0.85; 
+            p.vy *= 0.85; 
+        }
+        
+        if (p.life <= 0) isoParticles.splice(ip, 1);
+        else {
+            var p2d = pt(p.x, p.y, p.z);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.beginPath(); ctx.arc(p2d.x, p2d.y, 3 * DPR, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+    
+    var gradient = ctx.createRadialGradient(CW/2, CH/2, CH*0.3, CW/2, CH/2, Math.max(CW, CH)*0.8);
+    gradient.addColorStop(0, 'rgba(0,0,0,0)');
+    gradient.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, CW, CH);
+    
+    staticRacks.push({layer: 3, type:'prism', x:-1.5, y:28.5, z:0, w:0.3, d:1.5, h:0.4, c:PALETTES.hazard});
+    staticRacks.push({layer: 3, type:'prism', x:-2, y:28, z:0, w:34, d:0.2, h:0.6, c:PALETTES.hazard});
+    staticRacks.push({layer: 3, type:'prism', x:32, y:-2, z:0, w:0.2, d:30.2, h:0.6, c:PALETTES.hazard});
   }
 
-  // App Lifecycle Listeners for Notifications
-  document.addEventListener("visibilitychange", function(){
-    if (document.hidden){
-      saveGame();
-      Notifs.scheduleRetention();
-    } else {
-      Notifs.cancelAll();
-      grantOffline();
-      checkDailyLoginPopup();
-    }
-  });
-
-  // Loops
   var last = Date.now();
   setInterval(function(){
-    var now = Date.now(), dt = (now-last)/1000; last = now;
+    var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
-
-    var autoUnits = (state.owned.sorter||0) + (state.owned.crane||0) + (state.owned.hub||0);
-    if (autoUnits > 0){
-      state.rp += Math.sqrt(autoUnits) * 0.25 * dt;
-    }
-
     if (state.contract){
       state.contract.prog += earned;
       if (state.contract.prog >= state.contract.goal){
-        state.pallets += state.contract.pallets;
-        state.money += state.contract.cash;
-        state.contractsDone++;
-        sfx("upgrade");
-        showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
+        state.pallets += state.contract.pallets; state.money += state.contract.cash; state.contractsDone++;
+        sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
       }
     }
-    
-    refreshAdUI();
-    renderContract();
-    render();
+    renderContract(); render();
   }, 100);
   setInterval(saveGame, 10000);
 
-  setTimeout(function(){
-    var sp = document.getElementById("splash");
-    if(sp) sp.classList.add("hide");
-  }, 2100);
-
-  buildGens();
-  buildShop();
-  buildStore();
-  buildAch();
-
-  loadGame().then(function(){
-    sizeCanvas();
-    renderSkuUI();
-    Ads.init();
-    Notifs.init();
-    bindAdButtons();
-    render();
+  function startGame() {
+    sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init(); render();
     requestAnimationFrame(frame);
+    setTimeout(function(){
+      var sp = document.getElementById("splash");
+      if(sp) sp.classList.add("hide");
+    }, 500);
+  }
+
+  buildGens(); buildShop(); buildAch();
+
+  loadGame().then(startGame).catch(function(e){
+    console.error(e);
+    startGame();
   });
 })();
 </script>
 </body>
 </html>
+
