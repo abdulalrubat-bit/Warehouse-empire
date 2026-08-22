@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Warehouse Empire v3.2.0</title>
+<style>
+  :root{
+    --bg:#232529; --panel:#2c2f34; --panel2:#383c42; --line:#474c53;
+    --ink:#edeff1; --dim:#969ca4; --steel:#79818b;
+    --hivis:#f2620f; --hivis-d:#a83d00; --hazard:#f0c000;
+    --cash:#74c46e; --bad:#e05252; --corp:#a855f7;
+    --font-cond:'Roboto Condensed','Noto Sans Condensed','Liberation Sans Narrow','Arial Narrow',sans-serif;
+    --font-mono:'Roboto Mono','Noto Sans Mono','Droid Sans Mono','DejaVu Sans Mono',monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  [hidden]{display:none !important;}
+  input{-webkit-user-select:text; user-select:text;}
+
+  #splash{position:fixed; inset:0; z-index:60; background:#232529; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
+  #splash.hide{opacity:0; pointer-events:none;}
+  .splashwrap{text-align:center; opacity:0; transform:translateY(6px); animation:splashFade 1.4s .15s ease forwards;}
+  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px; filter:drop-shadow(0 8px 18px rgba(0,0,0,.55)); animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
+  #splashName{font-family:var(--font-cond); font-weight:800; font-size:38px; letter-spacing:6px; color:var(--ink); text-transform:uppercase;}
+  #splashSub{font-family:var(--font-cond); font-weight:600; font-size:12px; letter-spacing:8px; color:var(--steel); margin-top:2px; text-transform:uppercase;}
+  #splashBand{width:180px; height:6px; margin:22px auto 14px; background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,#141414 8px 16px); border-radius:2px; animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
+  #splashTag{font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
+
+  @keyframes splashFade{ 0%{opacity:0; transform:translateY(6px);} 100%{opacity:1; transform:translateY(0);} }
+  @keyframes markPop{ 0%{transform:scale(.6) rotate(-12deg); opacity:0;} 60%{transform:scale(1.06) rotate(2deg); opacity:1;} 100%{transform:scale(1) rotate(0);} }
+  @keyframes bandGrow{ 0%{width:0; opacity:0;} 100%{width:180px; opacity:1;} }
+
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--ink); font-family:var(--font-mono);}
+  body{display:block; max-width:520px; margin:0 auto; min-height:100vh; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+
+  section { padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
+  #tab-floor { padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px)); }
+
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 6px 14px rgba(0,0,0,.35);}
+  header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
+  header h1{margin:0; font-family:var(--font-cond); font-weight:800; font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
+  header h1 span{color:var(--ink);}
+  #headMark svg{width:22px; height:22px; display:block;}
+
+  .terminal{margin:0 14px; background:linear-gradient(180deg,#1c1e21,#191b1e); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--ink); line-height:1; letter-spacing:.5px;}
+  .rate{font-size:10.5px; color:var(--dim); margin-top:4px; letter-spacing:.3px;}
+  .rate b{color:var(--cash); font-weight:600;}
+  .logistics-flow{margin:6px 0 2px; display:flex; align-items:center; gap:8px; font-size:9.5px;}
+  .flow-bar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
+  .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
+  .flow-tag{color:var(--dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
+
+  .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.45); pointer-events:none;}
+  .pickwrap > *{pointer-events:auto;}
+  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),#d85508); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 6px 14px rgba(0,0,0,.4); cursor:pointer; user-select:none;}
+  #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
+  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
+
+  .adrow{display:flex; gap:8px; margin:10px 14px 0;}
+  .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px; background:transparent; color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase; cursor:pointer;}
+  .adbtn small{display:block; font-family:var(--font-mono); font-weight:400; font-size:8.5px; letter-spacing:1px; opacity:.7; margin-top:2px;}
+  .adbtn:disabled{opacity:.35; cursor:default;}
+  .adbtn.alt{border-style:solid; border-color:var(--hazard); color:var(--hazard);}
+
+  .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
+  .combobar{flex:1; height:5px; background:#1d2023; border-radius:3px; overflow:hidden; border:1px solid var(--line);}
+  .combobar i{display:block; height:100%; width:0; background:var(--hivis);}
+  #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
+
+  .objective{margin:10px 14px 0; padding:10px 12px; background:#1c1e21; border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .objective:active{transform:scale(.99);}
+  .objective .otag{font-family:var(--font-cond); font-weight:800; font-size:9px; letter-spacing:1.5px; color:var(--hazard); writing-mode:vertical-rl; transform:rotate(180deg);}
+  .objective .obody{flex:1; min-width:0;}
+  .objective .otitle{font-family:var(--font-cond); font-weight:700; font-size:14px; color:var(--ink); line-height:1.2; text-transform:uppercase;}
+  .objective .ohint{font-size:9.5px; color:var(--dim); line-height:1.4; margin-top:3px;}
+  .objective .ohint b{color:var(--hazard); font-weight:600;}
+  .objective .ogo{font-family:var(--font-cond); font-weight:800; font-size:12px; color:var(--cash); letter-spacing:1px;}
+
+  .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
+  .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; font-weight:400;}
+
+  .skustrip{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cash); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;}
+  .skustrip b{font-family:var(--font-cond); font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink); display:block;}
+  .skustrip span{font-size:9px; color:var(--dim);}
+  .skubtn{background:none; border:1px solid var(--line); border-radius:4px; color:var(--cash); font-family:var(--font-cond); font-weight:700; font-size:11px; padding:6px 10px; cursor:pointer; text-transform:uppercase;}
+
+  .sitepick{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:12px;}
+  .sphead b{display:block; font-family:var(--font-cond); font-weight:800; font-size:16px; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink);}
+  .sphead span{display:block; font-size:9.5px; color:var(--steel); margin:3px 0 10px; line-height:1.5;}
+  .splist{display:flex; flex-direction:column; gap:7px;}
+  .sitecard{width:100%; text-align:left; background:#26282c; border:1px solid var(--line); border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
+  .sitecard b{font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
+  .sitecard .sblurb{font-size:9.5px; color:var(--dim); line-height:1.5; margin-top:2px;}
+
+  .netbar{margin:10px 14px 0; padding:8px 10px; background:#26282c; border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px;}
+  .netbar .nsite{flex:1; min-width:0;}
+  .netbar .nsite b{display:block; font-family:var(--font-cond); font-weight:700; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
+  .netbar .nsite span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
+  .netbar .nnet{font-size:9.5px; color:var(--cash); text-align:right; white-space:nowrap;}
+  .crow{display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:9.5px; color:var(--dim);}
+  .ctitle{font-family:var(--font-cond); font-weight:600; font-size:14px; letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
+  .ctime{color:var(--steel); white-space:nowrap;}
+  .creward{color:var(--hazard); white-space:nowrap;}
+  .cbar{height:5px; background:#1d2023; border-radius:3px; margin:7px 0 5px; overflow:hidden;}
+  .cbar i{display:block; height:100%; background:var(--hazard); transition:width .3s;}
+
+  .shift{display:flex; gap:7px; margin:8px 14px 0;}
+  .shift div{flex:1; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:8px 4px; text-align:center;}
+  .shift b{display:block; font-family:var(--font-cond); font-weight:800; font-size:17px; color:var(--cash); line-height:1.1;}
+  .shift span{font-size:8px; color:var(--dim); letter-spacing:.5px; text-transform:uppercase;}
+  .scale{display:flex; gap:1px; margin:10px 14px 0; background:var(--line); border:1px solid var(--line); border-radius:4px; overflow:hidden;}
+  .scale div{flex:1; background:#26282c; padding:6px 4px; text-align:center;}
+  .scale .sv{font-family:var(--font-cond); font-weight:800; font-size:14px; color:var(--ink); line-height:1.1;}
+  .scale .sv i{font-style:normal; font-size:10px; color:var(--steel);}
+  .scale .sl{font-size:7.5px; letter-spacing:1px; text-transform:uppercase; color:var(--steel); margin-top:2px;}
+
+  .toolbar{display:flex; align-items:center; justify-content:space-between; padding:14px 14px 6px;}
+  .toolbar .label{font-family:var(--font-cond); font-weight:800; letter-spacing:3px; font-size:13px; color:var(--steel); text-transform:uppercase; border-left:3px solid var(--hivis); padding-left:8px;}
+  .qty{display:flex; gap:6px;}
+  .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:5px 12px; font-family:inherit; font-size:11px; cursor:pointer;}
+  .qty button.on{background:var(--hivis); color:#20130a; border-color:var(--hivis); font-weight:600;}
+
+  .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px; background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
+  .plate svg{width:24px; height:24px; display:block;}
+
+  .gens{padding:0 14px 8px; display:flex; flex-direction:column; gap:9px;}
+  .gen-card{background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--steel); border-radius:6px; padding:11px 12px; display:flex; flex-direction:column; gap:9px; box-shadow:0 3px 8px rgba(0,0,0,.25);}
+  .gen-card.can{border-left-color:var(--cash);}
+  .gen-card.locked{opacity:.35; filter:grayscale(.8);}
+  .gen-card-header{display:flex; align-items:center; gap:10px;}
+  .gen-card-title{flex:1; min-width:0;}
+  .gen-card-title .name{font-family:var(--font-cond); font-weight:700; font-size:16px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
+  .gen-card-title .count{color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
+  .gen-card-title .desc{font-size:9.5px; color:var(--dim); margin-top:1px;}
+  .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:#202226; border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
+  .gen-card-metrics{display:flex; flex-direction:column; gap:3px;}
+  .gen-card-metrics .prod{font-size:11.5px; color:var(--cash); font-weight:600;}
+  .gen-card-metrics .pay{font-size:9.5px; color:var(--dim);}
+  .gen-card-buy{background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); border-radius:4px; color:var(--dim); font-family:var(--font-cond); font-weight:800; font-size:15px; padding:8px 14px; cursor:pointer; text-align:center; min-width:94px;}
+  .gen-card-buy small{display:block; font-family:var(--font-mono); font-weight:400; font-size:8.5px; letter-spacing:.6px; text-transform:uppercase; opacity:.75;}
+  .gen-card-buy.can{border-color:var(--cash); color:var(--cash); background:linear-gradient(180deg,#2b3f2e,#1e2d20); box-shadow:0 0 0 1px rgba(116,196,110,.2);}
+  .gen-card-buy:disabled{cursor:default; opacity:.5;}
+  .gen-card-progress{height:4px; background:#191b1e; border-radius:2px; overflow:hidden;}
+  .gen-card-progress i{display:block; height:100%; background:var(--hazard); transition:width .3s ease;}
+
+  .shop{display:flex; flex-direction:column; gap:7px; padding:0 14px;}
+  .up{width:100%; display:flex; align-items:center; gap:10px; text-align:left; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--line); border-radius:4px; padding:9px 11px; cursor:pointer; font-family:inherit; color:var(--ink);}
+  .up .uname{font-family:var(--font-cond); font-weight:600; font-size:15px; letter-spacing:1px; text-transform:uppercase;}
+  .up .udesc{font-size:9.5px; color:var(--hazard); margin-top:2px;}
+  .up .ucost{font-family:var(--font-cond); font-weight:800; font-size:15px; color:var(--dim); margin-left:auto; white-space:nowrap;}
+  .up.can{border-left-color:var(--cash); background:linear-gradient(90deg,rgba(116,196,110,.08),var(--panel) 45%);}
+  .up.can .ucost{color:var(--cash);}
+  .up.lock{opacity:.4; filter:grayscale(.7); cursor:default;}
+  .up.owned{border-left-color:var(--hazard); opacity:1;}
+
+  .badge{text-align:center; padding:9px 4px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:8.5px; color:var(--dim);}
+  .badge .bicon{display:block; margin:0 auto 4px; width:22px; height:22px; opacity:.28;}
+  .badge.got{border-color:var(--hazard); color:var(--ink); background:linear-gradient(180deg,rgba(240,192,0,.1),var(--panel2));}
+  .badge.got .bicon{opacity:1;}
+  #achPanel{margin:8px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:7px;}
+
+  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#181a1f; position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
+  .floorview canvas{display:block; width:100%; height:clamp(200px, 36vh, 320px); cursor:crosshair; touch-action:none;}
+
+  .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
+  .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
+  .palletcount svg{width:22px; height:22px;}
+  .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
+  .swatch{width:20px; height:20px; border-radius:3px; display:block;}
+
+  .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,#32363b,#282b2f); border-top:1px solid var(--line);}
+  .tabs button{flex:1; background:none; border:none; color:var(--steel); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .tabs button svg{width:21px; height:21px;}
+  .tabs button span{font-size:8.5px; letter-spacing:.6px; text-transform:uppercase;}
+  .tabs button.on{color:var(--hivis); box-shadow:inset 0 3px 0 var(--hivis); background:rgba(242,98,15,.07);}
+
+  .office-block{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--steel); border-radius:4px; padding:12px;}
+  .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
+  .office-text{font-size:10.5px; color:var(--dim); margin-top:6px; line-height:1.65;}
+  .office-text b{color:var(--ink);}
+  #sellBtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--hazard); color:var(--hazard); border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; cursor:pointer;}
+  #sellBtn.armed{background:var(--hazard); color:#20180a;}
+  .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--steel); border-radius:4px; padding:10px; font-family:var(--font-cond); font-weight:800; font-size:13px; cursor:pointer;}
+
+  #toast{position:fixed; left:50%; bottom:110px; z-index:9; transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none; background:var(--panel2); border:1px solid var(--hazard); border-left:3px solid var(--hazard); border-radius:4px; padding:11px 14px; font-size:11px; max-width:calc(100% - 28px); transition:transform .3s ease, opacity .3s ease;}
+  #toast.show{transform:translateX(-50%) translateY(0); opacity:1;}
+  .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600; font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
+  @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
+
+  .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(12,13,15,.92);}
+  .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--hivis); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
+  .modal-title{font-family:var(--font-cond); font-weight:800; font-size:22px; letter-spacing:2px; text-transform:uppercase; color:var(--ink); margin-bottom:4px;}
+  .modal-sub{font-size:10.5px; color:var(--dim); margin-bottom:14px; line-height:1.5;}
+  .cal-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px;}
+  .cal-day{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 4px; text-align:center; font-size:9px; color:var(--dim);}
+  .cal-day.active{border-color:var(--hivis); background:rgba(242,98,15,.12); color:var(--ink);}
+  .cal-day.claimed{border-color:var(--cash); opacity:.5;}
+  .cal-day b{display:block; font-family:var(--font-cond); font-size:14px; color:var(--ink); margin-top:2px;}
+  .cal-day.active b{color:var(--hivis);}
+  .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
+  .sku-list{display:flex; flex-direction:column; gap:8px;}
+  .sku-card{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px; cursor:pointer; text-align:left; color:var(--ink); font-family:inherit;}
+  .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(116,196,110,.1),var(--panel2) 40%);}
+  .sku-card b{font-family:var(--font-cond); font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
+  .sku-card span{font-size:9.5px; color:var(--dim); display:block; margin-top:2px; line-height:1.4;}
+</style>
+</head>
+<body>
+  <div id="splash">
+    <div class="splashwrap">
+      <svg id="splashMark" viewBox="0 0 120 120">
+        <polygon points="60,6 111,34 111,86 60,114 9,86 9,34" fill="#31363d"/>
+        <polygon points="60,10 108,36 108,84 60,110 12,84 12,36" fill="#262a2f"/>
+        <polygon id="splashFace" points="60,18 100,40 100,80 60,102 20,80 20,40" fill="#f2620f"/>
+        <path d="M45 36 h30 v9 h-21 v11 h17 v9 h-17 v19 h-9 z" fill="#232529"/>
+      </svg>
+      <div id="splashName">FATEFUL</div>
+      <div id="splashSub">G A M E S</div>
+      <div id="splashBand"></div>
+      <div id="splashTag">A FATEFUL GAMES PRODUCTION</div>
+    </div>
+  </div>
+
+  <div class="topbar">
+    <header>
+      <span id="headMark"></span>
+      <h1>Warehouse <span>Empire</span></h1>
+    </header>
+    <div class="terminal">
+      <div class="money" id="money">$0</div>
+      <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span>&middot; tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
+      <div class="logistics-flow">
+        <span class="flow-tag">Throughput Flow</span>
+        <div class="flow-bar"><b id="flowBar"></b></div>
+        <span id="flowPct" style="color:var(--cash); font-weight:700;">100%</span>
+      </div>
+    </div>
+  </div>
+
+  <section id="tab-floor">
+    <div class="floorview">
+      <canvas id="wcanvas"></canvas>
+    </div>
+    <div class="pickwrap">
+      <button id="pickBtn">Pick Order<small id="pickSub">TAP TO SCAN</small></button>
+      <div class="combo">
+        <div class="combobar"><i id="comboBar" style="width:0%"></i></div>
+        <span id="comboText">COMBO ×1.0</span>
+      </div>
+    </div>
+
+    <div class="objective" id="objective">
+      <div class="otag">TASK</div>
+      <div class="obody">
+        <div class="otitle" id="objTitle">Pick your first order</div>
+        <div class="ohint" id="objHint">Tap the <b>PICK ORDER</b> button to start generating capital.</div>
+      </div>
+      <div class="ogo" id="objGo">GO →</div>
+    </div>
+
+    <div class="skustrip">
+      <div>
+        <b id="activeSkuName">FMCG Groceries</b>
+        <span id="activeSkuDesc">Standard consumer freight</span>
+      </div>
+      <button class="skubtn" id="openSkuBtn">Change SKU</button>
+    </div>
+
+    <div class="adrow" id="adRow">
+      <button id="rushAdBtn" class="adbtn">Overtime Shift<small>WATCH AD · RUSH ×8 FOR 90s</small></button>
+      <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
+    </div>
+
+    <div class="contract" id="contractCard">
+      <div class="crow">
+        <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
+        <span class="ctime" id="contractTime"></span>
+      </div>
+      <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
+      <div class="crow">
+        <span id="contractProg">—</span>
+        <span class="creward" id="contractReward"></span>
+      </div>
+      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small>WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
+    </div>
+
+    <div class="shift">
+      <div><b id="shiftEarned">$0</b><span>this session</span></div>
+      <div><b id="shiftTaps">0</b><span>hand picks</span></div>
+      <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
+    </div>
+
+    <div class="netbar" id="netBar" hidden>
+      <div class="nsite"><b id="netSiteName">General Distribution</b><span id="netSiteTags"></span></div>
+      <div class="nnet" id="netSummary"></div>
+    </div>
+
+    <div class="scale" id="scaleStrip">
+      <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
+      <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
+      <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
+      <div><div class="sv" id="scAch">0<i>/32</i></div><div class="sl">Awards</div></div>
+    </div>
+
+    <div class="sitepick" id="sitePick" hidden>
+      <div class="sphead">
+        <b>Commission your next site</b>
+        <span>Your old site keeps earning in the background. Pick what you run next.</span>
+      </div>
+      <div class="splist" id="siteList"></div>
+    </div>
+  </section>
+
+  <section id="tab-equip" hidden>
+    <div class="toolbar">
+      <div class="label">Equipment Fleet</div>
+      <div class="qty">
+        <button id="q1" class="on">×1</button>
+        <button id="q10">×10</button>
+      </div>
+    </div>
+    <div class="gens" id="gens"></div>
+  </section>
+
+  <section id="tab-upgrades" hidden>
+    <div class="toolbar"><div class="label">Equipment Upgrades &amp; Managers</div></div>
+    <div class="shop" id="shop"></div>
+  </section>
+
+  <section id="tab-pallets" hidden>
+    <div class="palletbar">
+      <div class="palletcount"><span id="palletIcon"></span><span id="palletNum">0</span></div>
+    </div>
+    <div class="palletnote">Pallets are earned via daily shifts, achievements, and selling sites.</div>
+    <div class="toolbar"><div class="label">Permanent Boosts</div></div>
+    <div class="shop" id="perkList"></div>
+    <div class="toolbar"><div class="label">Supplies</div></div>
+    <div class="shop" id="supplyList"></div>
+    <div class="toolbar"><div class="label">Site Livery</div></div>
+    <div class="shop" id="themeList"></div>
+  </section>
+
+  <section id="tab-office" hidden>
+    <div class="toolbar"><div class="label">The Office</div><div class="qty"><button id="muteBtn">SFX ON</button></div></div>
+    <div class="office-block">
+      <div class="office-title">COMPANY</div>
+      <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
+      <button id="renameBtn" class="renamebtn">RENAME COMPANY</button>
+    </div>
+    
+    <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--corp);">Corporate Real Estate</div></div>
+    <div class="office-block" style="border-left-color: var(--corp); margin-top:0;">
+      <div class="office-text" style="margin-top:0;">Expand your global footprint. Buy adjacent land plots to build permanent megacorp structures. Rendered live on the 2.5D canvas. Level 10 unlocks a <b>Mastery Perk</b>.</div>
+    </div>
+    <div class="shop" id="corpShop" style="margin-top:8px; padding:0 14px;"></div>
+
+    <div class="office-block" style="margin-top:24px;">
+      <div class="office-title">SELL THE BUSINESS</div>
+      <div class="office-text">Cash out for permanent Reputation and retire this site into your Network.</div>
+      <button id="sellBtn" disabled>SELL BUSINESS</button>
+      <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REP &amp; +10 PALLETS</small></button>
+    </div>
+    
+    <div class="office-block">
+      <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
+      <div id="achPanel"></div>
+    </div>
+    <div class="office-block"><div class="office-title">STATS</div><div class="office-text" id="statsText"></div></div>
+    
+    <div class="office-block" style="border-left-color: var(--bad); margin-top: 24px;">
+      <div class="office-title" style="color: var(--bad);">DANGER ZONE</div>
+      <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
+      <button id="hardResetBtn" class="renamebtn" style="color: var(--bad); border-color: var(--bad);">HARD RESET SAVE</button>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button data-tab="floor" class="on"><svg viewBox="0 0 24 24"><path d="M2 10.6 12 4l10 6.6V21H2z" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9" y="13.6" width="6" height="7.4" fill="currentColor"/></svg><span>Floor</span></button>
+    <button data-tab="equip"><svg viewBox="0 0 24 24"><rect x="8.6" y="4" width="1.8" height="11" fill="currentColor"/><rect x="3.5" y="13.4" width="6" height="1.6" fill="currentColor"/><rect x="10.6" y="9" width="8" height="6" rx="1" fill="currentColor"/><circle cx="12.8" cy="17.6" r="2.2" fill="currentColor"/><circle cx="17.6" cy="17.8" r="1.8" fill="currentColor"/></svg><span>Fleet</span></button>
+    <button data-tab="upgrades"><svg viewBox="0 0 24 24"><rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="currentColor" transform="rotate(-45 9.6 15.9)"/><circle cx="16.6" cy="7.4" r="4.6" fill="currentColor"/><circle cx="16.6" cy="7.4" r="1.9" fill="#2b2e33"/></svg><span>Upgrades</span></button>
+    <button data-tab="pallets"><svg viewBox="0 0 24 24"><rect x="2" y="8.4" width="20" height="3.1" fill="currentColor"/><rect x="2" y="15" width="20" height="3.1" fill="currentColor"/><rect x="3" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/><rect x="10.4" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/><rect x="17.8" y="11.5" width="3.2" height="3.5" fill="currentColor" opacity=".6"/></svg><span>Store</span></button>
+    <button data-tab="office"><svg viewBox="0 0 24 24"><rect x="4" y="3.6" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="currentColor"/><rect x="7" y="10" width="10" height="1.6" fill="currentColor"/><rect x="7" y="14" width="7" height="1.6" fill="currentColor"/></svg><span>Office</span></button>
+  </nav>
+
+  <!-- Modals -->
+  <div id="modalDaily" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Morning Shift Handover</div>
+      <div class="modal-sub">Log in daily to claim corporate pallet stipends and freight bonuses.</div>
+      <div class="cal-grid" id="calGrid"></div>
+      <button class="modal-btn" id="btnClaimDaily">Clock In &amp; Claim</button>
+    </div>
+  </div>
+
+  <div id="modalOffline" class="modal-screen" hidden>
+    <div class="modal-box" style="border-top-color:var(--cash);">
+      <div class="modal-title" style="color:var(--cash);">Welcome Back</div>
+      <div class="modal-sub">While you were away, your shift managers kept the freight moving.</div>
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Base Earnings</div>
+        <b id="offlineBaseTxt" style="font-family:var(--font-cond); font-size:28px; color:var(--ink);"></b>
+      </div>
+      <button class="modal-btn" id="btnDoubleOffline" style="background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; margin-bottom:10px; display:flex; flex-direction:column; align-items:center; gap:2px;">
+        <span>CLAIM DOUBLE</span>
+        <small style="font-family:var(--font-mono); font-size:8.5px; letter-spacing:1px; opacity:0.8; font-weight:400;">WATCH AD · INSTANT 2× BONUS</small>
+      </button>
+      <button class="renamebtn" id="btnClaimOffline" style="border-style:dashed;">Claim Standard Earnings</button>
+    </div>
+  </div>
+
+  <div id="modalSku" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Freight Manifest (SKU)</div>
+      <div class="modal-sub">Specialize your current site's inventory handling rules.</div>
+      <div class="sku-list" id="skuList"></div>
+      <button class="renamebtn" id="btnCloseSku" style="margin-top:12px;">Close</button>
+    </div>
+  </div>
+
+  <div id="modalReset" class="modal-screen" hidden>
+    <div class="modal-box" style="border-top-color:var(--bad);">
+      <div class="modal-title" style="color:var(--bad);">DANGER ZONE</div>
+      <div class="modal-sub">This will permanently delete your entire save file. Type <b>WIPE</b> to confirm.</div>
+      <input type="text" id="wipeInput" style="width:100%; padding:10px; margin-bottom:14px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); text-align:center; font-size:16px; border-radius:4px;" placeholder="Type WIPE" autocomplete="off" autocorrect="off">
+      <button class="modal-btn" id="btnConfirmWipe" style="background:var(--bad); color:#fff;">CONFIRM DELETION</button>
+      <button class="renamebtn" id="btnCancelWipe" style="margin-top:12px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+    var Prefs = window.Capacitor.Plugins.Preferences;
+    window.storage = {
+      get: function(k) { return Prefs.get({ key: k }); },
+      set: function(k, v) { return Prefs.set({ key: k, value: v }); }
+    };
+    try {
+      var legacyData = localStorage.getItem("warehouse-empire-save");
+      if (legacyData) {
+        Prefs.set({ key: "warehouse-empire-save", value: legacyData }).then(function(){
+          localStorage.removeItem("warehouse-empire-save");
+        });
+      }
+    } catch(e) {}
+  } else {
+    window.storage = {
+      get: function(k){
+        try { var v = localStorage.getItem(k); return Promise.resolve(v === null ? null : { value:v }); }
+        catch(e){ return Promise.reject(e); }
+      },
+      set: function(k, v){
+        try { localStorage.setItem(k, v); return Promise.resolve(); }
+        catch(e){ return Promise.reject(e); }
+      }
+    };
+  }
+
+  var SAVE_KEY = "warehouse-empire-save";
+  var COST_GROWTH = 1.15;
+  var OFFLINE_CAP_HOURS = 8;
+  var renderActive = true;
+
+  var haptic = function(type) {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+          try {
+              if (type === "light") window.Capacitor.Plugins.Haptics.impact({ style: 'Light' });
+              else if (type === "heavy") window.Capacitor.Plugins.Haptics.impact({ style: 'Heavy' });
+          } catch(e) {}
+      }
+  };
+
+  var AC = null;
+  function sfx(type){
+    if (state.muted) return;
+    try {
+      if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+      var t = AC.currentTime;
+      function tone(f, st, dur, vol, shape){
+        var o = AC.createOscillator(), g = AC.createGain();
+        o.type = shape || "square"; o.frequency.value = f;
+        o.connect(g); g.connect(AC.destination);
+        g.gain.setValueAtTime(vol, st);
+        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+        o.start(st); o.stop(st + dur);
+      }
+      if (type === "tap"){ tone(1250, t, 0.05, 0.05); haptic("light"); }
+      else if (type === "buy"){ tone(300, t, 0.09, 0.09); tone(220, t+0.06, 0.12, 0.09); }
+      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); haptic("heavy"); }
+      else if (type === "prestige"){ tone(523, t, 0.12, 0.08); tone(659, t+0.12, 0.12, 0.08); tone(784, t+0.24, 0.12, 0.08); tone(1046, t+0.36, 0.3, 0.08); }
+      else if (type === "shatter"){ tone(1500, t, 0.05, 0.08); tone(2000, t+0.03, 0.08, 0.05); haptic("heavy"); }
+      else if (type === "build"){ tone(150, t, 0.1, 0.1, "sawtooth"); tone(90, t+0.1, 0.35, 0.15, "square"); haptic("heavy"); }
+    } catch(e){}
+  }
+
+  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', RS = 'var(--research)', CP = 'var(--corp)';
+  var ICONS = {
+    glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/><rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/><rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/><rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>',
+    trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/><rect x="3" y="14" width="15" height="2" fill="'+S+'"/><rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/><circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
+    forklift:'<rect x="9" y="3" width="1.8" height="13" fill="'+A+'"/><rect x="4" y="14" width="6.5" height="1.6" fill="'+S+'"/><rect x="11" y="9.5" width="8" height="6" rx="1" fill="'+A+'"/><circle cx="13.2" cy="17.6" r="2.4" fill="'+S+'"/><circle cx="18" cy="17.9" r="1.9" fill="'+S+'"/>',
+    reach:'<rect x="8.2" y="2" width="1.6" height="16" fill="'+A+'"/><rect x="3" y="6.4" width="5.4" height="1.4" fill="'+S+'"/><rect x="12.4" y="10" width="7" height="7" rx="1" fill="'+A+'"/><circle cx="14.2" cy="18.6" r="2" fill="'+S+'"/>',
+    conveyor:'<rect x="2" y="12" width="20" height="3" rx="1.5" fill="'+S+'"/><circle cx="4.6" cy="13.5" r="2.5" fill="'+S+'"/><circle cx="19.4" cy="13.5" r="2.5" fill="'+S+'"/><rect x="5" y="6" width="6" height="6" fill="'+BX+'"/>',
+    robot:'<rect x="9.6" y="18" width="9" height="3" rx="1" fill="'+S+'"/><rect x="12.6" y="9" width="3" height="9" fill="'+S+'"/><rect x="5" y="8" width="10.6" height="2.6" fill="'+A+'"/><rect x="4.6" y="13" width="7" height="6" fill="'+BX+'"/>',
+    crane:'<rect x="2" y="3.5" width="20" height="2.6" fill="'+A+'"/><rect x="3" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="18.8" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="8" y="12.5" width="8" height="7" fill="'+BX+'"/>',
+    hub:'<rect x="9" y="9" width="6" height="6" rx="1" fill="'+A+'"/><rect x="2" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="2" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/>',
+    pallet:'<rect x="2" y="8.4" width="20" height="3.1" fill="'+BX+'"/><rect x="2" y="15" width="20" height="3.1" fill="'+BX+'"/><rect x="3" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="10.4" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="17.8" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>',
+    wrench:'<rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="'+S+'" transform="rotate(-45 9.6 15.9)"/><circle cx="16.6" cy="7.4" r="5" fill="'+A+'"/>',
+    hat:'<path d="M4 15.6a8 8 0 0 1 16 0z" fill="'+A+'"/><rect x="2" y="15.4" width="20" height="2.7" rx="1.35" fill="'+A+'"/>',
+    ruler:'<rect x="2.4" y="8" width="19.2" height="8" rx="1.4" fill="'+S+'"/>',
+    scanner:'<rect x="6" y="2.5" width="12" height="15" rx="2" fill="'+S+'"/>',
+    radio:'<rect x="5" y="10" width="11" height="10" rx="1.6" fill="'+S+'"/>',
+    clip:'<rect x="4" y="3.6" width="16" height="18" rx="2" fill="'+S+'"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2" fill="'+A+'"/>',
+    cycle:'<path d="M5 12a7 7 0 0 1 12-4.9" stroke="'+A+'" stroke-width="2.4" fill="none"/>',
+    cash:'<rect x="2" y="6" width="20" height="12" rx="2" fill="'+CS+'"/>',
+    box:'<rect x="3.5" y="6" width="17" height="13" fill="'+BX+'"/><rect x="3.5" y="11" width="17" height="1.8" fill="'+BXD+'"/><rect x="11" y="6" width="2" height="13" fill="'+BXD+'"/>',
+    flame:'<path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.6-1-2.4-1-4 2.4 1.6 4 4 4 7a6 6 0 0 1-12 0c0-5 4-7 6-12z" fill="var(--bad)"/>',
+    moon:'<path d="M17 15.5A8 8 0 0 1 8.5 7a7 7 0 1 0 8.5 8.5z" fill="'+HZ+'"/>',
+    chip:'<rect x="5" y="5" width="14" height="14" rx="2" fill="'+RS+'"/><rect x="8" y="8" width="8" height="8" fill="#1c1e21"/><rect x="2" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="15" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="15" width="3" height="1.5" fill="'+S+'"/>',
+    building:'<path d="M4 22V6l8-4 8 4v16H4zm4-4h2v-2H8v2zm0-4h2v-2H8v2zm0-4h2V8H8v2zm4 8h2v-2h-2v2zm0-4h2v-2h-2v2zm0-4h2V8h-2v2z" fill="'+CP+'"/>'
+  };
+
+  function icon(name){ return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(ICONS[name]||ICONS.box)+'</svg>'; }
+  function plate(name){ return '<div class="plate">'+icon(name)+'</div>'; }
+  document.getElementById("headMark").innerHTML = icon("forklift");
+  document.getElementById("palletIcon").innerHTML = icon("pallet");
+
+  var GENS = [
+    {id:"picker",   name:"Casual Picker",    ic:"glove",    cost:15,        rate:0.1,   desc:"Picks by hand, manual scan"},
+    {id:"trolley",  name:"Pallet Trolley",   ic:"trolley",  cost:100,       rate:1,     desc:"Manual, reliable transport"},
+    {id:"forklift", name:"Forklift",         ic:"forklift", cost:1100,      rate:8,     desc:"Counterbalance classic"},
+    {id:"reach",    name:"Reach Truck",      ic:"reach",    cost:12000,     rate:47,    desc:"High racking storage retrieval"},
+    {id:"conveyor", name:"Conveyor Line",    ic:"conveyor", cost:130000,    rate:260,   desc:"Continuous line feed"},
+    {id:"sorter",   name:"Sorting Robot",    ic:"robot",    cost:1400000,   rate:1400,  desc:"Autonomous neural AI sort"},
+    {id:"crane",    name:"Automated Crane",  ic:"crane",    cost:20000000,  rate:7800,  desc:"Full-height AS/RS crane"},
+    {id:"hub",      name:"Distribution Hub", ic:"hub",      cost:330000000, rate:44000, desc:"Fully autonomous facility"}
+  ];
+  var WAGE = { picker:0.275, trolley:0.20, forklift:0.15, reach:0.125, conveyor:0.05, sorter:0.035, crane:0.025, hub:0.015 };
+
+  var U1 = {picker:"Ergonomic Gloves", trolley:"Greased Bearings", forklift:"Fresh Batteries", reach:"Tilt Cameras", conveyor:"High-Speed Belts", sorter:"Firmware Patch", crane:"Dual Hoists", hub:"Night Shift Crew"};
+  var U2 = {picker:"Espresso Machine", trolley:"Alloy Frames", forklift:"Attachment Kit", reach:"Laser Guidance", conveyor:"Smart Diverters", sorter:"Neural Sort AI", crane:"Predictive Maintenance", hub:"Regional Network"};
+  var MGR_NAMES = {picker:"Deso", trolley:"Shazza", forklift:"Big Mick", reach:"Tran", conveyor:"Elena", sorter:"Unit 7", crane:"Davo", hub:"The Colonel"};
+
+  var UPGRADES = [];
+  GENS.forEach(function(g){
+    UPGRADES.push({id:g.id+"_u1", name:U1[g.id], ic:"wrench", cost:Math.ceil(g.cost*12), target:g.id, mult:2, reqGen:g.id, reqCount:10, desc:"Doubles output from every "+g.name});
+    UPGRADES.push({id:g.id+"_u2", name:U2[g.id], ic:"ruler", cost:Math.ceil(g.cost*140), target:g.id, mult:3, reqGen:g.id, reqCount:60, desc:"Triples output from every "+g.name});
+    UPGRADES.push({id:"mgr_"+g.id, name:"Mgr: "+MGR_NAMES[g.id], ic:"hat", cost:Math.ceil(g.cost*45), target:g.id, mult:1.5, reqGen:g.id, reqCount:25, desc:"+50% "+g.name+" output — stays when selling"});
+  });
+  UPGRADES.push({id:"tap1", name:"Barcode Scanner", ic:"scanner", cost:500, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value"});
+  UPGRADES.push({id:"tap2", name:"RF Gun", ic:"scanner", cost:60000, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value again"});
+
+  var CORP_BUILDINGS = [
+    {id: "hr", name: "HR Annex", ic: "building", baseCost: 500e6, desc: "Global Wage Reduction", mastery: "Level 10: 72 Hour Offline Yield"},
+    {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
+    {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Immune to Hazards"},
+    {id: "server", name: "Server Farm", ic: "building", baseCost: 1e12, desc: "Combo Extender & Decelerator", mastery: "Level 10: Combo Never Decays"}
+  ];
+
+  var PERKS = [
+    {id:"gloves", br:"labour", req:null, ic:"glove", name:"Padded Gloves", cost:8, desc:"Tap value +25%, forever"},
+    {id:"lean", br:"auto", req:null, ic:"ruler", name:"Lean Layout", cost:16, desc:"All output +10%, forever"},
+    {id:"maint", br:"auto", req:"lean", ic:"cycle", name:"Preventive Maintenance", cost:42, desc:"Wage bill cut by 20%"},
+    {id:"radio", br:"logi", req:null, ic:"radio", name:"Radio Dispatch", cost:26, desc:"Rush orders arrive far more often"},
+    {id:"night", br:"logi", req:"radio", ic:"moon", name:"Overnight Crew", cost:38, desc:"Offline cap 8h → 24h"}
+  ];
+
+  var SUPPLIES = [
+    {id:"dispatch", ic:"box", name:"Instant Dispatch", cost:5, scales:true, desc:"Bank 1 hour of production now"},
+    {id:"callrush", ic:"flame", name:"Call a Rush", cost:2, desc:"Trigger a ×8 rush order instantly"}
+  ];
+
+  var THEMES = [
+    {id:"hivis", name:"Safety Orange", cost:0, hivis:"#f2620f", hivisD:"#a83d00", hazard:"#f0c000"},
+    {id:"nightshift", name:"Night Shift", cost:6, hivis:"#3f8fd8", hivisD:"#1d5285", hazard:"#79c4ee"},
+    {id:"safety", name:"Hi-Vis Lime", cost:6, hivis:"#8dc63f", hivisD:"#4e7a1e", hazard:"#d4e157"}
+  ];
+
+  var SITES = [
+    { id:"general", name:"General Distribution", blurb:"Steady balanced operations.", cost:0.96, out:1.02, tap:1.05, wage:1.00, cap:0, conMult:1.0 },
+    { id:"cold", name:"Cold Storage", blurb:"High energy wages, premium contracts.", cost:1.04, out:1.02, tap:0.75, wage:1.30, cap:0, conMult:2.2 },
+    { id:"hazmat", name:"Dangerous Goods", blurb:"Strict unit limits, heavy payout.", cost:1.02, out:1.02, tap:1.00, wage:1.95, cap:38, conMult:1.5 }
+  ];
+
+  var SKUS = [
+    { id:"fmcg", name:"FMCG Groceries", desc:"Standard consumer freight. Balanced output.", outMult:1.0, tapMult:1.0, wageMult:1.0, conMult:1.0 },
+    { id:"pharma", name:"Cold Pharma", desc:"Temperature critical. High value (+35%), strict wages.", outMult:1.35, tapMult:0.8, wageMult:1.25, conMult:1.5 },
+    { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2 }
+  ];
+
+  var DAILY_REWARDS = [
+    { day:1, pallets:2, desc:"Stipend" }, { day:2, pallets:3, desc:"Overtime" }, { day:3, pallets:4, desc:"Bulk Inbound" },
+    { day:4, pallets:5, desc:"Express" }, { day:5, pallets:6, desc:"Grant" }, { day:6, pallets:8, desc:"Priority" }, { day:7, pallets:15, desc:"Mastery" }
+  ];
+
+  var OBJECTIVES = [
+    { title: "Pick your first order", tab: "floor", hint: "Tap the <b>PICK ORDER</b> button to start generating capital.", done: function(){ return state.taps >= 10; } },
+    { title: "Hire a Casual Picker", tab: "equip", hint: "Open <b>FLEET</b> and hire your first worker to earn passive cash.", done: function(){ return (state.owned.picker||0) >= 1; } },
+    { title: "Complete Freight Contract", tab: "floor", hint: "Fulfill a contract on the <b>FLOOR</b> tab for cash + pallets.", done: function(){ return state.contractsDone >= 1; } },
+    { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to build your Network.", done: function(){ return state.prestiges >= 1; } }
+  ];
+
+  var RANKS = [
+    {name:"Casual Hand", at:0}, {name:"Storeman", at:5e4}, {name:"Leading Hand", at:2e6},
+    {name:"Shift Supervisor", at:1e8}, {name:"Inventory Controller", at:5e9}, {name:"Site Manager", at:2.5e11}
+  ];
+  function rankIndex(){
+    var i = 0; for (var k = 0; k < RANKS.length; k++) if (state.lifetime >= RANKS[k].at) i = k;
+    return i;
+  }
+
+  var state = {
+    money: 0, total: 0, lifetime: 0, rep: 0, taps: 0, rp: 0,
+    owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
+    corp: { hr: 0, tower: 0, solar: 0, server: 0 },
+    site: "general", sku: "fmcg", network: [], muted: false,
+    prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
+    company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(),
+    lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
+  };
+
+  window.state = state;
+  window.render = render;
+
+  GENS.forEach(function(g){ state.owned[g.id] = 0; });
+
+  var buyQty = 1, boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0;
+  var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
+  var sessionEarned = 0, maxCombo = 1.0;
+
+  function fmt(n){
+    if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
+    var units = ["K","M","B","T","Qa","Qi"], u = -1;
+    while (n >= 1000 && u < units.length-1){ n /= 1000; u++; }
+    return (Math.floor(n*100)/100) + units[u];
+  }
+  function money(n){ return "$" + fmt(n); }
+
+  function multFor(count){
+    var m = 1;
+    if (count >= 25) m *= 2; if (count >= 50) m *= 2; if (count >= 75) m *= 1.5; if (count >= 100) m *= 2;
+    return m;
+  }
+  function upMult(target){
+    var m = 1;
+    UPGRADES.forEach(function(u){ if (state.upgrades[u.id] && u.target === target) m *= u.mult; });
+    return m;
+  }
+  function getSku(){ for(var i=0;i<SKUS.length;i++) if(SKUS[i].id === state.sku) return SKUS[i]; return SKUS[0]; }
+
+  function currentSite(){
+    for(var i=0;i<SITES.length;i++) if(SITES[i].id === state.site) return SITES[i];
+    return SITES[0];
+  }
+
+  function genRate(g){
+      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id);
+  }
+
+  function prestigeMult(){ return (1 + state.rep * 0.0085) * (1 + Math.sqrt(state.prestiges || 0) * 0.08); }
+  function boostActive(){ return Date.now() < boostUntil; }
+  function incidentActive(){ return Date.now() < incidentSpeedUntil; }
+
+  function flowEfficiency(){
+    var units = 0; GENS.forEach(function(g){ units+=(state.owned[g.id]||0); });
+    if (units === 0) return 1.0;
+    return Math.min(1.15, Math.max(0.70, 1.0 + (Math.sin(Date.now() / 8000) * 0.15)));
+  }
+
+  function grossRate(){
+    var r = 0; GENS.forEach(function(g){ r += genRate(g); });
+    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+  }
+
+  function wageBill(){
+    var w = 0;
+    GENS.forEach(function(g){
+      var wageRate = WAGE[g.id] || 0;
+      w += genRate(g) * wageRate;
+    });
+    if (state.perks.maint) w *= 0.80;
+    var hrReduction = Math.min(0.50, (state.corp.hr || 0) * 0.05);
+    w *= (1 - hrReduction);
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1);
+  }
+
+  function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
+  function networkRate(){
+    var repFloor = state.rep * 2.5;
+    var networkPeakSum = 0;
+    if (state.network && state.network.length > 0) {
+        for (var i=0;i<state.network.length;i++) networkPeakSum += (state.network[i].peak || 0) * 0.15;
+    }
+    return Math.max(repFloor, Math.min(networkPeakSum, activeRate() * 0.40));
+  }
+  function totalRate(){ return activeRate() + networkRate(); }
+
+  function tapValue(){
+      var basePassiveVal = (totalRate() * 0.05) / Math.sqrt(Math.max(1, comboMult()));
+      return (1 + basePassiveVal) * upMult("tap") * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
+  }
+
+  function costOf(g, qty){
+    var owned = state.owned[g.id] || 0, sum = 0;
+    var solarRed = Math.min(0.015, (state.corp.solar || 0) * 0.0015);
+    var actualGrowth = Math.max(1.135, COST_GROWTH - solarRed);
+    for (var i=0;i<qty;i++) sum += g.cost * Math.pow(actualGrowth, owned+i);
+    return Math.ceil(sum * currentSite().cost);
+  }
+
+  function repEarnedByLifetime(){ return Math.floor(Math.sqrt(state.lifetime / 20000)); }
+  function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
+  function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
+
+  function saveGame(){ state.lastSeen = Date.now(); window.storage.set(SAVE_KEY, JSON.stringify(state)); }
+
+  function loadGame(){
+    return window.storage.get(SAVE_KEY).then(function(res){
+      if (res && res.value){ var s = JSON.parse(res.value); Object.assign(state, s); }
+      if (!state.upgrades) state.upgrades = {};
+      if (!state.perks) state.perks = {};
+      if (!state.ach) state.ach = {};
+      if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
+
+      var validSite = false;
+      for (var i = 0; i < SITES.length; i++) { if (SITES[i].id === state.site) validSite = true; }
+      if (state.site === "leo" || !validSite) {
+          state.site = "general";
+          state.theme = "hivis";
+          if (state.money < 15) state.money = 15;
+      }
+
+      document.getElementById("hardResetBtn").addEventListener("click", function(){
+        document.getElementById("wipeInput").value = "";
+        document.getElementById("modalReset").hidden = false;
+      });
+      document.getElementById("btnCancelWipe").addEventListener("click", function(){
+        document.getElementById("modalReset").hidden = true;
+        showToast("Reset aborted.");
+      });
+      document.getElementById("btnConfirmWipe").addEventListener("click", function(){
+        if (document.getElementById("wipeInput").value === "WIPE"){
+          localStorage.removeItem(SAVE_KEY);
+          location.reload();
+        } else {
+          showToast("Type WIPE to confirm.");
+        }
+      });
+
+      var secs = (Date.now() - state.lastSeen) / 1000;
+      if (secs > 60){
+        var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+        secs = Math.min(secs, capHours * 3600);
+        var earned = totalRate() * secs;
+
+        if (earned >= 10){
+          document.getElementById("offlineBaseTxt").textContent = money(earned);
+          document.getElementById("modalOffline").hidden = false;
+
+          var claimBtn = document.getElementById("btnClaimOffline");
+          var doubleBtn = document.getElementById("btnDoubleOffline");
+          var newClaim = claimBtn.cloneNode(true); claimBtn.parentNode.replaceChild(newClaim, claimBtn);
+          var newDouble = doubleBtn.cloneNode(true); doubleBtn.parentNode.replaceChild(newDouble, doubleBtn);
+
+          newClaim.addEventListener("click", function(){
+            state.money += earned; state.total += earned; state.lifetime += earned;
+            document.getElementById("modalOffline").hidden = true;
+            sfx("buy"); render(); saveGame();
+          });
+
+          newDouble.addEventListener("click", function(){
+            newDouble.disabled = true;
+            Ads.show(function(){
+              var doubled = earned * 2;
+              state.money += doubled; state.total += doubled; state.lifetime += doubled;
+              document.getElementById("modalOffline").hidden = true;
+              sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
+              render(); saveGame();
+            });
+          });
+        }
+      }
+
+      checkDailyLoginPopup();
+    }).catch(function(e){ console.error(e); });
+  }
+
+  var Ads = (function(){
+    var plugin = null;
+    function init(){ preload(); }
+    function preload(){ }
+    function show(onReward){ onReward(); return true; }
+    return { init:init, preload:preload, show:show };
+  })();
+
+  function bindAdButtons(){
+    var rush = document.getElementById("rushAdBtn");
+    if (rush) rush.addEventListener("click", function(){
+      if (rush.disabled) return;
+      Ads.show(function(){
+        boostUntil = Math.max(boostUntil, Date.now() + 90000);
+        sfx("upgrade"); showToast("Overtime Shift! <b>Rush ×8 for 90 seconds</b>.");
+        render(); saveGame();
+      });
+    });
+
+    var rr = document.getElementById("rerollBtn");
+    if (rr) rr.addEventListener("click", function(){
+      Ads.show(function(){
+        state.contract = newContract();
+        state.contract.prog = state.contract.goal * 0.5;
+        sfx("upgrade"); showToast("Contract Board refreshed with +50% Progress.");
+        renderContract(); render(); saveGame();
+      });
+    });
+
+    var ra = document.getElementById("repAdBtn");
+    if (ra) ra.addEventListener("click", function(){
+      if (pendingRep() < 1) return;
+      Ads.show(function(){
+        repBonusArmed = true; sfx("upgrade");
+        showToast("Favour armed — sale gets <b>+25% REP &amp; +10 PAL</b>.");
+        renderOffice(); render(); saveGame();
+      });
+    });
+  }
+
+  function checkDailyLoginPopup(){
+    var now = Date.now();
+    var DAY_MS = 20 * 3600 * 1000;
+    if (now - state.lastDailyClaim >= DAY_MS){
+      state.dailyStreak = (now - state.lastDailyClaim <= DAY_MS * 2) ? (state.dailyStreak % 7) + 1 : 1;
+      renderDailyCalendar();
+      document.getElementById("modalDaily").hidden = false;
+    }
+  }
+
+  function renderDailyCalendar(){
+    var grid = document.getElementById("calGrid"); grid.innerHTML = "";
+    DAILY_REWARDS.forEach(function(r){
+      var d = document.createElement("div");
+      var isCur = r.day === state.dailyStreak;
+      var isClaimed = r.day < state.dailyStreak;
+      d.className = "cal-day" + (isCur ? " active" : "") + (isClaimed ? " claimed" : "");
+      d.innerHTML = "DAY " + r.day + "<b>+" + r.pallets + " PAL</b><span>" + r.desc + "</span>";
+      grid.appendChild(d);
+    });
+  }
+
+  document.getElementById("btnClaimDaily").addEventListener("click", function(){
+    var reward = DAILY_REWARDS[state.dailyStreak - 1];
+    state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
+    document.getElementById("modalDaily").hidden = true;
+    sfx("upgrade"); showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>.");
+    render(); saveGame();
+  });
+
+  function renderSkuUI(){
+    var s = getSku();
+    document.getElementById("activeSkuName").textContent = s.name;
+    document.getElementById("activeSkuDesc").textContent = s.desc;
+    var container = document.getElementById("skuList"); container.innerHTML = "";
+    SKUS.forEach(function(skuItem){
+      var c = document.createElement("div");
+      c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "");
+      c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>";
+      c.addEventListener("click", function(){
+        state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
+        sfx("upgrade"); showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        renderSkuUI(); render(); saveGame();
+      });
+      container.appendChild(c);
+    });
+  }
+  document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
+  document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
+
+  function renderObjective(){
+    var cur = null, idx = 0;
+    for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
+    var card = document.getElementById("objective");
+    if (!cur){ card.hidden = true; return; }
+    card.hidden = false;
+    document.getElementById("objTitle").textContent = cur.title;
+    document.getElementById("objHint").innerHTML = cur.hint;
+    var tag = card.querySelector(".otag");
+    if(tag) tag.textContent = "TASK " + idx + "/" + OBJECTIVES.length;
+    card.onclick = function(){ switchTab(cur.tab); };
+  }
+
+  var el = { money: document.getElementById("money"), rate: document.getElementById("rate"), tapval: document.getElementById("tapval"), gens: document.getElementById("gens"), toast: document.getElementById("toast"), pick: document.getElementById("pickBtn") };
+  var genEls = {};
+
+  function buildGens(){
+    el.gens.innerHTML = "";
+    GENS.forEach(function(g){
+      var card = document.createElement("div");
+      card.className = "gen-card locked";
+      card.innerHTML =
+        '<div class="gen-card-header">'+plate(g.ic)+'<div class="gen-card-title"><div class="name">'+g.name+'<span class="count" data-r="count"></span></div><div class="desc">'+g.desc+'</div></div></div>'+
+        '<div class="gen-card-body"><div class="gen-card-metrics"><div class="prod"><b data-r="prod">$0</b>/s</div><div class="pay" data-r="pay"></div></div><button class="gen-card-buy"><span data-r="cost">$0</span><small data-r="qty">BUY ×1</small></button></div>'+
+        '<div class="gen-card-progress"><i data-r="bar" style="width:0%"></i></div>';
+      card.querySelector(".gen-card-buy").addEventListener("click", function(){ buyGen(g); });
+      el.gens.appendChild(card);
+      genEls[g.id] = { card: card, count: card.querySelector('[data-r="count"]'), prod: card.querySelector('[data-r="prod"]'), cost: card.querySelector('[data-r="cost"]'), qty: card.querySelector('[data-r="qty"]'), bar: card.querySelector('[data-r="bar"]'), pay: card.querySelector('[data-r="pay"]'), btn: card.querySelector(".gen-card-buy") };
+    });
+  }
+
+  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {};
+
+  function buildCorpShop(){
+    var corpShop = document.getElementById("corpShop");
+    corpShop.innerHTML = "";
+    CORP_BUILDINGS.forEach(function(cb){
+      var b = document.createElement("button");
+      b.className = "up";
+      b.innerHTML = '<div class="plate" style="border-color:var(--corp); color:var(--corp);">' + icon(cb.ic) + '</div>' +
+                    '<div><div class="uname">' + cb.name + ' <span data-r="lvl" style="color:var(--corp);">LVL 0</span></div><div class="udesc" style="color:var(--steel);">' + cb.desc + '<br><b style="color:var(--corp); font-size:8px;">' + cb.mastery + '</b></div></div>' +
+                    '<div class="ucost" data-r="cost">$0</div>';
+
+      b.addEventListener("click", function(){
+        var lvl = state.corp[cb.id] || 0;
+        if (lvl >= 10) return;
+        var cost = cb.baseCost * Math.pow(6, lvl);
+        if (state.money >= cost) {
+          state.money -= cost;
+          state.corp[cb.id] = lvl + 1;
+          sfx("build");
+          if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
+          else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
+          render(); saveGame();
+        }
+      });
+      corpShop.appendChild(b);
+      corpBtnEls[cb.id] = { btn: b, costEl: b.querySelector('[data-r="cost"]'), lvlEl: b.querySelector('[data-r="lvl"]') };
+    });
+  }
+
+  function buildShop(){
+    var shop = document.getElementById("shop"); shop.innerHTML = "";
+    UPGRADES.forEach(function(u){
+      var b = document.createElement("button"); b.className = "up";
+      b.innerHTML = plate(u.ic)+'<div><div class="uname">'+u.name+'</div><div class="udesc">'+u.desc+'</div></div><div class="ucost">'+money(u.cost)+'</div>';
+      b.addEventListener("click", function(){
+        if (state.money < u.cost || state.upgrades[u.id]) return;
+        state.money -= u.cost; state.upgrades[u.id] = true; sfx("upgrade");
+        showToast("<b>" + u.name + "</b> installed."); render(); saveGame();
+      });
+      shop.appendChild(b); upEls[u.id] = b;
+    });
+
+    var pList = document.getElementById("perkList"); pList.innerHTML = "";
+    PERKS.forEach(function(p){
+      var b = document.createElement("button"); b.className = "up";
+      b.innerHTML = plate(p.ic) + '<div><div class="uname">'+p.name+'</div><div class="udesc">'+p.desc+'</div></div><div class="ucost">'+p.cost+' PAL</div>';
+      b.addEventListener("click", function(){
+        if(state.pallets >= p.cost && !state.perks[p.id]){
+          state.pallets -= p.cost; state.perks[p.id] = true; sfx("upgrade");
+          showToast("Perk unlocked: <b>" + p.name + "</b>."); render(); saveGame();
+        }
+      });
+      pList.appendChild(b); perkBtnEls[p.id] = b;
+    });
+
+    var sList = document.getElementById("supplyList"); sList.innerHTML = "";
+    SUPPLIES.forEach(function(s){
+      var b = document.createElement("button"); b.className = "up";
+      var sc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+      b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+sc+' PAL</div>';
+      b.addEventListener("click", function(){
+        var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+        if(state.pallets >= currentSc){
+          state.pallets -= currentSc;
+          if(s.id === "dispatch"){ var cap = totalRate() * 3600; state.money += cap; state.total += cap; state.lifetime += cap; }
+          else { boostUntil = Date.now() + 30000; }
+          sfx("upgrade"); showToast("Supply activated: <b>" + s.name + "</b>."); render(); saveGame();
+        }
+      });
+      sList.appendChild(b); supplyBtnEls[s.id] = {btn: b, costElem: b.querySelector('[data-r="cost"]')};
+    });
+
+    var tList = document.getElementById("themeList");
+    if (tList) {
+      tList.innerHTML = "";
+      THEMES.forEach(function(t){
+        var b = document.createElement("button"); b.className = "up";
+        var costTxt = t.cost === 0 ? "FREE" : t.cost + " PAL";
+        b.innerHTML = '<div class="swatch" style="background:'+t.hivis+';"></div><div><div class="uname">'+t.name+'</div></div><div class="ucost">'+costTxt+'</div>';
+        b.addEventListener("click", function(){
+          if (state.theme === t.id) return;
+          if (state.pallets >= t.cost || t.cost === 0) {
+            if (t.cost > 0) state.pallets -= t.cost;
+            state.theme = t.id;
+            sfx("upgrade");
+            showToast("Livery applied: <b>" + t.name + "</b>.");
+            render();
+            saveGame();
+          }
+        });
+        tList.appendChild(b);
+      });
+    }
+  }
+
+  function ownedCount(){ var n=0; GENS.forEach(function(g){ n+=(state.owned[g.id]||0); }); return n; }
+
+  var ACH = [
+    {id:"tap1", ic:"glove", name:"Fast Hands", test:function(){return state.taps>=100;}},
+    {id:"tap2", ic:"glove", name:"Blurry Hands", test:function(){return state.taps>=1000;}},
+    {id:"tap3", ic:"glove", name:"Machine Hands", test:function(){return state.taps>=5000;}},
+    {id:"tap4", ic:"glove", name:"Sonic Hands", test:function(){return state.taps>=25000;}},
+    {id:"cash1", ic:"cash", name:"First 100K", test:function(){return state.lifetime>=1e5;}},
+    {id:"cash2", ic:"cash", name:"First Million", test:function(){return state.lifetime>=1e6;}},
+    {id:"cash3", ic:"cash", name:"Ten Million", test:function(){return state.lifetime>=1e7;}},
+    {id:"cash4", ic:"cash", name:"Big Business", test:function(){return state.lifetime>=1e8;}},
+    {id:"cash5", ic:"cash", name:"Billionaire", test:function(){return state.lifetime>=1e9;}},
+    {id:"cash6", ic:"cash", name:"Empire Status", test:function(){return state.lifetime>=1e10;}},
+    {id:"own1", ic:"forklift", name:"Small Fleet", test:function(){return ownedCount()>=10;}},
+    {id:"own2", ic:"forklift", name:"Fleet Manager", test:function(){return ownedCount()>=50;}},
+    {id:"own3", ic:"forklift", name:"Logistics Pro", test:function(){return ownedCount()>=150;}},
+    {id:"own4", ic:"forklift", name:"Automation", test:function(){return ownedCount()>=300;}},
+    {id:"own5", ic:"forklift", name:"Skynet", test:function(){return ownedCount()>=600;}},
+    {id:"pres1", ic:"cycle", name:"New Beginnings", test:function(){return state.prestiges>=1;}},
+    {id:"pres2", ic:"cycle", name:"Serial Tycoon", test:function(){return state.prestiges>=5;}},
+    {id:"pres3", ic:"cycle", name:"Megacorp", test:function(){return state.prestiges>=15;}},
+    {id:"pres4", ic:"cycle", name:"Monopoly", test:function(){return state.prestiges>=30;}},
+    {id:"con1", ic:"clip", name:"Reliable Carrier", test:function(){return state.contractsDone>=5;}},
+    {id:"con2", ic:"clip", name:"Trusted Partner", test:function(){return state.contractsDone>=25;}},
+    {id:"con3", ic:"clip", name:"Contract King", test:function(){return state.contractsDone>=75;}},
+    {id:"con4", ic:"clip", name:"Global Freight", test:function(){return state.contractsDone>=150;}},
+    {id:"upg1", ic:"wrench", name:"Tinkerer", test:function(){return Object.keys(state.upgrades).length>=5;}},
+    {id:"upg2", ic:"wrench", name:"Engineer", test:function(){return Object.keys(state.upgrades).length>=15;}},
+    {id:"upg3", ic:"wrench", name:"Director", test:function(){return Object.keys(state.upgrades).length>=30;}},
+    {id:"pal1", ic:"box", name:"Stockpiler", test:function(){return state.pallets>=10;}},
+    {id:"pal2", ic:"box", name:"Hoarder", test:function(){return state.pallets>=50;}},
+    {id:"pal3", ic:"box", name:"Warehouse Full", test:function(){return state.pallets>=150;}},
+    {id:"combo1", ic:"flame", name:"Hot Streak", test:function(){return maxCombo>=2.0;}},
+    {id:"combo2", ic:"flame", name:"Unstoppable", test:function(){return maxCombo>=3.5;}},
+    {id:"combo3", ic:"flame", name:"Godlike", test:function(){return maxCombo>=4.6;}}
+  ];
+
+  var badgeEls = {};
+  function buildAch(){
+    var p = document.getElementById("achPanel"); if(!p) return; p.innerHTML = "";
+    ACH.forEach(function(a){
+      var b = document.createElement("div"); b.className = "badge";
+      b.innerHTML = '<span class="bicon">'+icon(a.ic)+'</span>'+a.name;
+      p.appendChild(b); badgeEls[a.id] = b;
+    });
+  }
+
+  function checkAch(){
+    var count = 0;
+    ACH.forEach(function(a){
+      if(!state.ach[a.id] && a.test()){
+        state.ach[a.id] = true; state.pallets++; sfx("upgrade");
+        showToast("Award Unlocked: <b>" + a.name + "</b> (+1 Pallet)");
+      }
+      if(state.ach[a.id]) count++;
+      if(badgeEls[a.id]) badgeEls[a.id].classList.toggle("got", !!state.ach[a.id]);
+    });
+    var act = document.getElementById("achCountTag"); if(act) act.textContent = count + "/" + ACH.length;
+    var sca = document.getElementById("scAch"); if(sca) sca.innerHTML = count + "<i>/" + ACH.length + "</i>";
+  }
+
+  function buildSiteList(){
+    var list = document.getElementById("siteList"); if(!list) return; list.innerHTML = "";
+    SITES.forEach(function(st){
+      var b = document.createElement("button"); b.className = "sitecard";
+      b.innerHTML = "<b>" + st.name + "</b><div class=\"sblurb\">" + st.blurb + "</div>";
+      b.addEventListener("click", function(){ chooseSite(st.id); });
+      list.appendChild(b);
+    });
+  }
+
+  function chooseSite(id){
+    state.site = id;
+    var sp = document.getElementById("sitePick"); if(sp) sp.hidden = true;
+    sfx("upgrade"); showToast("New Site Commissioned: <b>" + currentSite().name + "</b>.");
+    render(); saveGame();
+  }
+
+  function render(){
+    el.money.textContent = money(state.money); el.rate.textContent = money(totalRate());
+    el.tapval.textContent = money(tapValue());
+    document.getElementById("repInfo").textContent = "REP " + state.rep;
+    document.getElementById("palletNum").textContent = state.pallets;
+
+    var currentWages = wageBill();
+    var wageEl = document.getElementById("wageTag");
+    if (wageEl) {
+      if (currentWages > 0) {
+        wageEl.innerHTML = "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> ";
+      } else {
+        wageEl.innerHTML = "";
+      }
+    }
+
+    CORP_BUILDINGS.forEach(function(cb){
+      var elObj = corpBtnEls[cb.id];
+      if (elObj && elObj.btn){
+        var lvl = state.corp[cb.id] || 0;
+        var cost = cb.baseCost * Math.pow(6, lvl);
+        elObj.lvlEl.textContent = "LVL " + lvl;
+        if (lvl >= 10) {
+          elObj.costEl.textContent = "MAX";
+          elObj.btn.classList.add("owned");
+          elObj.btn.classList.remove("can");
+          elObj.btn.disabled = true;
+        } else {
+          elObj.costEl.textContent = money(cost);
+          var canBuy = state.money >= cost;
+          elObj.btn.classList.toggle("can", canBuy);
+          elObj.btn.classList.toggle("owned", lvl > 0);
+          elObj.btn.disabled = !canBuy;
+        }
+      }
+    });
+
+    document.getElementById("shiftEarned").textContent = money(sessionEarned);
+    document.getElementById("shiftTaps").textContent = state.taps;
+    document.getElementById("shiftCombo").textContent = "×" + maxCombo.toFixed(2);
+
+    var flow = flowEfficiency();
+    document.getElementById("flowBar").style.width = Math.min(100, Math.max(10, flow * 90)) + "%";
+    document.getElementById("flowPct").textContent = Math.round(flow * 100) + "%";
+    document.getElementById("flowBar").style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
+
+    GENS.forEach(function(g){
+      var e = genEls[g.id];
+      if(!e) return;
+      var owned = state.owned[g.id] || 0;
+      var unlocked = owned > 0 || state.total >= g.cost * 0.35;
+      e.card.classList.toggle("locked", !unlocked);
+      e.count.textContent = owned > 0 ? "×"+owned : "";
+
+      var gross = genRate(g);
+      var wRate = WAGE[g.id] || 0;
+      e.prod.textContent = money(gross * (1 - wRate));
+
+      if (gross > 0) {
+        e.pay.textContent = "Wages: -" + money(gross * wRate) + "/s";
+        e.pay.style.color = "var(--bad)";
+      } else {
+        e.pay.textContent = "Overhead: " + (wRate * 100).toFixed(1) + "%";
+        e.pay.style.color = "var(--dim)";
+      }
+
+      var c = costOf(g, buyQty); e.cost.textContent = money(c); e.qty.textContent = "BUY ×" + buyQty;
+      var can = state.money >= c && unlocked;
+      e.btn.disabled = !can; e.btn.classList.toggle("can", can);
+      e.card.classList.toggle("can", can);
+    });
+
+    SUPPLIES.forEach(function(s){
+        var elObj = supplyBtnEls[s.id];
+        if (elObj && elObj.costElem){
+            var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+            elObj.costElem.textContent = currentSc + " PAL";
+            var can = state.pallets >= currentSc;
+            elObj.btn.classList.toggle("can", can); elObj.btn.disabled = !can;
+        }
+    });
+
+    renderOffice(); renderObjective(); update3DPalette(); checkAch();
+  }
+
+  function renderOffice(){
+    var st = document.getElementById("statsText");
+    if(st) {
+      st.innerHTML = "Lifetime Capital: <b style='color:var(--cash);'>" + money(state.lifetime) + "</b><br>" +
+                     "Total Hand Picks: <b>" + state.taps + "</b><br>" +
+                     "Contracts Fulfilled: <b>" + state.contractsDone + "</b><br>" +
+                     "Best Shift Combo: <b>×" + maxCombo.toFixed(2) + "</b><br>" +
+                     "Pallets in Reserve: <b>" + state.pallets + "</b>";
+    }
+
+    var sellBtn = document.getElementById("sellBtn");
+    var gain = repBonusArmed ? repWithFavour(pendingRep()) : pendingRep();
+    sellBtn.disabled = gain < 1;
+    if (!sellArmed){
+      sellBtn.textContent = gain < 1 ? "SELL BUSINESS — REACH $20K LIFETIME" : "SELL: +" + gain + " REP" + (repBonusArmed ? " (FAVOUR)" : "");
+    }
+  }
+
+  var sellBtn = document.getElementById("sellBtn");
+  sellBtn.addEventListener("click", function(){
+    var gain = repBonusArmed ? repWithFavour(pendingRep()) : pendingRep();
+    if (gain < 1) return;
+    if (!sellArmed){
+      sellArmed = true; sellBtn.classList.add("armed"); sellBtn.textContent = "CONFIRM: +" + gain + " REP";
+      clearTimeout(sellArmTimer); sellArmTimer = setTimeout(function(){ sellArmed = false; sellBtn.classList.remove("armed"); renderOffice(); }, 4000);
+      return;
+    }
+
+    state.rep += gain; state.prestiges++;
+    state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
+    repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
+
+    if (!state.network) state.network = []; state.network.push({ id: state.site, peak: activeRate() });
+    state.money = 0; state.total = 0;
+
+    var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
+    state.upgrades = kept; GENS.forEach(function(g){ state.owned[g.id] = 0; });
+
+    sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
+
+    buildSiteList(); document.getElementById("sitePick").hidden = false;
+    switchTab("floor"); render(); saveGame();
+  });
+
+  function buyGen(g){
+    var c = costOf(g, buyQty);
+    if (state.money < c) return;
+    state.money -= c; state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    sfx("buy"); render(); saveGame();
+  }
+
+  var comboCount = 0, lastTap = 0;
+  function comboMult(){
+      var srv = state.corp.server || 0;
+      var maxC = 80 + (srv * 20);
+      return 1 + Math.min(comboCount, maxC) * 0.045;
+  }
+  function bumpCombo(){
+    var now = Date.now();
+    if ((state.corp.server || 0) >= 10) {
+        comboCount += 1;
+        lastTap = now;
+    } else {
+        var timeout = 1600 + ((state.corp.server || 0) * 400);
+        comboCount = (now - lastTap < timeout) ? comboCount + 1 : 1;
+        lastTap = now;
+    }
+    var m = comboMult(); if(m > maxCombo) maxCombo = m;
+    document.getElementById("comboText").textContent = "COMBO ×" + m.toFixed(2);
+    document.getElementById("comboBar").style.width = Math.min(100, (comboCount / (80 + ((state.corp.server||0)*20))) * 100) + "%";
+  }
+
+  // --- LIGHTWEIGHT TAP LISTENER (NO DOM THRASING) ---
+  el.pick.addEventListener("pointerdown", function(ev){
+    sfx("tap"); bumpCombo();
+    var v = tapValue();
+    state.money += v; state.total += v; state.lifetime += v; state.taps++;
+
+    // Update only money in DOM immediately
+    el.money.textContent = money(state.money);
+
+    var x = ev.clientX || window.innerWidth/2;
+    var y = ev.clientY || 200;
+    var f = document.createElement("div"); f.className = "float"; f.textContent = "+" + money(v);
+    f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
+    document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 800);
+  });
+
+  function newContract(){
+    var r = totalRate();
+    var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
+    var goal = Math.max(500, Math.floor(r * 60 * mins * getSku().conMult * (currentSite().conMult || 1)));
+    var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * getSku().conMult)) * towerMult;
+
+    return {
+      goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
+      label: "Dispatch " + money(goal) + " of freight",
+      cash: cashReward, pallets: 3
+    };
+  }
+
+  function renderContract(){
+    if (!state.contract) state.contract = newContract();
+    var c = state.contract;
+    if (Date.now() > c.deadline){ state.contract = newContract(); c = state.contract; }
+    var pct = Math.min(100, (c.prog / c.goal) * 100);
+    document.getElementById("contractTitle").textContent = c.label;
+    document.getElementById("contractBar").style.width = pct + "%";
+    document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
+    document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
+  }
+
+  var toastTimer = null;
+  function showToast(html){
+    el.toast.innerHTML = html; el.toast.classList.add("show");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4000);
+  }
+
+  function switchTab(name){
+    tabBtns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-tab") === name); });
+    ["floor","equip","upgrades","pallets","office"].forEach(function(t){ document.getElementById("tab-"+t).hidden = (t !== name); });
+    document.querySelector(".pickwrap").style.display = (name === "floor") ? "" : "none";
+    renderActive = (name === "floor");
+    if (renderActive) setTimeout(sizeCanvas, 20);
+    render();
+  }
+
+  var tabBtns = document.querySelectorAll(".tabs button");
+  tabBtns.forEach(function(btn){ btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); }); });
+  document.getElementById("q1").addEventListener("click", function(){ buyQty = 1; this.classList.add("on"); document.getElementById("q10").classList.remove("on"); render(); });
+  document.getElementById("q10").addEventListener("click", function(){ buyQty = 10; this.classList.add("on"); document.getElementById("q1").classList.remove("on"); render(); });
+
+  // ==========================================
+  // V4.4 ZERO-STUTTER 2.5D CANVAS ENGINE
+  // ==========================================
+  var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9;
+
+  function sizeCanvas(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h || w === 0 || h === 0) return;
+    if (w === CW && h === CH) return;
+
+    CW = w; CH = h;
+    cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    TW = Math.max(5, Math.min(8.5, CW / 55));
+    TH = TW / 2;
+    cx = CW * 0.40;
+    cy = CH * 0.16;
+  }
+  window.addEventListener("resize", sizeCanvas);
+
+  var PALETTES = {
+    steel:  { top: '#5d636b', left: '#474c53', right: '#2c2f34' },
+    dark:   { top: '#383c42', left: '#2c2f34', right: '#1c1e21' },
+    box:    { top: '#e0b088', left: '#c08a4e', right: '#8a6437' },
+    hivis:  { top: '#ff7b00', left: '#f2620f', right: '#c94e08' },
+    spill:  { top: '#ff5a5a', left: '#e05252', right: '#a32929' },
+    audit:  { top: '#7ce3ff', left: '#38bdf8', right: '#0284c7' },
+    hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
+    slab:   { top: '#2a2d34', left: '#24272d', right: '#1a1c20' },
+    wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' },
+    corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' }
+  };
+
+  function update3DPalette() {
+    if (state.theme === "nightshift") {
+      PALETTES.hivis = { top: '#63aaff', left: '#3f8fd8', right: '#1d5285' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    } else if (state.theme === "safety") {
+      PALETTES.hivis = { top: '#a7e058', left: '#8dc63f', right: '#4e7a1e' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    } else {
+      PALETTES.hivis = { top: '#ff7b00', left: '#f2620f', right: '#c94e08' };
+      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+    }
+  }
+
+  var pt = function(px, py, pz) {
+    return { x: cx + (px - py) * TW, y: cy + (px + py) * TH - (pz * TW) };
+  };
+
+  function drawPrism(e) {
+    var p100 = pt(e.x+e.w, e.y, e.z), p110 = pt(e.x+e.w, e.y+e.d, e.z), p010 = pt(e.x, e.y+e.d, e.z);
+    var p001 = pt(e.x, e.y, e.z+e.h), p101 = pt(e.x+e.w, e.y, e.z+e.h), p111 = pt(e.x+e.w, e.y+e.d, e.z+e.h), p011 = pt(e.x, e.y+e.d, e.z+e.h);
+
+    ctx.fillStyle = e.c.left;
+    ctx.beginPath(); ctx.moveTo(p010.x, p010.y); ctx.lineTo(p110.x, p110.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.fill();
+
+    ctx.fillStyle = e.c.right;
+    ctx.beginPath(); ctx.moveTo(p100.x, p100.y); ctx.lineTo(p110.x, p110.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p101.x, p101.y); ctx.fill();
+
+    ctx.fillStyle = e.c.top;
+    ctx.beginPath(); ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.fill();
+  }
+
+  function drawShadow(e) {
+    var c_pt = pt(e.x + e.w/2, e.y + e.d/2, 0);
+    var sw = (e.w + e.d) * TW * 0.35, sh = (e.w + e.d) * TH * 0.35;
+    ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0, 0.45 - e.z * 0.08) + ')';
+    ctx.beginPath(); ctx.ellipse(c_pt.x, c_pt.y, sw, sh, 0, 0, Math.PI*2); ctx.fill();
+  }
+
+  // --- CORPORATE REAL ESTATE PLOT DEFINITIONS ---
+  // Must match the tap hit-zones in handleCanvasTap exactly.
+  var CORP_PLOTS = {
+    hr:     { gx: 3,  gy: 31, gw: 15, gd: 15 },
+    tower:  { gx: 3,  gy: -19, gw: 15, gd: 15 },
+    solar:  { gx: 21, gy: -19, gw: 15, gd: 15 },
+    server: { gx: 35, gy: 5,  gw: 15, gd: 15 }
+  };
+
+  function corpBuildingEntities(){
+    var out = [];
+    CORP_BUILDINGS.forEach(function(cb){
+      var plot = CORP_PLOTS[cb.id];
+      var lvl = state.corp[cb.id] || 0;
+
+      // Empty land plot marker, always visible so the tap zone reads as buildable land
+      out.push({layer: 1, type:'prism', x: plot.gx, y: plot.gy, z: -0.4, w: plot.gw, d: plot.gd, h: 0.15, c: PALETTES.slab});
+
+      if (lvl <= 0) return;
+
+      // Tower height scales with level; footprint shrinks slightly per level for a "denser" look
+      var footprint = Math.max(4, plot.gw * 0.5);
+      var offset = (plot.gw - footprint) / 2;
+      var height = 1.5 + lvl * 1.1;
+      var pal = (lvl >= 10) ? PALETTES.hazard : PALETTES.corp;
+
+      out.push({
+        layer: 2, type:'prism',
+        x: plot.gx + offset, y: plot.gy + offset,
+        z: 0, w: footprint, d: footprint, h: height,
+        c: pal
+      });
+
+      // Small rooftop marker for maxed-out (Mastery) buildings
+      if (lvl >= 10) {
+        out.push({
+          layer: 3, type:'prism',
+          x: plot.gx + offset + footprint*0.3, y: plot.gy + offset + footprint*0.3,
+          z: height, w: footprint*0.4, d: footprint*0.4, h: 0.8,
+          c: PALETTES.corp
+        });
+      }
+    });
+    return out;
+  }
+
+  // --- PRE-BAKED STATIC GEOMETRY ---
+  var staticRacks = [], interactiveEvents = [], isoParticles = [];
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:34, d:0.5, h:10, c:PALETTES.wall});
+  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:0.5, d:30, h:10, c:PALETTES.wall});
+
+  for(var col=0; col<4; col++) {
+    for(var row=0; row<12; row++) {
+      var rx = 9 + col * 6.5;
+      var ry = 2 + row * 2.2;
+      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
+      staticRacks.push({layer: 2, type:'prism', x:rx+3.6, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
+      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0.2, w:4, d:0.6, h:0.1, c:PALETTES.steel});
+      staticRacks.push({layer: 2, type:'prism', x:rx+0.5, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.0, c:PALETTES.box});
+      staticRacks.push({layer: 2, type:'prism', x:rx+2.2, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.1, c:PALETTES.box});
+    }
+  }
+
+  function handleCanvasTap(ev){
+    if (!renderActive) return;
+    var rect = cv.getBoundingClientRect();
+    var cx_val = ev.clientX;
+    var cy_val = ev.clientY;
+    if (ev.touches && ev.touches.length > 0) {
+        cx_val = ev.touches[0].clientX;
+        cy_val = ev.touches[0].clientY;
+    } else if (ev.changedTouches && ev.changedTouches.length > 0) {
+        cx_val = ev.changedTouches[0].clientX;
+        cy_val = ev.changedTouches[0].clientY;
+    }
+
+    var x = cx_val - rect.left;
+    var y = cy_val - rect.top;
+
+    for (var i = interactiveEvents.length - 1; i >= 0; i--){
+      var h = interactiveEvents[i];
+      var p = pt(h.gx + 0.5, h.gy + 0.5, h.z || 0);
+      var dx = x - p.x;
+      var dy = y - p.y;
+
+      if (Math.sqrt(dx*dx + dy*dy) < 40){
+        var evType = h.type;
+        interactiveEvents.splice(i, 1);
+        sfx("shatter");
+
+        var color = evType === "spill" ? PALETTES.spill.left : PALETTES.audit.left;
+        for(var jp=0; jp<16; jp++){
+            isoParticles.push({
+                x: h.gx + 0.5, y: h.gy + 0.5, z: (h.z || 0) + 0.5,
+                vx: (Math.random()-0.5)*3.5, vy: (Math.random()-0.5)*3.5, vz: Math.random()*5,
+                color: color, life: 1.0
+            });
+        }
+
+        if (evType === "spill"){
+          var reward = Math.max(50, totalRate() * 45);
+          state.money += reward; state.total += reward; state.lifetime += reward;
+          showToast("Hazard Cleared! <b>+" + money(reward) + "</b> Hazard Pay.");
+        } else {
+          incidentSpeedUntil = Date.now() + 15000;
+          showToast("Data Cube Secured! <b>+50% Speed for 15s</b>.");
+        }
+        render();
+        return;
+      }
+    }
+
+    var dX = x - cx;
+    var dY = y - cy;
+    var tapPx = 0.5 * (dX / TW + dY / TH);
+    var tapPy = 0.5 * (dY / TH - dX / TW);
+
+    var tappedCorp = null;
+    if (tapPx >= 3 && tapPx <= 18 && tapPy >= 31 && tapPy <= 46) tappedCorp = "hr";
+    else if (tapPx >= 3 && tapPx <= 18 && tapPy >= -19 && tapPy <= -4) tappedCorp = "tower";
+    else if (tapPx >= 21 && tapPx <= 36 && tapPy >= -19 && tapPy <= -4) tappedCorp = "solar";
+    else if (tapPx >= 35 && tapPx <= 50 && tapPy >= 5 && tapPy <= 20) tappedCorp = "server";
+
+    if (tappedCorp) {
+      var cb = CORP_BUILDINGS.find(function(c){ return c.id === tappedCorp; });
+      if (cb) {
+         var lvl = state.corp[cb.id] || 0;
+         if (lvl >= 10) {
+             showToast("<b>" + cb.name + "</b> is operating at MAX CAPACITY.");
+         } else {
+             var cost = cb.baseCost * Math.pow(6, lvl);
+             if (state.money >= cost) {
+                 state.money -= cost;
+                 state.corp[cb.id] = lvl + 1;
+                 sfx("build");
+                 if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
+                 else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
+                 render(); saveGame();
+             } else {
+                 showToast("Need <b>" + money(cost) + "</b> to expand the " + cb.name + ".");
+             }
+         }
+      }
+    }
+  }
+
+  cv.addEventListener("mousedown", handleCanvasTap);
+  cv.addEventListener("touchstart", handleCanvasTap, {passive: true});
+
+  var animT = 0, lastFrame = 0, nextHotspot = 12;
+
+  function frame(ts){
+    requestAnimationFrame(frame);
+    if (!renderActive || !CW || CW === 0) return;
+
+    var dt = Math.min(0.05, (ts - lastFrame) / 1000 || 0);
+    lastFrame = ts; animT += dt;
+    var speed = (boostActive() || incidentActive()) ? 2.5 : 1;
+
+    ctx.fillStyle = '#181a1f';
+    ctx.fillRect(0, 0, CW, CH);
+
+    var entities = staticRacks.slice();
+    entities = entities.concat(corpBuildingEntities());
+
+    // Slabs & Roads
+    entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
+    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:{top:'#1c1e22', left:'#141619', right:'#0f1013'}});
+
+    // Parked Trucks
+    entities.push({layer: 1, type:'prism', x:-12, y:4.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
+    entities.push({layer: 1, type:'prism', x:-12, y:18.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
+
+    // Elevated Conveyor Belt
+    if ((state.owned.conveyor || 0) > 0) {
+      entities.push({layer: 2, type:'prism', x:0, y:1.0, z:4, w:32, d:1.5, h:0.2, c:PALETTES.steel});
+      for (var i3 = 0; i3 < 5; i3++) {
+        var bx_conv = ((animT * 8 * speed) + i3 * 6.5) % 34 - 2;
+        if (bx_conv > 0 && bx_conv < 31) {
+          entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:4.2, w:1.0, d:1.0, h:1.0, c:PALETTES.box});
+        }
+      }
+    }
+
+    // Workers
+    var maxW = Math.min(24, Math.max(3, (state.owned.picker||0) + (state.owned.trolley||0)));
+    for(var iw=0; iw<maxW; iw++) {
+      var wy = 3.9 + (iw % 12) * 2.2;
+      var wx = 16.0 + Math.sin(animT*0.6*speed + iw) * 12.0;
+      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.8, w:0.8, d:0.8, h:0.8, c:PALETTES.hivis});
+    }
+
+    // Forklifts
+    var maxF = Math.min(12, Math.max(1, (state.owned.forklift||0) + (state.owned.reach||0)));
+    for(var ifk=0; ifk<maxF; ifk++) {
+      var fx = [7.0, 14.0, 21.0, 28.0][ifk % 4];
+      var fy = 14.5 + Math.sin(animT*0.7*speed + ifk) * 10.0;
+      entities.push({layer: 2, type:'prism', x:fx, y:fy, z:0.3, w:1.6, d:1.2, h:1.0, c:PALETTES.hivis});
+      entities.push({layer: 2, type:'prism', x:fx-0.4, y:fy+0.3, z:0.3, w:0.8, d:1.0, h:0.8, c:PALETTES.box});
+    }
+
+    // Interactive Spills/Audits
+    if ((state.corp.solar || 0) < 10) {
+        nextHotspot -= dt;
+        if (nextHotspot <= 0 && interactiveEvents.length < 2){
+          interactiveEvents.push({
+            gx: 3 + Math.random() * 21, gy: 3 + Math.random() * 21,
+            type: Math.random() < 0.6 ? "spill" : "audit", t: 0
+          });
+          nextHotspot = 20 + Math.random() * 20;
+        }
+    }
+
+    interactiveEvents.forEach(function(h) {
+        h.t += dt;
+        var pCol = h.type === "spill" ? PALETTES.spill : PALETTES.audit;
+        var pulse = 1.0 + Math.sin(h.t * 6) * 0.15;
+        entities.push({layer: 3, type:'prism', x:h.gx, y:h.gy, z:1.0, w:0.8 * pulse, d:0.8 * pulse, h:0.8, c:pCol});
+    });
+
+    entities.forEach(function(e) {
+      e.sortKey = (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0);
+    });
+    entities.sort(function(a,b){ return a.sortKey - b.sortKey; });
+    entities.forEach(drawPrism);
+
+    // Particle Handling
+    for(var ip = isoParticles.length - 1; ip >= 0; ip--){
+        var p = isoParticles[ip];
+        p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+        p.vz -= 18 * dt;
+        p.life -= dt;
+        if (p.life <= 0) isoParticles.splice(ip, 1);
+        else {
+            var p2d = pt(p.x, p.y, p.z);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = Math.max(0, p.life);
+            ctx.beginPath(); ctx.arc(p2d.x, p2d.y, 3 * DPR, 0, Math.PI*2); ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+    }
+  }
+
+  // --- TICKER LOOP (100ms) ---
+  var last = Date.now();
+  setInterval(function(){
+    var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
+    var earned = totalRate() * dt;
+    state.money += earned; state.total += earned; state.lifetime += earned;
+    sessionEarned += earned;
+    if (state.contract){
+      state.contract.prog += earned;
+      if (state.contract.prog >= state.contract.goal){
+        state.pallets += state.contract.pallets; state.money += state.contract.cash; state.contractsDone++;
+        sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
+        state.contract = newContract();
+      }
+    }
+    renderContract(); render();
+  }, 100);
+  setInterval(saveGame, 10000);
+
+  function startGame() {
+    sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init(); render();
+    requestAnimationFrame(frame);
+    setTimeout(function(){
+      var sp = document.getElementById("splash");
+      if(sp) sp.classList.add("hide");
+    }, 500);
+  }
+
+  buildGens(); buildShop(); buildAch();
+
+  loadGame().then(startGame).catch(function(e){
+    console.error(e);
+    startGame();
+  });
+})();
+</script>
+</body>
+</html>
