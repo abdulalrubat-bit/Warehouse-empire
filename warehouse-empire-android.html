@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Warehouse Empire v3.1.1-Release</title>
+<title>Warehouse Empire v3.1.2-Release</title>
 <style>
   :root{
     --bg:#232529; --panel:#2c2f34; --panel2:#383c42; --line:#474c53;
@@ -694,11 +694,12 @@
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
   function networkRate(){
-    var raw = state.rep * 2.5; 
+    var repFloor = state.rep * 2.5; 
+    var networkPeakSum = 0;
     if (state.network && state.network.length > 0) {
-        for (var i=0;i<state.network.length;i++) raw += (state.network[i].peak || 0) * 0.15;
+        for (var i=0;i<state.network.length;i++) networkPeakSum += (state.network[i].peak || 0) * 0.15;
     }
-    return Math.min(raw, activeRate() * 0.40) || raw;
+    return Math.max(repFloor, Math.min(networkPeakSum, activeRate() * 0.40));
   }
   function totalRate(){ return activeRate() + networkRate(); }
 
@@ -1304,7 +1305,7 @@
   document.getElementById("q10").addEventListener("click", function(){ buyQty = 10; this.classList.add("on"); document.getElementById("q1").classList.remove("on"); render(); });
 
   // ==========================================
-  // V4.2 FINAL CORPORATE ISOMETRIC ENGINE (TAP FIXED)
+  // V4.3 MASTER CORPORATE ISOMETRIC ENGINE
   // ==========================================
   var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -1459,7 +1460,6 @@
     return res;
   }
   
-  // WAREHOUSE BOUNDARIES
   staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:34, d:0.5, h:10, c:PALETTES.wall}); 
   staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:0.5, d:6.5, h:10, c:PALETTES.wall});
   staticRacks.push({layer: 1, type:'prism', x:-2, y:7.5, z:0, w:0.5, d:4, h:10, c:PALETTES.wall});
@@ -1467,7 +1467,6 @@
   staticRacks.push({layer: 1, type:'prism', x:-2, y:21.5, z:0, w:0.5, d:4, h:10, c:PALETTES.wall});
   staticRacks.push({layer: 1, type:'prism', x:-2, y:28.5, z:0, w:0.5, d:1.5, h:10, c:PALETTES.wall});
 
-  // MASSIVELY DENSER RACKING (60 Units)
   for(var col=0; col<4; col++) {
     for(var row=0; row<15; row++) {
       var rx = 9 + col * 6.5;
@@ -1476,7 +1475,6 @@
     }
   }
 
-  // OUTBOUND STAGING PALLETS
   var stagingY = [2, 3, 5, 9, 10, 12, 16, 17, 19, 23, 24, 26];
   for (var i = 0; i < stagingY.length; i++) {
       var py = stagingY[i];
@@ -1501,7 +1499,6 @@
         cy_val = ev.changedTouches[0].clientY;
     }
     
-    // Coordinates use CSS logical pixels
     var x = cx_val - rect.left;
     var y = cy_val - rect.top;
     
@@ -1594,7 +1591,6 @@
     var corpMat = PALETTES.slab;
     var roadMat = {top: '#202226', left: '#1a1c20', right: '#141518'};
     
-    // Plot 1: HR Annex
     entities.push({layer: 0, type:'prism', x:3, y:31, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
     entities.push({layer: 0, type:'prism', x:8, y:28, z:-0.55, w:4, d:3, h:0.4, c:roadMat}); 
     if ((state.corp.hr || 0) > 0) {
@@ -1606,7 +1602,6 @@
         entities.push({layer: 0, type:'prism', x:3, y:31, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
     }
 
-    // Plot 2: Dispatch Tower
     entities.push({layer: 0, type:'prism', x:3, y:-19, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
     entities.push({layer: 0, type:'prism', x:8, y:-4, z:-0.55, w:4, d:2, h:0.4, c:roadMat}); 
     if ((state.corp.tower || 0) > 0) {
@@ -1620,7 +1615,6 @@
         entities.push({layer: 0, type:'prism', x:3, y:-19, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
     }
 
-    // Plot 3: Solar Array
     entities.push({layer: 0, type:'prism', x:21, y:-19, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
     entities.push({layer: 0, type:'prism', x:26, y:-4, z:-0.55, w:4, d:2, h:0.4, c:roadMat}); 
     if ((state.corp.solar || 0) > 0) {
@@ -1636,7 +1630,6 @@
         entities.push({layer: 0, type:'prism', x:21, y:-19, z:-0.4, w:15, d:0.2, h:0.1, c:PALETTES.hazard});
     }
 
-    // Plot 4: Server Farm
     entities.push({layer: 0, type:'prism', x:35, y:5, z:-0.5, w:15, d:15, h:0.4, c:corpMat});
     entities.push({layer: 0, type:'prism', x:32, y:10, z:-0.55, w:3, d:4, h:0.4, c:roadMat}); 
     if ((state.corp.server || 0) > 0) {
