@@ -885,15 +885,15 @@
   // ==========================================
   // REWARDED ADS (AdMob via @capacitor-community/admob)
   // ==========================================
-  // One rewarded ad unit per placement. Create each in the AdMob console under this app
-  // and paste the id here. An empty id falls back to granting the reward directly, so an
-  // unfilled placement still works -- it just earns nothing.
+  // One rewarded ad unit per placement, each created under this app in AdMob. The key is
+  // the placement name passed to Ads.show(). An empty id falls back to granting the reward
+  // directly -- that path now only covers the browser build, where there is no plugin.
   var AD_UNITS = {
-    rush:    "ca-app-pub-5195464450607116/7630718166",  // Overtime Shift  -- rush x8, 90s
-    tap:     "",                                        // Double Payout   -- taps x4, 60s
-    reroll:  "",                                        // Reroll contract -- new job, +50% progress
-    favour:  "",                                        // Call in a favour -- +25% REP, +10 pallets
-    offline: ""                                         // Claim Double    -- 2x offline earnings
+    rush:    "ca-app-pub-5195464450607116/7630718166",  // Overtime Shift   -- rush x8, 90s
+    tap:     "ca-app-pub-5195464450607116/7867546956",  // Double Payout    -- taps x4, 60s
+    reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
+    favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
+    offline: "ca-app-pub-5195464450607116/3193699573"   // Claim Double     -- 2x offline earnings
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
