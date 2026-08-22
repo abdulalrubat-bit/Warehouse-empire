@@ -44,6 +44,35 @@ jobs:
           npm install @capacitor-community/admob
           npx cap sync android
 
+      # Ad misconfiguration is invisible until the revenue reports come back empty,
+      # so check it here rather than after the slow Gradle build.
+      - name: Verify ad configuration
+        run: |
+          if grep -q "var AD_TESTING = true;" www/index.html; then
+            echo "::error::AD_TESTING is true. This release would serve Google test ads and earn nothing."
+            exit 1
+          fi
+          UNITS=$(awk '/var AD_UNITS = \{/,/\};/' www/index.html)
+          EMPTY=$(printf '%s\n' "$UNITS" | grep -cE ':[[:space:]]*""' || true)
+          IDS=$(printf '%s\n' "$UNITS" | grep -oE 'ca-app-pub-[0-9]{16}/[0-9]{10}' || true)
+          COUNT=$(printf '%s\n' "$IDS" | grep -c . || true)
+          UNIQ=$(printf '%s\n' "$IDS" | sort -u | grep -c . || true)
+          echo "--- ad units ---"
+          printf '%s\n' "$IDS"
+          echo "found $COUNT unit(s), $UNIQ distinct, $EMPTY empty"
+          if [ "$EMPTY" -ne 0 ]; then
+            echo "::error::$EMPTY ad unit(s) left empty — those placements would earn nothing."
+            exit 1
+          fi
+          if [ "$COUNT" -ne 5 ]; then
+            echo "::error::Expected 5 rewarded ad units, found $COUNT."
+            exit 1
+          fi
+          if [ "$UNIQ" -ne "$COUNT" ]; then
+            echo "::error::Duplicate ad unit id — two placements would report against the same unit."
+            exit 1
+          fi
+
       # The android/ folder is rebuilt from scratch every run, so Capacitor's
       # placeholder icons come back each time. This regenerates every density
       # plus the Android 8+ adaptive layers from assets/icon.png.
