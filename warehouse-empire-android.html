@@ -350,6 +350,18 @@
       <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
       <button id="renameBtn" class="renamebtn">RENAME COMPANY</button>
     </div>
+
+    <div class="office-block">
+      <div class="office-title">GRAPHICS</div>
+      <div class="office-text">Detail level for the site view. <b>Auto</b> measures your device and adjusts on the fly.</div>
+      <div class="qty" style="margin-top:10px; display:flex; gap:6px;">
+        <button id="qAuto">AUTO</button>
+        <button id="qLow">LOW</button>
+        <button id="qMed">MED</button>
+        <button id="qHigh">HIGH</button>
+      </div>
+      <div class="office-text" id="qualityNote" style="margin-top:8px;"></div>
+    </div>
     
     <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--corp);">Corporate Real Estate</div></div>
     <div class="office-block" style="border-left-color: var(--corp); margin-top:0;">
@@ -1428,6 +1440,7 @@
       }
     });
     renderOffice();
+    renderQuality();
   }
 
   // Only touch the tab the player is actually looking at. This used to rewrite every
@@ -1631,6 +1644,25 @@
     saveGame();
   });
 
+  // --- Graphics quality ---
+  function renderQuality(){
+    var on = qualityAuto ? "qAuto" : {low:"qLow", medium:"qMed", high:"qHigh"}[QUALITY_ORDER[qualityIdx]];
+    ["qAuto","qLow","qMed","qHigh"].forEach(function(id){
+      document.getElementById(id).classList.toggle("on", id === on);
+    });
+    document.getElementById("qualityNote").innerHTML =
+      "Currently rendering at <b>" + QUALITY.name + "</b>" + (qualityAuto ? " (auto)" : " (pinned)") + ".";
+  }
+  document.getElementById("qAuto").addEventListener("click", function(){
+    qualityAuto = true; state.quality = null; frameSamples.length = 0;
+    lastQualityChange = 0; renderQuality(); saveGame();
+  });
+  [["qLow","low"],["qMed","medium"],["qHigh","high"]].forEach(function(pair){
+    document.getElementById(pair[0]).addEventListener("click", function(){
+      setQuality(pair[1], true); renderQuality(); saveGame();
+    });
+  });
+
   // --- SFX toggle (button existed with no handler; state.muted was read but never written) ---
   function renderMute(){
     document.getElementById("muteBtn").textContent = state.muted ? "SFX OFF" : "SFX ON";
@@ -1672,7 +1704,7 @@
   // ==========================================
   var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
-  var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9;
+  var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9, TW_BASE = 18;
 
   function sizeCanvas(){
     var w = cv.clientWidth, h = cv.clientHeight;
@@ -1682,10 +1714,21 @@
     CW = w; CH = h;
     cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    TW = Math.max(5, Math.min(8.5, CW / 55));
+    TW_BASE = Math.max(5, Math.min(8.5, CW / 55));
+    applyCamera();
+  }
+
+  // Corporate towers grow well above the racking, so the camera pulls back and drops
+  // as the skyline rises. Without this the tallest buildings clip off the top edge.
+  function applyCamera(){
+    if (!CW) return;
+    var tallest = 0;
+    for (var k in state.corp) if ((state.corp[k] || 0) > tallest) tallest = state.corp[k] || 0;
+    var zoom = 1 / (1 + tallest * 0.032);
+    TW = TW_BASE * zoom;
     TH = TW / 2;
     cx = CW * 0.40;
-    cy = CH * 0.16;
+    cy = CH * (0.16 + Math.min(0.10, tallest * 0.010));
   }
   window.addEventListener("resize", sizeCanvas);
 
@@ -1699,8 +1742,73 @@
     hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
     slab:   { top: '#2a2d34', left: '#24272d', right: '#1a1c20' },
     wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' },
-    corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' }
+    corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' },
+    corpLit:{ top: '#e6c8ff', left: '#c58bff', right: '#8f45e8' },
+    worker: { top: '#ffa24d', left: '#f2620f', right: '#b8460a' },
+    vest:   { top: '#ffe08a', left: '#f0c000', right: '#a88600' },
+    truck:  { top: '#6d757f', left: '#565d66', right: '#383d44' },
+    robot:  { top: '#8fd4ff', left: '#38bdf8', right: '#1a6f96' },
+    gantry: { top: '#9aa3ad', left: '#79818b', right: '#4a5057' },
+    dock:   { top: '#3d434b', left: '#31363d', right: '#23272c' },
+    container:  { top: '#4f7f9e', left: '#3d6580', right: '#26414f' },
+    containerB: { top: '#8a5f4e', left: '#6e4a3c', right: '#452e25' }
   };
+
+  // A little colour variety across pallets so a full rack does not read as one flat mass.
+  var BOX_SHADES = [
+    { top:'#e0b088', left:'#c08a4e', right:'#8a6437' },
+    { top:'#d5a071', left:'#b07c42', right:'#7d5931' },
+    { top:'#e8c39c', left:'#cb9760', right:'#946c3c' },
+    { top:'#cf9a80', left:'#ab7752', right:'#79553a' }
+  ];
+
+  // Graphics quality. Auto-picked from measured draw time on the first few seconds,
+  // overridable from the Office tab. Scales the things that actually cost frames.
+  var QUALITY_LEVELS = {
+    low:    { name:'Low',    rackRows:8,  rackLevels:2, workers:12, forklifts:5,  detail:0.35, shadows:false, depth:false },
+    medium: { name:'Medium', rackRows:10, rackLevels:3, workers:24, forklifts:9,  detail:0.7,  shadows:true,  depth:true  },
+    high:   { name:'High',   rackRows:12, rackLevels:4, workers:38, forklifts:13, detail:1.0,  shadows:true,  depth:true  }
+  };
+  var QUALITY_ORDER = ['low', 'medium', 'high'];
+  var QUALITY = QUALITY_LEVELS.high;
+  var qualityIdx = 2, qualityAuto = true;
+
+  // Rather than guess what a given phone can manage, measure the real draw time and
+  // step the detail down until the frame fits, back up if there is headroom. A manual
+  // choice in the Office tab pins it and turns the adaptation off.
+  var FRAME_BUDGET_MS = 9.0;     // of a 16.7ms frame; the rest is the game loop and compositing
+  var FRAME_HEADROOM_MS = 4.0;
+  var frameSamples = [], lastQualityChange = 0;
+
+  function applyQuality(){
+    QUALITY = QUALITY_LEVELS[QUALITY_ORDER[qualityIdx]];
+    warehouseTier = -1;          // force a rebuild at the new level of detail
+  }
+
+  function setQuality(name, manual){
+    var i = QUALITY_ORDER.indexOf(name);
+    if (i < 0) return;
+    qualityIdx = i;
+    if (manual){ qualityAuto = false; state.quality = name; }
+    applyQuality();
+  }
+
+  function noteFrameTime(ms){
+    if (!qualityAuto) return;
+    frameSamples.push(ms);
+    if (frameSamples.length < 45) return;
+    var sorted = frameSamples.slice().sort(function(a,b){ return a - b; });
+    var median = sorted[sorted.length >> 1];
+    frameSamples.length = 0;
+
+    var now = Date.now();
+    if (now - lastQualityChange < 4000) return;    // hysteresis, so it cannot oscillate
+    if (median > FRAME_BUDGET_MS && qualityIdx > 0){
+      qualityIdx--; applyQuality(); lastQualityChange = now;
+    } else if (median < FRAME_HEADROOM_MS && qualityIdx < QUALITY_ORDER.length - 1){
+      qualityIdx++; applyQuality(); lastQualityChange = now;
+    }
+  }
 
   function update3DPalette() {
     if (state.theme === "nightshift") {
@@ -1735,14 +1843,16 @@
 
   // --- CORPORATE REAL ESTATE PLOT DEFINITIONS ---
   // Must match the tap hit-zones in handleCanvasTap exactly.
+  // Pulled in tight against the warehouse slab (x -2..32, y -2..28) so the towers frame
+  // the site instead of sitting at the canvas edge and clipping off the corners.
   var CORP_PLOTS = {
-    hr:     { gx: 3,  gy: 31, gw: 15, gd: 15 },
-    tower:  { gx: 3,  gy: -19, gw: 15, gd: 15 },
-    solar:  { gx: 21, gy: -19, gw: 15, gd: 15 },
-    server: { gx: 38, gy: 5,  gw: 15, gd: 15 }
+    tower:  { gx: 4,  gy: -13, gw: 11, gd: 11 },
+    solar:  { gx: 19, gy: -13, gw: 11, gd: 11 },
+    server: { gx: 34, gy: 8,   gw: 11, gd: 11 },
+    hr:     { gx: 4,  gy: 30,  gw: 11, gd: 11 }
   };
 
-  function corpHeight(lvl){ return 1.5 + lvl * 1.1; }
+  function corpHeight(lvl){ return 1.2 + lvl * 0.78; }
 
   function corpBuildingEntities(){
     var out = [];
@@ -1755,53 +1865,245 @@
 
       if (lvl <= 0) return;
 
-      // Tower height scales with level; footprint shrinks slightly per level for a "denser" look
-      var footprint = Math.max(4, plot.gw * 0.5);
+      var footprint = plot.gw * 0.52;
       var offset = (plot.gw - footprint) / 2;
       var height = corpHeight(lvl);
+      var bx = plot.gx + offset, by = plot.gy + offset;
       var pal = (lvl >= 10) ? PALETTES.hazard : PALETTES.corp;
 
-      out.push({
-        layer: 2, type:'prism',
-        x: plot.gx + offset, y: plot.gy + offset,
-        z: 0, w: footprint, d: footprint, h: height,
-        c: pal
-      });
+      // Plinth, so the tower meets the ground instead of ending in mid-air.
+      out.push({layer: 2, type:'prism', x: bx-0.5, y: by-0.5, z: 0,
+                w: footprint+1, d: footprint+1, h: 0.5, c: PALETTES.wall});
 
-      // Small rooftop marker for maxed-out (Mastery) buildings
+      // Built as stacked storeys in two alternating shades. A single slab with thin
+      // banding read as sub-pixel specks at this scale; whole storeys read as floors.
+      var storey = height / lvl;
+      for (var fl = 0; fl < lvl; fl++){
+        var lit = (fl % 2 === 1);
+        var inset = lit ? 0.09 : 0;
+        out.push({layer: 2, type:'prism',
+                  x: bx + inset, y: by + inset, z: 0.5 + fl * storey,
+                  w: footprint - inset*2, d: footprint - inset*2, h: storey + 0.02,
+                  c: lit ? (lvl >= 10 ? PALETTES.hivis : PALETTES.corpLit) : pal});
+      }
+
+      // Roof plant, and a beacon once the building is mastered.
+      out.push({layer: 3, type:'prism', x: bx + footprint*0.28, y: by + footprint*0.28,
+                z: 0.5 + height, w: footprint*0.44, d: footprint*0.44, h: 0.55, c: PALETTES.wall});
       if (lvl >= 10) {
-        out.push({
-          layer: 3, type:'prism',
-          x: plot.gx + offset + footprint*0.3, y: plot.gy + offset + footprint*0.3,
-          z: height, w: footprint*0.4, d: footprint*0.4, h: 0.8,
-          c: PALETTES.corp
-        });
+        out.push({layer: 3, type:'prism', x: bx + footprint*0.44, y: by + footprint*0.44,
+                  z: 0.5 + height + 0.55, w: footprint*0.12, d: footprint*0.12, h: 0.9, c: PALETTES.hivis});
       }
     });
     return out;
   }
 
-  // --- PRE-BAKED STATIC GEOMETRY ---
-  var staticRacks = [], interactiveEvents = [], isoParticles = [];
-  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:34, d:0.5, h:10, c:PALETTES.wall});
-  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:0.5, d:30, h:10, c:PALETTES.wall});
-
-  for(var col=0; col<4; col++) {
-    for(var row=0; row<12; row++) {
-      var rx = 9 + col * 6.5;
-      var ry = 2 + row * 2.2;
-      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx+3.6, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0.2, w:4, d:0.6, h:0.1, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx+0.5, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.0, c:PALETTES.box});
-      staticRacks.push({layer: 2, type:'prism', x:rx+2.2, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.1, c:PALETTES.box});
-    }
+  // Painted floor markings are flat, so they draw as a single parallelogram --
+  // a third of the cost of a prism, which matters when there are dozens of them.
+  var floorDecals = [];
+  function drawDecal(d){
+    var a = pt(d.x, d.y, 0), b = pt(d.x + d.w, d.y, 0),
+        c = pt(d.x + d.w, d.y + d.d, 0), e = pt(d.x, d.y + d.d, 0);
+    ctx.fillStyle = d.c;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(e.x, e.y);
+    ctx.fill();
   }
 
-  // Static racks never move, so key and sort them once instead of every frame.
-  function sortKeyOf(e){ return (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0); }
-  staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
-  staticRacks.sort(function(a,b){ return a.sortKey - b.sortKey; });
+  // --- WAREHOUSE GEOMETRY ---
+  // Rebuilt only when the fill tier changes, so it stays pre-sorted and the frame
+  // loop keeps merging it against the small dynamic list instead of re-sorting ~700.
+  var staticRacks = [], interactiveEvents = [], isoParticles = [];
+  var RACK_COLS = 4, RACK_ROWS = 12, RACK_PITCH = 6.5, BAY_W = 4;
+  // NB: `e.layer || 2` was wrong -- layer 0 is falsy, so every ground-plane entity
+  // (slabs, roads, the apron) sorted as if it were layer 2 and painted over things
+  // that should sit on top of it.
+  function sortKeyOf(e){ return (e.layer === undefined ? 2 : e.layer) * 100000 + (e.x + e.y) * 100 + (e.z || 0); }
+
+  // Aisle centres between the rack runs, so vehicles drive lanes instead of
+  // wandering through the racking.
+  var AISLES = [];
+  for (var ai = 0; ai < RACK_COLS; ai++) AISLES.push(9 + ai*RACK_PITCH - 1.25);
+  AISLES.push(9 + RACK_COLS*RACK_PITCH - 1.25);
+
+  // Stable per-slot noise: the same bay always fills in the same order, so the
+  // warehouse grows rather than reshuffling on every rebuild.
+  function slotNoise(a, b, c){
+    var h = (a * 73856093) ^ (b * 19349663) ^ (c * 83492791);
+    h = (h ^ (h >>> 13)) >>> 0;
+    return (h % 1024) / 1024;
+  }
+
+  // How full the site looks, from the fleet. Resets when you sell the business,
+  // so a new site starts bare and visibly fills as you re-equip it.
+  function warehouseFill(){
+    var n = 0;
+    GENS.forEach(function(g){ n += (state.owned[g.id] || 0); });
+    return Math.min(1, Math.pow(n / 260, 0.55));
+  }
+
+  function buildWarehouse(fill, levels){
+    staticRacks.length = 0;
+    staticRacks.push({layer:1, x:-2, y:-2, z:0, w:34,  d:0.5, h:10, c:PALETTES.wall});
+    staticRacks.push({layer:1, x:-2, y:-2, z:0, w:0.5, d:30,  h:10, c:PALETTES.wall});
+
+    var rows = Math.min(RACK_ROWS, QUALITY.rackRows);
+    var upright = 0.9 + levels * 1.35;          // racking itself grows taller
+    for (var col = 0; col < RACK_COLS; col++){
+      for (var row = 0; row < rows; row++){
+        var rx = 9 + col * RACK_PITCH, ry = 2 + row * 2.2, bay = col * RACK_ROWS + row;
+        staticRacks.push({layer:2, x:rx,             y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.steel});
+        staticRacks.push({layer:2, x:rx+BAY_W-0.4,   y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.steel});
+        for (var L = 0; L < levels; L++){
+          var bz = 0.25 + L * 1.35;
+          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:0.6, h:0.12, c:PALETTES.steel});
+          // Kept as two discrete pallets per level. Merging them into one prism saved
+          // ~200 prisms but turned a full rack into a solid brown wall -- the gap is
+          // what makes it read as shelving.
+          for (var slot = 0; slot < 2; slot++){
+            if (slotNoise(bay, L, slot) >= fill) continue;
+            staticRacks.push({layer:2, x:rx + 0.45 + slot*1.75, y:ry + 0.1, z:bz + 0.12,
+                              w:1.25, d:0.4, h:0.85 + slotNoise(bay, L, slot+7) * 0.3,
+                              c: BOX_SHADES[(bay + L + slot) % BOX_SHADES.length]});
+          }
+        }
+      }
+    }
+    buildFitOut(fill);
+
+    staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
+    staticRacks.sort(function(a,b){ return a.sortKey - b.sortKey; });
+  }
+
+  // Everything that makes it read as a working site rather than racking on an empty
+  // slab: dock doors, staged freight, empty pallets, roll cages, the yard, and painted
+  // floor markings. Volume scales with fill, so a new site starts nearly bare.
+  function buildFitOut(fill){
+    floorDecals.length = 0;
+    var LINE  = 'rgba(240,192,0,0.20)';
+    var HATCH = 'rgba(240,192,0,0.13)';
+    var BAY   = 'rgba(255,255,255,0.045)';
+
+    // Aisle guide lines down each rack aisle.
+    for (var a = 0; a < AISLES.length; a++)
+      floorDecals.push({x: AISLES[a] - 0.08, y: 1.5, w: 0.16, d: 25, c: LINE});
+
+    // Hatched keep-clear strip along the dock, and the outbound cross-aisle.
+    for (var hy = 0; hy < 26; hy += 2.2)
+      floorDecals.push({x: 1.2, y: hy, w: 0.9, d: 1.2, c: HATCH});
+    floorDecals.push({x: 3, y: 27.2, w: 28, d: 0.16, c: LINE});
+
+    // Marked-out staging bays on the dock strip.
+    for (var by = 2; by < 26; by += 4.2)
+      floorDecals.push({x: 3.2, y: by, w: 4.6, d: 3.2, c: BAY});
+
+    // --- staged freight in the marked bays, filling as the operation grows ---
+    var staged = Math.round(fill * 12 * QUALITY.detail);
+    for (var sI = 0; sI < staged; sI++){
+      var sy = 2.3 + (sI % 6) * 4.2, sx = 3.5 + Math.floor(sI / 6) * 2.4;
+      var stack = 1 + Math.floor(slotNoise(sI, 40, 1) * 2);
+      for (var sk = 0; sk < stack; sk++)
+        staticRacks.push({layer:2, x:sx, y:sy, z:sk*0.72, w:2.0, d:2.4, h:0.7,
+                          c: BOX_SHADES[(sI + sk) % BOX_SHADES.length]});
+    }
+
+    // --- empty pallet stacks against the back wall ---
+    for (var ep = 0; ep < 4; ep++)
+      staticRacks.push({layer:2, x:4.5 + ep*1.5, y:-1.2, z:0, w:1.2, d:1.0,
+                        h:0.5 + slotNoise(ep, 41, 2) * 1.1, c: BOX_SHADES[3]});
+
+    // --- roll cages parked on the cross-aisle ---
+    var cages = Math.round(fill * 6 * QUALITY.detail);
+    for (var cg = 0; cg < cages; cg++){
+      var cgx = 10 + cg * 3.4;
+      staticRacks.push({layer:2, x:cgx, y:28.6, z:0,   w:1.3, d:1.1, h:0.15, c:PALETTES.gantry});
+      staticRacks.push({layer:2, x:cgx, y:28.6, z:0.15,w:1.3, d:1.1, h:1.3,  c:PALETTES.truck});
+    }
+
+    // --- dock doors down the loading wall ---
+    for (var dd = 0; dd < Math.max(2, Math.round(6 * QUALITY.detail)); dd++){
+      var ddy = 1.5 + dd * 4.3;
+      staticRacks.push({layer:1, x:-2.05, y:ddy, z:0,   w:0.6, d:2.6, h:2.9, c:PALETTES.dock});
+      staticRacks.push({layer:1, x:-2.10, y:ddy, z:2.9, w:0.7, d:2.6, h:0.3, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-0.4,  y:ddy-0.3, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-0.4,  y:ddy+2.6, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
+    }
+
+    // --- the yard ---
+    // Placements below were chosen by projecting candidate coordinates and keeping only
+    // the zones that land inside the viewport; an earlier yard sat at x -22 and only 22%
+    // of it was ever on screen.
+
+    // Inbound: trailers on the dock and a container stack behind them.
+    staticRacks.push({layer:1, x:-9, y:2.2,  z:0.55, w:6.5, d:2.5, h:2.3, c:PALETTES.truck});
+    staticRacks.push({layer:1, x:-9, y:2.2,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:-9, y:7.6,  z:0.55, w:6.5, d:2.5, h:2.3, c:PALETTES.truck});
+    staticRacks.push({layer:1, x:-9, y:7.6,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:-10, y:0.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
+
+    // Outbound court, front-right of the site.
+    var court = Math.max(1, Math.round((2 + fill * 4) * QUALITY.detail));
+    for (var oc = 0; oc < court; oc++){
+      var ocy = 21 + (oc % 3) * 3.6, ocz = Math.floor(oc / 3) * 2.0;
+      staticRacks.push({layer:1, x:36, y:ocy, z:ocz, w:6.5, d:2.6, h:1.9,
+                        c: oc % 2 ? PALETTES.container : PALETTES.containerB});
+      if (ocz === 0) floorDecals.push({x:35.6, y:ocy-0.3, w:7.3, d:0.14, c:'rgba(240,192,0,0.18)'});
+    }
+    staticRacks.push({layer:1, x:44, y:20.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
+
+    // Front apron: marked trailer bays across the bottom of the site.
+    for (var fa = 0; fa < 3; fa++){
+      var fax = 17 + fa * 5.2;
+      floorDecals.push({x:fax, y:30.4, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
+      floorDecals.push({x:fax, y:33.6, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
+      if (fa < 1 + Math.round(fill * 2)){
+        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0.5, w:3.7, d:2.4, h:2.2, c:PALETTES.truck});
+        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0,   w:1.2, d:2.4, h:0.5, c:PALETTES.gantry});
+      }
+    }
+
+    // Site apron. The visible world region works out to roughly x -23..60, y -29..54,
+    // so one big slab under everything replaces the void the camera used to show.
+    staticRacks.push({layer:0, x:-14, y:-8, z:-0.75, w:64, d:52, h:0.5,
+                      c:{top:'#212429', left:'#191b1f', right:'#131518'}});
+
+    // Perimeter fence along the two open sides.
+    staticRacks.push({layer:0, x:-12, y:40.5, z:0, w:58, d:0.18, h:1.5, c:PALETTES.dock});
+    staticRacks.push({layer:0, x:46,  y:-4,   z:0, w:0.18, d:45, h:1.5, c:PALETTES.dock});
+    for (var fp = 0; fp < Math.round(10 * QUALITY.detail); fp++)
+      staticRacks.push({layer:0, x:-11 + fp*6, y:40.4, z:0, w:0.3, d:0.35, h:1.9, c:PALETTES.gantry});
+    for (var fq = 0; fq < Math.round(8 * QUALITY.detail); fq++)
+      staticRacks.push({layer:0, x:45.9, y:-3 + fq*5.5, z:0, w:0.35, d:0.3, h:1.9, c:PALETTES.gantry});
+
+    // Staff parking across the front of the site.
+    for (var pk = 0; pk < Math.max(2, Math.round(6 * QUALITY.detail)); pk++){
+      var pkx = 16 + pk * 2.1;
+      floorDecals.push({x:pkx, y:37, w:0.14, d:3.4, c:'rgba(255,255,255,0.06)'});
+      if (pk < 5){
+        staticRacks.push({layer:0, x:pkx+0.35, y:37.6, z:0,    w:1.4, d:2.3, h:0.5, c:PALETTES.dock});
+        staticRacks.push({layer:0, x:pkx+0.55, y:38.0, z:0.5,  w:0.9, d:1.5, h:0.45,
+                          c: pk % 2 ? PALETTES.truck : PALETTES.container});
+      }
+    }
+
+    // Plant strip along the right-hand side.
+    staticRacks.push({layer:1, x:34, y:1.5, z:0, w:5, d:4.5, h:1.6, c:PALETTES.dock});
+    staticRacks.push({layer:1, x:35, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:37.2, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
+    for (var bin = 0; bin < 3; bin++)
+      staticRacks.push({layer:1, x:34.5 + bin*1.7, y:6.4, z:0, w:1.4, d:1.8, h:1.2,
+                        c: bin === 1 ? PALETTES.containerB : PALETTES.container});
+  }
+
+  var warehouseTier = -1;
+  function syncWarehouse(){
+    var fill = warehouseFill();
+    var levels = Math.max(1, Math.min(QUALITY.rackLevels, 1 + Math.round(fill * 3)));
+    var tier = levels * 1000 + Math.round(fill * 40);      // rebuild in ~2.5% steps
+    if (tier === warehouseTier) return;
+    warehouseTier = tier;
+    buildWarehouse(fill, levels);
+  }
 
   function handleCanvasTap(ev){
     if (!renderActive) return;
@@ -1891,10 +2193,30 @@
   cv.addEventListener("pointerdown", handleCanvasTap);
 
   var animT = 0, lastFrame = 0, nextHotspot = 12;
+  var shadowsThisFrame = [], levelsThisFrame = 1, shadowsDone = true;
+  var depthGrad = null, depthGradH = 0;
+
+  // Ground pass: painted markings, then contact shadows. Both belong after the slab
+  // and before anything standing on it.
+  function flushShadows(){
+    if (shadowsDone) return;
+    shadowsDone = true;
+    for (var fd = 0; fd < floorDecals.length; fd++) drawDecal(floorDecals[fd]);
+    if (!QUALITY.shadows) return;
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    for (var sh = 0; sh < shadowsThisFrame.length; sh++){
+      var s0 = shadowsThisFrame[sh], sp = pt(s0.x, s0.y, 0);
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, s0.r * TW * 1.15, s0.r * TH * 1.15, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+  function emit(e){ if (!shadowsDone && e.sortKey >= 200000) flushShadows(); drawPrism(e); }
 
   function frame(ts){
     requestAnimationFrame(frame);
     if (!renderActive || !CW || CW === 0) return;
+    var frameT0 = performance.now();
 
     var dt = Math.min(0.05, (ts - lastFrame) / 1000 || 0);
     lastFrame = ts; animT += dt;
@@ -1903,42 +2225,102 @@
     ctx.fillStyle = '#181a1f';
     ctx.fillRect(0, 0, CW, CH);
 
+    syncWarehouse();
+    applyCamera();
+    shadowsThisFrame.length = 0;
+    levelsThisFrame = Math.max(1, Math.min(QUALITY.rackLevels, 1 + Math.round(warehouseFill() * 3)));
+
     var entities = corpBuildingEntities();
 
     // Slabs & Roads
     entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
     entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:{top:'#1c1e22', left:'#141619', right:'#0f1013'}});
 
-    // Parked Trucks
-    entities.push({layer: 1, type:'prism', x:-12, y:4.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
-    entities.push({layer: 1, type:'prism', x:-12, y:18.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
-
-    // Elevated Conveyor Belt
-    if ((state.owned.conveyor || 0) > 0) {
-      entities.push({layer: 2, type:'prism', x:0, y:1.0, z:4, w:32, d:1.5, h:0.2, c:PALETTES.steel});
-      for (var i3 = 0; i3 < 5; i3++) {
-        var bx_conv = ((animT * 8 * speed) + i3 * 6.5) % 34 - 2;
-        if (bx_conv > 0 && bx_conv < 31) {
-          entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:4.2, w:1.0, d:1.0, h:1.0, c:PALETTES.box});
-        }
+    // Elevated Conveyor Belt -- length and box density scale with how many lines you run.
+    var convN = state.owned.conveyor || 0;
+    if (convN > 0) {
+      var convLen = Math.min(32, 12 + convN * 1.6);
+      entities.push({layer: 2, type:'prism', x:0, y:1.0, z:4, w:convLen, d:1.5, h:0.2, c:PALETTES.steel});
+      for (var cs = 0; cs < convLen; cs += 6.5)           // support legs, so it stops floating
+        entities.push({layer: 2, type:'prism', x:cs, y:1.35, z:0, w:0.35, d:0.35, h:4, c:PALETTES.gantry});
+      var convBoxes = Math.min(9, 2 + Math.floor(convN / 3));
+      for (var i3 = 0; i3 < convBoxes; i3++) {
+        var bx_conv = ((animT * 8 * speed) + i3 * (convLen / convBoxes)) % (convLen + 2) - 2;
+        if (bx_conv > 0 && bx_conv < convLen - 1)
+          entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:4.2, w:1.0, d:1.0, h:1.0,
+                         c:BOX_SHADES[i3 % BOX_SHADES.length]});
       }
     }
 
-    // Workers
-    var maxW = Math.min(24, Math.max(3, (state.owned.picker||0) + (state.owned.trolley||0)));
+    // Workers -- two prisms each (legs + hi-vis torso) so they read as people, and they
+    // walk the aisles rather than drifting through the racking.
+    var crew = (state.owned.picker||0) + (state.owned.trolley||0);
+    var maxW = Math.min(QUALITY.workers, Math.max(3, crew));
     for(var iw=0; iw<maxW; iw++) {
-      var wy = 3.9 + (iw % 12) * 2.2;
-      var wx = 16.0 + Math.sin(animT*0.6*speed + iw) * 12.0;
-      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.8, w:0.8, d:0.8, h:0.8, c:PALETTES.hivis});
+      var phase = animT * (0.42 + (iw % 5) * 0.05) * speed + iw * 1.7;
+      var wx, wy;
+      if (iw % 3 === 0) {
+        // Every third hand works the open dock strip between the trucks and the racking,
+        // where tall racks cannot hide them.
+        wx = 3.5 + ((iw * 5) % 5);
+        wy = 13.5 + Math.sin(phase) * 11.5;
+      } else {
+        var lane = AISLES[iw % AISLES.length];
+        wy = 13.5 + Math.sin(phase) * 10.5;
+        wx = lane + Math.sin(phase * 0.5 + iw) * 0.7;
+      }
+      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0,    w:0.5, d:0.5, h:0.55, c:PALETTES.truck});
+      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.55, w:0.6, d:0.6, h:0.6,  c:PALETTES.vest});
+      shadowsThisFrame.push({x:wx, y:wy, r:0.5});
     }
 
-    // Forklifts
-    var maxF = Math.min(12, Math.max(1, (state.owned.forklift||0) + (state.owned.reach||0)));
+    // Forklifts -- body, mast and a carried pallet, running the aisles.
+    var fleet = (state.owned.forklift||0) + (state.owned.reach||0);
+    var maxF = Math.min(QUALITY.forklifts, Math.max(1, fleet));
     for(var ifk=0; ifk<maxF; ifk++) {
-      var fx = [7.0, 14.0, 21.0, 28.0][ifk % 4];
-      var fy = 14.5 + Math.sin(animT*0.7*speed + ifk) * 10.0;
-      entities.push({layer: 2, type:'prism', x:fx, y:fy, z:0.3, w:1.6, d:1.2, h:1.0, c:PALETTES.hivis});
-      entities.push({layer: 2, type:'prism', x:fx-0.4, y:fy+0.3, z:0.3, w:0.8, d:1.0, h:0.8, c:PALETTES.box});
+      var flane = AISLES[ifk % AISLES.length];
+      var fdir = (ifk % 2) ? 1 : -1;
+      var fy = 13.5 + Math.sin(animT * 0.5 * speed + ifk * 2.1) * fdir * 10.0;
+      entities.push({layer: 2, type:'prism', x:flane-0.6, y:fy,     z:0,   w:1.5, d:1.1, h:0.95, c:PALETTES.hivis});
+      entities.push({layer: 2, type:'prism', x:flane+0.7, y:fy+0.1, z:0,   w:0.25,d:0.9, h:2.4,  c:PALETTES.gantry});
+      entities.push({layer: 2, type:'prism', x:flane+0.5, y:fy+0.1, z:0.5, w:1.0, d:0.9, h:0.8,
+                     c:BOX_SHADES[ifk % BOX_SHADES.length]});
+      shadowsThisFrame.push({x:flane, y:fy+0.5, r:1.1});
+    }
+
+    // Sorting Robots -- flat AGVs shuttling across the cross-aisle at the dock end.
+    var sortN = state.owned.sorter || 0;
+    if (sortN > 0) {
+      var bots = Math.min(10, 1 + Math.floor(sortN / 2));
+      for (var ib = 0; ib < bots; ib++) {
+        var bt = (animT * 0.35 * speed + ib / bots) % 1;
+        var bx = 5 + bt * 26;
+        var by = 27.5 - (ib % 2) * 1.6;
+        entities.push({layer: 2, type:'prism', x:bx, y:by, z:0, w:1.2, d:0.9, h:0.3, c:PALETTES.robot});
+        entities.push({layer: 2, type:'prism', x:bx+0.15, y:by+0.05, z:0.3, w:0.9, d:0.8, h:0.7,
+                       c:BOX_SHADES[ib % BOX_SHADES.length]});
+        shadowsThisFrame.push({x:bx+0.5, y:by+0.4, r:0.8});
+      }
+    }
+
+    // Automated Crane -- a gantry that actually travels the length of the racking.
+    var craneN = state.owned.crane || 0;
+    if (craneN > 0) {
+      var gy = 13.5 + Math.sin(animT * 0.22 * speed) * 11.0;
+      var gh = 1.0 + levelsThisFrame * 1.35 + 1.2;
+      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:gh,  w:27,  d:0.7, h:0.5, c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:33, y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      var hoistX = 12 + (Math.sin(animT * 0.5 * speed) * 0.5 + 0.5) * 16;
+      entities.push({layer: 3, type:'prism', x:hoistX, y:gy, z:gh-1.4, w:1.4, d:0.7, h:1.4, c:PALETTES.hivis});
+    }
+
+    // Distribution Hub -- outbound bays along the dock, built out as hubs are added.
+    var hubN = state.owned.hub || 0;
+    for (var ih = 0; ih < Math.min(4, hubN); ih++) {
+      var hy = 3 + ih * 6.5;
+      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:0, w:7, d:4.5, h:3.2, c:PALETTES.wall});
+      entities.push({layer: 1, type:'prism', x:-3.2, y:hy+0.6, z:0.6, w:0.6, d:3.3, h:2.2, c:PALETTES.hivis});
     }
 
     // Interactive Spills/Audits
@@ -1965,12 +2347,32 @@
     for (var si = 0; si < entities.length; si++) entities[si].sortKey = sortKeyOf(entities[si]);
     entities.sort(function(a,b){ return a.sortKey - b.sortKey; });
 
+    // Contact shadows belong on the ground: after the layer 0/1 slabs and roads, before
+    // anything standing on them. sortKey packs layer as layer*100000, so layer 2 starts
+    // at 200000 -- flush the shadows the first time the merged stream crosses it.
+    shadowsDone = false;
+
     var ia = 0, ib = 0;
     while (ia < staticRacks.length || ib < entities.length){
-      if (ib >= entities.length) drawPrism(staticRacks[ia++]);
-      else if (ia >= staticRacks.length) drawPrism(entities[ib++]);
-      else if (staticRacks[ia].sortKey <= entities[ib].sortKey) drawPrism(staticRacks[ia++]);
-      else drawPrism(entities[ib++]);
+      if (ib >= entities.length) emit(staticRacks[ia++]);
+      else if (ia >= staticRacks.length) emit(entities[ib++]);
+      else if (staticRacks[ia].sortKey <= entities[ib].sortKey) emit(staticRacks[ia++]);
+      else emit(entities[ib++]);
+    }
+    flushShadows();   // nothing above layer 1 this frame
+
+    // Depth cue: distance maps to screen Y in isometric, so one gradient fill gives
+    // aerial perspective for the cost of a single rect.
+    if (QUALITY.depth){
+      if (!depthGrad || depthGradH !== CH){
+        depthGrad = ctx.createLinearGradient(0, 0, 0, CH);
+        depthGrad.addColorStop(0,    'rgba(24,26,31,0.55)');
+        depthGrad.addColorStop(0.45, 'rgba(24,26,31,0.10)');
+        depthGrad.addColorStop(1,    'rgba(24,26,31,0.00)');
+        depthGradH = CH;
+      }
+      ctx.fillStyle = depthGrad;
+      ctx.fillRect(0, 0, CW, CH);
     }
 
     // Particle Handling
@@ -1988,6 +2390,8 @@
             ctx.globalAlpha = 1.0;
         }
     }
+
+    noteFrameTime(performance.now() - frameT0);
   }
 
   // --- TICKER LOOP (100ms) ---
@@ -2013,7 +2417,9 @@
 
   function startGame() {
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
-    renderCompany(); renderMute(); update3DPalette(); render();
+    renderCompany(); renderMute(); update3DPalette();
+    if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
+    renderQuality(); render();
     requestAnimationFrame(frame);
     setTimeout(function(){
       var sp = document.getElementById("splash");
