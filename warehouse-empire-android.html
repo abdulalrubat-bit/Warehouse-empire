@@ -153,6 +153,7 @@
   .up.can{border-left-color:var(--cash); background:linear-gradient(90deg,rgba(116,196,110,.08),var(--panel) 45%);}
   .up.can .ucost{color:var(--cash);}
   .up.lock{opacity:.4; filter:grayscale(.7); cursor:default;}
+  .adbtn.cooling, .rerollbtn.cooling{opacity:.45; filter:grayscale(.6); cursor:default;}
   .up.owned{border-left-color:var(--hazard); opacity:1;}
 
   .badge{text-align:center; padding:9px 4px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:8.5px; color:var(--dim);}
@@ -269,7 +270,7 @@
     </div>
 
     <div class="adrow" id="adRow">
-      <button id="rushAdBtn" class="adbtn">Overtime Shift<small>WATCH AD · RUSH ×8 FOR 90s</small></button>
+      <button id="rushAdBtn" class="adbtn">Overtime Shift<small id="rushAdSub">WATCH AD · RUSH ×8 FOR 90s</small></button>
       <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
     </div>
 
@@ -283,7 +284,7 @@
         <span id="contractProg">—</span>
         <span class="creward" id="contractReward"></span>
       </div>
-      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small>WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
+      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
     </div>
 
     <div class="shift">
@@ -429,26 +430,55 @@
     </div>
   </div>
 
+  <div id="modalRename" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Rename Company</div>
+      <div class="modal-sub">Trading name shown across your sites. Up to 28 characters.</div>
+      <input type="text" id="renameInput" maxlength="28" style="width:100%; padding:10px; margin-bottom:14px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); text-align:center; font-size:16px; border-radius:4px;" placeholder="FIRST SHIFT LOGISTICS" autocomplete="off" autocorrect="off">
+      <button class="modal-btn" id="btnConfirmRename">SAVE NAME</button>
+      <button class="renamebtn" id="btnCancelRename" style="margin-top:12px;">Cancel</button>
+    </div>
+  </div>
+
   <div id="toast"></div>
 
 <script>
 (function(){
   "use strict";
 
+  var SAVE_KEY = "warehouse-empire-save";
+
+  function dropLegacy(){ try { localStorage.removeItem(SAVE_KEY); } catch(e) {} }
+
   if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
     var Prefs = window.Capacitor.Plugins.Preferences;
     window.storage = {
       get: function(k) { return Prefs.get({ key: k }); },
-      set: function(k, v) { return Prefs.set({ key: k, value: v }); }
-    };
-    try {
-      var legacyData = localStorage.getItem("warehouse-empire-save");
-      if (legacyData) {
-        Prefs.set({ key: "warehouse-empire-save", value: legacyData }).then(function(){
-          localStorage.removeItem("warehouse-empire-save");
-        });
+      set: function(k, v) { return Prefs.set({ key: k, value: v }); },
+      remove: function(k) {
+        // Clear the legacy localStorage copy too, in case an earlier migration never completed.
+        dropLegacy();
+        return Prefs.remove({ key: k });
       }
-    } catch(e) {}
+    };
+
+    // Migrate a legacy localStorage save into Preferences -- but never over the top of an
+    // existing native save. A leftover legacy copy (previous migration interrupted, or its
+    // removeItem failed) is older than what Preferences holds, so it must lose.
+    // storage.ready gates loadGame so the read cannot race the migration write.
+    window.storage.ready = (function(){
+      var legacy = null;
+      try { legacy = localStorage.getItem(SAVE_KEY); } catch(e) {}
+      if (!legacy) return Promise.resolve();
+
+      return Prefs.get({ key: SAVE_KEY }).then(function(res){
+        if (res && res.value){ dropLegacy(); return; }          // native save wins
+        return Prefs.set({ key: SAVE_KEY, value: legacy }).then(dropLegacy);
+      }).catch(function(e){
+        // Leave the legacy copy alone so a later launch can retry the migration.
+        console.error("save migration deferred", e);
+      });
+    })();
   } else {
     window.storage = {
       get: function(k){
@@ -458,14 +488,21 @@
       set: function(k, v){
         try { localStorage.setItem(k, v); return Promise.resolve(); }
         catch(e){ return Promise.reject(e); }
+      },
+      remove: function(k){
+        try { localStorage.removeItem(k); return Promise.resolve(); }
+        catch(e){ return Promise.reject(e); }
       }
     };
+    window.storage.ready = Promise.resolve();
   }
 
-  var SAVE_KEY = "warehouse-empire-save";
   var COST_GROWTH = 1.15;
+  var NETWORK_CAP = 25;
   var OFFLINE_CAP_HOURS = 8;
   var renderActive = true;
+  var wiping = false;
+  var dailyPending = false;
 
   var haptic = function(type) {
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
@@ -499,7 +536,7 @@
     } catch(e){}
   }
 
-  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', RS = 'var(--research)', CP = 'var(--corp)';
+  var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', CP = 'var(--corp)';
   var ICONS = {
     glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/><rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/><rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/><rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>',
     trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/><rect x="3" y="14" width="15" height="2" fill="'+S+'"/><rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/><circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
@@ -521,7 +558,6 @@
     box:'<rect x="3.5" y="6" width="17" height="13" fill="'+BX+'"/><rect x="3.5" y="11" width="17" height="1.8" fill="'+BXD+'"/><rect x="11" y="6" width="2" height="13" fill="'+BXD+'"/>',
     flame:'<path d="M12 2c1 4-3 5-3 9a3 3 0 0 0 6 0c0-1.6-1-2.4-1-4 2.4 1.6 4 4 4 7a6 6 0 0 1-12 0c0-5 4-7 6-12z" fill="var(--bad)"/>',
     moon:'<path d="M17 15.5A8 8 0 0 1 8.5 7a7 7 0 1 0 8.5 8.5z" fill="'+HZ+'"/>',
-    chip:'<rect x="5" y="5" width="14" height="14" rx="2" fill="'+RS+'"/><rect x="8" y="8" width="8" height="8" fill="#1c1e21"/><rect x="2" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="2" y="15" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="7" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="11" width="3" height="1.5" fill="'+S+'"/><rect x="19" y="15" width="3" height="1.5" fill="'+S+'"/>',
     building:'<path d="M4 22V6l8-4 8 4v16H4zm4-4h2v-2H8v2zm0-4h2v-2H8v2zm0-4h2V8H8v2zm4 8h2v-2h-2v2zm0-4h2v-2h-2v2zm0-4h2V8h-2v2z" fill="'+CP+'"/>'
   };
 
@@ -615,7 +651,7 @@
   }
 
   var state = {
-    money: 0, total: 0, lifetime: 0, rep: 0, taps: 0, rp: 0,
+    money: 0, total: 0, lifetime: 0, rep: 0, taps: 0,
     owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
     corp: { hr: 0, tower: 0, solar: 0, server: 0 },
     site: "general", sku: "fmcg", network: [], muted: false,
@@ -646,10 +682,19 @@
     if (count >= 25) m *= 2; if (count >= 50) m *= 2; if (count >= 75) m *= 1.5; if (count >= 100) m *= 2;
     return m;
   }
+  // upMult used to rescan all 26 upgrades on every call, and it is called per generator
+  // inside grossRate/wageBill -- several thousand iterations per render at 10 renders/sec.
+  // Owned upgrades only change on purchase, sale and load, so cache and invalidate.
+  var upMultCache = null;
+  function invalidateUpMult(){ upMultCache = null; }
   function upMult(target){
-    var m = 1;
-    UPGRADES.forEach(function(u){ if (state.upgrades[u.id] && u.target === target) m *= u.mult; });
-    return m;
+    if (!upMultCache){
+      upMultCache = {};
+      UPGRADES.forEach(function(u){
+        if (state.upgrades[u.id]) upMultCache[u.target] = (upMultCache[u.target] || 1) * u.mult;
+      });
+    }
+    return upMultCache[target] || 1;
   }
   function getSku(){ for(var i=0;i<SKUS.length;i++) if(SKUS[i].id === state.sku) return SKUS[i]; return SKUS[0]; }
 
@@ -666,15 +711,44 @@
   function boostActive(){ return Date.now() < boostUntil; }
   function incidentActive(){ return Date.now() < incidentSpeedUntil; }
 
+  // Ambient rush orders. They turn up on their own; Radio Dispatch makes them far more frequent.
+  // Kept shorter than the paid rushes (Call a Rush 30s, Overtime Shift 90s) so those stay worthwhile.
+  var RUSH_GAP = { base: [480000, 840000], radio: [120000, 240000] };
+  var RUSH_DURATION = 20000;
+  var nextRushAt = 0;
+
+  function tickAmbientRush(){
+    var now = Date.now();
+    var gap = state.perks.radio ? RUSH_GAP.radio : RUSH_GAP.base;
+
+    // Covers the first schedule, and pulls an already-queued wait forward the moment Radio is bought.
+    if (!nextRushAt || nextRushAt > now + gap[1]){
+      nextRushAt = now + gap[0] + Math.random() * (gap[1] - gap[0]);
+      return;
+    }
+    if (now < nextRushAt) return;
+
+    // Don't burn an ambient rush on top of a longer boost the player already paid for.
+    if (boostActive()){ nextRushAt = boostUntil + 1000; return; }
+
+    boostUntil = now + RUSH_DURATION;
+    nextRushAt = now + gap[0] + Math.random() * (gap[1] - gap[0]);
+    sfx("upgrade");
+    showToast("Rush order on the dock! <b>×8 output for " + (RUSH_DURATION / 1000) + "s</b>.");
+  }
+
+  // Throughput drifts on a slow wall-clock sine. sin() already bounds this to 0.85-1.15,
+  // so the Math.min/Math.max that used to wrap it could never fire.
+  var FLOW_SWING = 0.15;
   function flowEfficiency(){
     var units = 0; GENS.forEach(function(g){ units+=(state.owned[g.id]||0); });
     if (units === 0) return 1.0;
-    return Math.min(1.15, Math.max(0.70, 1.0 + (Math.sin(Date.now() / 8000) * 0.15)));
+    return 1.0 + Math.sin(Date.now() / 8000) * FLOW_SWING;
   }
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * upMult("all") * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -702,7 +776,7 @@
 
   function tapValue(){
       var basePassiveVal = (totalRate() * 0.05) / Math.sqrt(Math.max(1, comboMult()));
-      return (1 + basePassiveVal) * upMult("tap") * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
+      return (1 + basePassiveVal) * upMult("tap") * (state.perks.gloves ? 1.25 : 1) * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
   }
 
   function costOf(g, qty){
@@ -717,12 +791,25 @@
   function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
   function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
 
-  function saveGame(){ state.lastSeen = Date.now(); window.storage.set(SAVE_KEY, JSON.stringify(state)); }
+  function saveGame(){ if (wiping) return; state.lastSeen = Date.now(); window.storage.set(SAVE_KEY, JSON.stringify(state)); }
 
   function loadGame(){
-    return window.storage.get(SAVE_KEY).then(function(res){
-      if (res && res.value){ var s = JSON.parse(res.value); Object.assign(state, s); }
+    // storage.ready settles the legacy->Preferences migration before we read.
+    return window.storage.ready.then(function(){
+      return window.storage.get(SAVE_KEY);
+    }).then(function(res){
+      if (res && res.value){
+        try {
+          Object.assign(state, JSON.parse(res.value));
+        } catch(e){
+          // Unreadable save. Park a copy so it is not lost to the next autosave, then start fresh.
+          console.error("corrupt save, starting fresh", e);
+          try { window.storage.set(SAVE_KEY + "-corrupt", res.value); } catch(e2){}
+          showToast("Save file was unreadable — starting a fresh site.");
+        }
+      }
       if (!state.upgrades) state.upgrades = {};
+      invalidateUpMult();
       if (!state.perks) state.perks = {};
       if (!state.ach) state.ach = {};
       if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
@@ -745,8 +832,11 @@
       });
       document.getElementById("btnConfirmWipe").addEventListener("click", function(){
         if (document.getElementById("wipeInput").value === "WIPE"){
-          localStorage.removeItem(SAVE_KEY);
-          location.reload();
+          // Stop the autosave/ticker from writing the live state back out before the reload lands.
+          wiping = true;
+          var reload = function(){ location.reload(); };
+          try { window.storage.remove(SAVE_KEY).then(reload, reload); }
+          catch(e){ reload(); }
         } else {
           showToast("Type WIPE to confirm.");
         }
@@ -770,17 +860,19 @@
           newClaim.addEventListener("click", function(){
             state.money += earned; state.total += earned; state.lifetime += earned;
             document.getElementById("modalOffline").hidden = true;
-            sfx("buy"); render(); saveGame();
+            sfx("buy"); render(); saveGame(); showPendingDaily();
           });
 
           newDouble.addEventListener("click", function(){
             newDouble.disabled = true;
-            Ads.show(function(){
+            Ads.show("offline", function(){
               var doubled = earned * 2;
               state.money += doubled; state.total += doubled; state.lifetime += doubled;
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
-              render(); saveGame();
+              render(); saveGame(); showPendingDaily();
+            }, function(){
+              newDouble.disabled = false;   // ad failed: let them retry or claim standard
             });
           });
         }
@@ -790,19 +882,100 @@
     }).catch(function(e){ console.error(e); });
   }
 
+  // ==========================================
+  // REWARDED ADS (AdMob via @capacitor-community/admob)
+  // ==========================================
+  // One rewarded ad unit per placement, each created under this app in AdMob. The key is
+  // the placement name passed to Ads.show(). An empty id falls back to granting the reward
+  // directly -- that path now only covers the browser build, where there is no plugin.
+  var AD_UNITS = {
+    rush:    "ca-app-pub-5195464450607116/7630718166",  // Overtime Shift   -- rush x8, 90s
+    tap:     "ca-app-pub-5195464450607116/7867546956",  // Double Payout    -- taps x4, 60s
+    reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
+    favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
+    offline: "ca-app-pub-5195464450607116/3193699573"   // Claim Double     -- 2x offline earnings
+  };
+
+  // Serve Google's test ads while developing. Shipping this as true earns nothing;
+  // shipping real ads to your own device without it risks an AdMob policy strike.
+  var AD_TESTING = false;
+
   var Ads = (function(){
-    var plugin = null;
-    function init(){ preload(); }
-    function preload(){ }
-    function show(onReward){ onReward(); return true; }
-    return { init:init, preload:preload, show:show };
+    var plugin = null, ready = false, inFlight = false;
+
+    function init(){
+      var P = window.Capacitor && window.Capacitor.Plugins;
+      plugin = (P && P.AdMob) || null;
+      if (!plugin) return;                   // browser build -- show() falls back to a direct grant
+      plugin.initialize({ initializeForTesting: AD_TESTING })
+        .then(function(){ ready = true; })
+        .catch(function(e){ console.error("AdMob init failed", e); });
+    }
+
+    // onReward fires only when the ad is genuinely earned. onFail lets the caller undo
+    // any UI it disabled up front.
+    function show(placement, onReward, onFail){
+      var unit = AD_UNITS[placement];
+      function fail(msg){
+        inFlight = false;
+        if (msg) showToast(msg);
+        if (onFail) onFail();
+      }
+
+      // No plugin, not initialised, or this placement has no unit yet.
+      if (!plugin || !ready || !unit){ onReward(); return true; }
+      if (inFlight){ return false; }
+      inFlight = true;
+      showToast("Loading ad\u2026");
+
+      plugin.prepareRewardVideoAd({ adId: unit, isTesting: AD_TESTING })
+        .then(function(){ return plugin.showRewardVideoAd(); })
+        .then(function(reward){
+          inFlight = false;
+          // The plugin resolves with a reward item only if the video was watched through.
+          if (reward) onReward();
+          else fail("Ad closed early \u2014 no reward.");
+        })
+        .catch(function(e){
+          // No fill, no network, or a load error. The reward is deliberately NOT granted:
+          // granting on failure would make airplane mode the fastest way to farm rewards.
+          console.error("rewarded ad failed", e);
+          fail("No ad available right now \u2014 try again shortly.");
+        });
+      return true;
+    }
+
+    return { init:init, show:show };
   })();
+
+  // Reward buttons had no cooldown at all -- the unused `if (rush.disabled) return;`
+  // guard shows one was intended. The cooldown starts inside the reward callback, so a
+  // failed or skipped ad does not burn it.
+  var AD_COOLDOWN = { rushAdBtn: 180000, dblAdBtn: 180000, rerollBtn: 120000 };
+  var adReadyAt = {};
+  var adSubText = {};
+  function adReady(id){ return Date.now() >= (adReadyAt[id] || 0); }
+  function startAdCooldown(id){ adReadyAt[id] = Date.now() + (AD_COOLDOWN[id] || 0); }
+  function renderAdButtons(){
+    for (var id in AD_COOLDOWN){
+      var btn = document.getElementById(id);
+      if (!btn) continue;
+      var sub = document.getElementById(id.replace("Btn","Sub"));
+      if (sub && adSubText[id] === undefined) adSubText[id] = sub.innerHTML;
+      var ready = adReady(id);
+      btn.disabled = !ready;
+      btn.classList.toggle("cooling", !ready);
+      if (sub) sub.innerHTML = ready ? adSubText[id]
+        : ("AVAILABLE IN " + Math.ceil((adReadyAt[id] - Date.now())/1000) + "s");
+    }
+  }
 
   function bindAdButtons(){
     var rush = document.getElementById("rushAdBtn");
     if (rush) rush.addEventListener("click", function(){
-      if (rush.disabled) return;
-      Ads.show(function(){
+      if (rush.disabled || !adReady("rushAdBtn")) return;
+      Ads.show("rush", function(){
+        startAdCooldown("rushAdBtn");
         boostUntil = Math.max(boostUntil, Date.now() + 90000);
         sfx("upgrade"); showToast("Overtime Shift! <b>Rush ×8 for 90 seconds</b>.");
         render(); saveGame();
@@ -811,7 +984,8 @@
 
     var rr = document.getElementById("rerollBtn");
     if (rr) rr.addEventListener("click", function(){
-      Ads.show(function(){
+      Ads.show("reroll", function(){
+        startAdCooldown("rerollBtn");
         state.contract = newContract();
         state.contract.prog = state.contract.goal * 0.5;
         sfx("upgrade"); showToast("Contract Board refreshed with +50% Progress.");
@@ -819,10 +993,25 @@
       });
     });
 
+    var dbl = document.getElementById("dblAdBtn");
+    if (dbl){
+      dbl.hidden = false;
+      document.getElementById("dblAdSub").textContent = "WATCH AD \u00b7 TAPS \u00d74 FOR " + (TAP_BOOST_MS/1000) + "s";
+      dbl.addEventListener("click", function(){
+        if (tapBoostActive() || !adReady("dblAdBtn")) return;
+        Ads.show("tap", function(){
+          startAdCooldown("dblAdBtn");
+          tapBoostUntil = Date.now() + TAP_BOOST_MS;
+          sfx("upgrade"); showToast("Double Payout! <b>Hand picks \u00d74 for " + (TAP_BOOST_MS/1000) + "s</b>.");
+          render(); saveGame();
+        });
+      });
+    }
+
     var ra = document.getElementById("repAdBtn");
     if (ra) ra.addEventListener("click", function(){
       if (pendingRep() < 1) return;
-      Ads.show(function(){
+      Ads.show("favour", function(){
         repBonusArmed = true; sfx("upgrade");
         showToast("Favour armed — sale gets <b>+25% REP &amp; +10 PAL</b>.");
         renderOffice(); render(); saveGame();
@@ -836,8 +1025,17 @@
     if (now - state.lastDailyClaim >= DAY_MS){
       state.dailyStreak = (now - state.lastDailyClaim <= DAY_MS * 2) ? (state.dailyStreak % 7) + 1 : 1;
       renderDailyCalendar();
+      // Both modals share a z-index, so showing this one under the offline modal would
+      // strand it. Wait for the offline claim to close first.
+      if (!document.getElementById("modalOffline").hidden){ dailyPending = true; return; }
       document.getElementById("modalDaily").hidden = false;
     }
+  }
+
+  function showPendingDaily(){
+    if (!dailyPending) return;
+    dailyPending = false;
+    document.getElementById("modalDaily").hidden = false;
   }
 
   function renderDailyCalendar(){
@@ -948,10 +1146,11 @@
       b.innerHTML = plate(u.ic)+'<div><div class="uname">'+u.name+'</div><div class="udesc">'+u.desc+'</div></div><div class="ucost">'+money(u.cost)+'</div>';
       b.addEventListener("click", function(){
         if (state.money < u.cost || state.upgrades[u.id]) return;
-        state.money -= u.cost; state.upgrades[u.id] = true; sfx("upgrade");
+        if (!upgradeUnlocked(u)){ showToast("Requires <b>" + u.reqCount + " \u00d7 " + u.reqGen + "</b> first."); return; }
+        state.money -= u.cost; state.upgrades[u.id] = true; invalidateUpMult(); sfx("upgrade");
         showToast("<b>" + u.name + "</b> installed."); render(); saveGame();
       });
-      shop.appendChild(b); upEls[u.id] = b;
+      shop.appendChild(b); upEls[u.id] = { btn: b, costEl: b.querySelector(".ucost") };
     });
 
     var pList = document.getElementById("perkList"); pList.innerHTML = "";
@@ -959,12 +1158,13 @@
       var b = document.createElement("button"); b.className = "up";
       b.innerHTML = plate(p.ic) + '<div><div class="uname">'+p.name+'</div><div class="udesc">'+p.desc+'</div></div><div class="ucost">'+p.cost+' PAL</div>';
       b.addEventListener("click", function(){
+        if (!perkUnlocked(p)){ showToast("Requires <b>" + perkName(p.req) + "</b> first."); return; }
         if(state.pallets >= p.cost && !state.perks[p.id]){
           state.pallets -= p.cost; state.perks[p.id] = true; sfx("upgrade");
           showToast("Perk unlocked: <b>" + p.name + "</b>."); render(); saveGame();
         }
       });
-      pList.appendChild(b); perkBtnEls[p.id] = b;
+      pList.appendChild(b); perkBtnEls[p.id] = { btn: b, costEl: b.querySelector(".ucost") };
     });
 
     var sList = document.getElementById("supplyList"); sList.innerHTML = "";
@@ -996,6 +1196,7 @@
           if (state.pallets >= t.cost || t.cost === 0) {
             if (t.cost > 0) state.pallets -= t.cost;
             state.theme = t.id;
+            update3DPalette();
             sfx("upgrade");
             showToast("Livery applied: <b>" + t.name + "</b>.");
             render();
@@ -1085,59 +1286,60 @@
     render(); saveGame();
   }
 
-  function render(){
-    el.money.textContent = money(state.money); el.rate.textContent = money(totalRate());
+  // Requirement gating. reqGen/reqCount (upgrades) and req (perks) were defined on every
+  // entry but never enforced, so anything was buyable from turn one, and the .up.can /
+  // .up.lock / .up.owned styles were never applied to a single button.
+  function upgradeUnlocked(u){ return !u.reqGen || (state.owned[u.reqGen] || 0) >= u.reqCount; }
+  function perkUnlocked(p){ return !p.req || !!state.perks[p.req]; }
+
+  function stateClasses(btn, owned, unlocked, affordable){
+    btn.classList.toggle("owned", !!owned);
+    btn.classList.toggle("lock", !unlocked && !owned);
+    btn.classList.toggle("can", !owned && unlocked && affordable);
+    btn.disabled = !!owned || !unlocked || !affordable;
+  }
+
+  var curTab = "floor";
+  var achCheckAt = 0;
+
+  // Always on screen: the sticky terminal at the top.
+  function renderTerminal(){
+    el.money.textContent = money(state.money);
+    el.rate.textContent = money(totalRate());
     el.tapval.textContent = money(tapValue());
     document.getElementById("repInfo").textContent = "REP " + state.rep;
-    document.getElementById("palletNum").textContent = state.pallets;
 
     var currentWages = wageBill();
-    var wageEl = document.getElementById("wageTag");
-    if (wageEl) {
-      if (currentWages > 0) {
-        wageEl.innerHTML = "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> ";
-      } else {
-        wageEl.innerHTML = "";
-      }
-    }
-
-    CORP_BUILDINGS.forEach(function(cb){
-      var elObj = corpBtnEls[cb.id];
-      if (elObj && elObj.btn){
-        var lvl = state.corp[cb.id] || 0;
-        var cost = cb.baseCost * Math.pow(6, lvl);
-        elObj.lvlEl.textContent = "LVL " + lvl;
-        if (lvl >= 10) {
-          elObj.costEl.textContent = "MAX";
-          elObj.btn.classList.add("owned");
-          elObj.btn.classList.remove("can");
-          elObj.btn.disabled = true;
-        } else {
-          elObj.costEl.textContent = money(cost);
-          var canBuy = state.money >= cost;
-          elObj.btn.classList.toggle("can", canBuy);
-          elObj.btn.classList.toggle("owned", lvl > 0);
-          elObj.btn.disabled = !canBuy;
-        }
-      }
-    });
-
-    document.getElementById("shiftEarned").textContent = money(sessionEarned);
-    document.getElementById("shiftTaps").textContent = state.taps;
-    document.getElementById("shiftCombo").textContent = "×" + maxCombo.toFixed(2);
+    document.getElementById("wageTag").innerHTML = currentWages > 0
+      ? "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> "
+      : "";
 
     var flow = flowEfficiency();
-    document.getElementById("flowBar").style.width = Math.min(100, Math.max(10, flow * 90)) + "%";
+    var bar = document.getElementById("flowBar");
+    // Label and bar share one scale: 100% = nominal throughput. The bar saturates while
+    // the label keeps reading the overdrive above it.
+    bar.style.width = Math.min(100, flow * 100) + "%";
+    bar.style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
     document.getElementById("flowPct").textContent = Math.round(flow * 100) + "%";
-    document.getElementById("flowBar").style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
 
+    renderBoostTag();
+  }
+
+  function renderFloorTab(){
+    document.getElementById("shiftEarned").textContent = money(sessionEarned);
+    document.getElementById("shiftTaps").textContent = state.taps;
+    document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
+    renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderAdButtons();
+  }
+
+  function renderEquipTab(){
     GENS.forEach(function(g){
       var e = genEls[g.id];
       if(!e) return;
       var owned = state.owned[g.id] || 0;
       var unlocked = owned > 0 || state.total >= g.cost * 0.35;
       e.card.classList.toggle("locked", !unlocked);
-      e.count.textContent = owned > 0 ? "×"+owned : "";
+      e.count.textContent = owned > 0 ? "\u00d7"+owned : "";
 
       var gross = genRate(g);
       var wRate = WAGE[g.id] || 0;
@@ -1151,23 +1353,131 @@
         e.pay.style.color = "var(--dim)";
       }
 
-      var c = costOf(g, buyQty); e.cost.textContent = money(c); e.qty.textContent = "BUY ×" + buyQty;
+      var c = costOf(g, buyQty); e.cost.textContent = money(c); e.qty.textContent = "BUY \u00d7" + buyQty;
       var can = state.money >= c && unlocked;
       e.btn.disabled = !can; e.btn.classList.toggle("can", can);
       e.card.classList.toggle("can", can);
     });
+  }
 
-    SUPPLIES.forEach(function(s){
-        var elObj = supplyBtnEls[s.id];
-        if (elObj && elObj.costElem){
-            var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
-            elObj.costElem.textContent = currentSc + " PAL";
-            var can = state.pallets >= currentSc;
-            elObj.btn.classList.toggle("can", can); elObj.btn.disabled = !can;
-        }
+  function renderUpgradesTab(){
+    UPGRADES.forEach(function(u){
+      var e = upEls[u.id];
+      if (!e) return;
+      var unlocked = upgradeUnlocked(u);
+      stateClasses(e.btn, state.upgrades[u.id], unlocked, state.money >= u.cost);
+      if (e.costEl){
+        e.costEl.textContent = state.upgrades[u.id] ? "INSTALLED"
+          : (unlocked ? money(u.cost) : "NEEDS " + u.reqCount + " \u00d7 " + genName(u.reqGen));
+      }
+    });
+  }
+
+  function renderPalletsTab(){
+    document.getElementById("palletNum").textContent = state.pallets;
+
+    PERKS.forEach(function(p){
+      var e = perkBtnEls[p.id];
+      if (!e) return;
+      var unlocked = perkUnlocked(p);
+      stateClasses(e.btn, state.perks[p.id], unlocked, state.pallets >= p.cost);
+      if (e.costEl){
+        e.costEl.textContent = state.perks[p.id] ? "OWNED"
+          : (unlocked ? p.cost + " PAL" : "NEEDS " + perkName(p.req));
+      }
     });
 
-    renderOffice(); renderObjective(); update3DPalette(); checkAch();
+    SUPPLIES.forEach(function(sp){
+      var elObj = supplyBtnEls[sp.id];
+      if (elObj && elObj.costElem){
+        var currentSc = sp.scales ? Math.min(25, sp.cost + (state.prestiges || 0) * 2) : sp.cost;
+        elObj.costElem.textContent = currentSc + " PAL";
+        var can = state.pallets >= currentSc;
+        elObj.btn.classList.toggle("can", can); elObj.btn.disabled = !can;
+      }
+    });
+  }
+
+  function genName(id){
+    for (var i=0;i<GENS.length;i++) if (GENS[i].id === id) return GENS[i].name;
+    return id;
+  }
+  function perkName(id){
+    for (var i=0;i<PERKS.length;i++) if (PERKS[i].id === id) return PERKS[i].name.toUpperCase();
+    return id;
+  }
+
+  function renderOfficeTab(){
+    CORP_BUILDINGS.forEach(function(cb){
+      var elObj = corpBtnEls[cb.id];
+      if (!elObj || !elObj.btn) return;
+      var lvl = state.corp[cb.id] || 0;
+      var cost = cb.baseCost * Math.pow(6, lvl);
+      elObj.lvlEl.textContent = "LVL " + lvl;
+      if (lvl >= 10) {
+        elObj.costEl.textContent = "MAX";
+        elObj.btn.classList.add("owned");
+        elObj.btn.classList.remove("can");
+        elObj.btn.disabled = true;
+      } else {
+        elObj.costEl.textContent = money(cost);
+        var canBuy = state.money >= cost;
+        elObj.btn.classList.toggle("can", canBuy);
+        elObj.btn.classList.toggle("owned", lvl > 0);
+        elObj.btn.disabled = !canBuy;
+      }
+    });
+    renderOffice();
+  }
+
+  // Only touch the tab the player is actually looking at. This used to rewrite every
+  // panel -- several hundred DOM writes -- ten times a second regardless of visibility.
+  function render(){
+    renderTerminal();
+    if (curTab === "floor")         renderFloorTab();
+    else if (curTab === "equip")    renderEquipTab();
+    else if (curTab === "upgrades") renderUpgradesTab();
+    else if (curTab === "pallets")  renderPalletsTab();
+    else if (curTab === "office")   renderOfficeTab();
+
+    // 32 predicates plus 32 classList writes; once a second is plenty.
+    var now = Date.now();
+    if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); }
+  }
+
+  function renderNetwork(){
+    var bar = document.getElementById("netBar");
+    var n = (state.network && state.network.length) || 0;
+    if (!n){ bar.hidden = true; return; }
+    bar.hidden = false;
+    document.getElementById("netSiteName").textContent = currentSite().name;
+    document.getElementById("netSiteTags").textContent = getSku().name;
+    document.getElementById("netSummary").innerHTML =
+      n + (n === 1 ? " retired site" : " retired sites") +
+      " \u00b7 <b style='color:var(--cash);'>" + money(networkRate()) + "/s</b> passive";
+  }
+
+  function renderScaleStrip(){
+    var kinds = 0; GENS.forEach(function(g){ if ((state.owned[g.id]||0) > 0) kinds++; });
+    var doneTasks = 0;
+    for (var i = 0; i < OBJECTIVES.length; i++) if (OBJECTIVES[i].done()) doneTasks++;
+    // Denominators come from the data, so they cannot drift out of sync again.
+    document.getElementById("scGen").innerHTML  = kinds + "<i>/" + GENS.length + "</i>";
+    document.getElementById("scRank").innerHTML = (rankIndex() + 1) + "<i>/" + RANKS.length + "</i>";
+    document.getElementById("scTask").innerHTML = doneTasks + "<i>/" + OBJECTIVES.length + "</i>";
+  }
+
+  function renderBoostTag(){
+    var t = document.getElementById("boostTag"), parts = [];
+    if (boostActive())    parts.push("<b style='color:var(--hivis);'>RUSH \u00d78 " + Math.ceil((boostUntil - Date.now())/1000) + "s</b>");
+    if (tapBoostActive()) parts.push("<b style='color:var(--hazard);'>TAP \u00d74 " + Math.ceil((tapBoostUntil - Date.now())/1000) + "s</b>");
+    if (incidentActive()) parts.push("<b style='color:var(--cash);'>+50% SPEED</b>");
+    t.innerHTML = parts.length ? "\u00b7 " + parts.join(" ") : "";
+  }
+
+  function renderPickSub(){
+    document.getElementById("pickSub").textContent =
+      comboCount > 1 ? ("COMBO \u00d7" + comboMult().toFixed(2)) : "TAP TO SCAN";
   }
 
   function renderOffice(){
@@ -1202,11 +1512,16 @@
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
-    if (!state.network) state.network = []; state.network.push({ id: state.site, peak: activeRate() });
+    if (!state.network) state.network = [];
+    state.network.push({ id: state.site, peak: activeRate() });
+    if (state.network.length > NETWORK_CAP){
+      state.network.sort(function(a,b){ return (b.peak||0) - (a.peak||0); });
+      state.network.length = NETWORK_CAP;
+    }
     state.money = 0; state.total = 0;
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
-    state.upgrades = kept; GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    state.upgrades = kept; invalidateUpMult(); GENS.forEach(function(g){ state.owned[g.id] = 0; });
 
     sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
 
@@ -1258,12 +1573,19 @@
     document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 800);
   });
 
+  // Contract goals are a fraction of what the site produces over the window, so they stay
+  // winnable. The SKU/site conMult scales the PAYOUT (what "premium contracts" and "massive
+  // contract rewards" describe) -- it used to scale the goal instead, which made every
+  // non-default manifest mathematically impossible once the flat $500 floor stopped binding.
+  var CONTRACT_GOAL_FRACTION = 0.6;
+
   function newContract(){
     var r = totalRate();
     var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
-    var goal = Math.max(500, Math.floor(r * 60 * mins * getSku().conMult * (currentSite().conMult || 1)));
+    var conMult = getSku().conMult * (currentSite().conMult || 1);
+    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
-    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * getSku().conMult)) * towerMult;
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult;
 
     return {
       goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
@@ -1283,6 +1605,47 @@
     document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
   }
 
+  // --- Company rename (button existed with no handler; companyName was never populated) ---
+  function escapeHtml(t){
+    return String(t).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function renderCompany(){
+    document.getElementById("companyName").textContent = state.company;
+  }
+  document.getElementById("renameBtn").addEventListener("click", function(){
+    document.getElementById("renameInput").value = state.company;
+    document.getElementById("modalRename").hidden = false;
+  });
+  document.getElementById("btnCancelRename").addEventListener("click", function(){
+    document.getElementById("modalRename").hidden = true;
+  });
+  document.getElementById("btnConfirmRename").addEventListener("click", function(){
+    var v = (document.getElementById("renameInput").value || "").trim().slice(0, 28);
+    if (!v){ showToast("Enter a trading name."); return; }
+    state.company = v;
+    document.getElementById("modalRename").hidden = true;
+    renderCompany(); sfx("upgrade");
+    showToast("Now trading as <b>" + escapeHtml(v) + "</b>.");
+    saveGame();
+  });
+
+  // --- SFX toggle (button existed with no handler; state.muted was read but never written) ---
+  function renderMute(){
+    document.getElementById("muteBtn").textContent = state.muted ? "SFX OFF" : "SFX ON";
+  }
+  document.getElementById("muteBtn").addEventListener("click", function(){
+    state.muted = !state.muted;
+    renderMute();
+    if (!state.muted) sfx("tap");
+    saveGame();
+  });
+
+  // --- Double Payout: drives tapBoostUntil, which tapValue() read but nothing ever set ---
+  var TAP_BOOST_MS = 60000;
+  function tapBoostActive(){ return Date.now() < tapBoostUntil; }
+
   var toastTimer = null;
   function showToast(html){
     el.toast.innerHTML = html; el.toast.classList.add("show");
@@ -1290,6 +1653,7 @@
   }
 
   function switchTab(name){
+    curTab = name;
     tabBtns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-tab") === name); });
     ["floor","equip","upgrades","pallets","office"].forEach(function(t){ document.getElementById("tab-"+t).hidden = (t !== name); });
     document.querySelector(".pickwrap").style.display = (name === "floor") ? "" : "none";
@@ -1369,21 +1733,16 @@
     ctx.beginPath(); ctx.moveTo(p001.x, p001.y); ctx.lineTo(p101.x, p101.y); ctx.lineTo(p111.x, p111.y); ctx.lineTo(p011.x, p011.y); ctx.fill();
   }
 
-  function drawShadow(e) {
-    var c_pt = pt(e.x + e.w/2, e.y + e.d/2, 0);
-    var sw = (e.w + e.d) * TW * 0.35, sh = (e.w + e.d) * TH * 0.35;
-    ctx.fillStyle = 'rgba(0,0,0,' + Math.max(0, 0.45 - e.z * 0.08) + ')';
-    ctx.beginPath(); ctx.ellipse(c_pt.x, c_pt.y, sw, sh, 0, 0, Math.PI*2); ctx.fill();
-  }
-
   // --- CORPORATE REAL ESTATE PLOT DEFINITIONS ---
   // Must match the tap hit-zones in handleCanvasTap exactly.
   var CORP_PLOTS = {
     hr:     { gx: 3,  gy: 31, gw: 15, gd: 15 },
     tower:  { gx: 3,  gy: -19, gw: 15, gd: 15 },
     solar:  { gx: 21, gy: -19, gw: 15, gd: 15 },
-    server: { gx: 35, gy: 5,  gw: 15, gd: 15 }
+    server: { gx: 38, gy: 5,  gw: 15, gd: 15 }
   };
+
+  function corpHeight(lvl){ return 1.5 + lvl * 1.1; }
 
   function corpBuildingEntities(){
     var out = [];
@@ -1399,7 +1758,7 @@
       // Tower height scales with level; footprint shrinks slightly per level for a "denser" look
       var footprint = Math.max(4, plot.gw * 0.5);
       var offset = (plot.gw - footprint) / 2;
-      var height = 1.5 + lvl * 1.1;
+      var height = corpHeight(lvl);
       var pal = (lvl >= 10) ? PALETTES.hazard : PALETTES.corp;
 
       out.push({
@@ -1439,21 +1798,16 @@
     }
   }
 
+  // Static racks never move, so key and sort them once instead of every frame.
+  function sortKeyOf(e){ return (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0); }
+  staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
+  staticRacks.sort(function(a,b){ return a.sortKey - b.sortKey; });
+
   function handleCanvasTap(ev){
     if (!renderActive) return;
     var rect = cv.getBoundingClientRect();
-    var cx_val = ev.clientX;
-    var cy_val = ev.clientY;
-    if (ev.touches && ev.touches.length > 0) {
-        cx_val = ev.touches[0].clientX;
-        cy_val = ev.touches[0].clientY;
-    } else if (ev.changedTouches && ev.changedTouches.length > 0) {
-        cx_val = ev.changedTouches[0].clientX;
-        cy_val = ev.changedTouches[0].clientY;
-    }
-
-    var x = cx_val - rect.left;
-    var y = cy_val - rect.top;
+    var x = ev.clientX - rect.left;
+    var y = ev.clientY - rect.top;
 
     for (var i = interactiveEvents.length - 1; i >= 0; i--){
       var h = interactiveEvents[i];
@@ -1488,16 +1842,28 @@
       }
     }
 
+    // Un-project the tap onto the ground plane, or onto a horizontal slice at height z.
     var dX = x - cx;
     var dY = y - cy;
-    var tapPx = 0.5 * (dX / TW + dY / TH);
-    var tapPy = 0.5 * (dY / TH - dX / TW);
+    function unproject(z){
+      var sum = (dY + z * TW) / TH;   // px + py
+      var dif = dX / TW;              // px - py
+      return { px: 0.5 * (sum + dif), py: 0.5 * (sum - dif) };
+    }
 
+    // Hit zones come straight from CORP_PLOTS, so the two can no longer drift apart.
+    // A tall tower is drawn well above its footprint, so sample several heights up its
+    // silhouette -- otherwise tapping the building you can see does nothing.
     var tappedCorp = null;
-    if (tapPx >= 3 && tapPx <= 18 && tapPy >= 31 && tapPy <= 46) tappedCorp = "hr";
-    else if (tapPx >= 3 && tapPx <= 18 && tapPy >= -19 && tapPy <= -4) tappedCorp = "tower";
-    else if (tapPx >= 21 && tapPx <= 36 && tapPy >= -19 && tapPy <= -4) tappedCorp = "solar";
-    else if (tapPx >= 35 && tapPx <= 50 && tapPy >= 5 && tapPy <= 20) tappedCorp = "server";
+    for (var ci = 0; ci < CORP_BUILDINGS.length && !tappedCorp; ci++){
+      var cid = CORP_BUILDINGS[ci].id, plot = CORP_PLOTS[cid];
+      var top = (state.corp[cid] || 0) > 0 ? corpHeight(state.corp[cid]) : 0;
+      for (var zi = 0; zi <= 4; zi++){
+        var q = unproject(top * (zi / 4));
+        if (q.px >= plot.gx && q.px <= plot.gx + plot.gw &&
+            q.py >= plot.gy && q.py <= plot.gy + plot.gd){ tappedCorp = cid; break; }
+      }
+    }
 
     if (tappedCorp) {
       var cb = CORP_BUILDINGS.find(function(c){ return c.id === tappedCorp; });
@@ -1522,8 +1888,7 @@
     }
   }
 
-  cv.addEventListener("mousedown", handleCanvasTap);
-  cv.addEventListener("touchstart", handleCanvasTap, {passive: true});
+  cv.addEventListener("pointerdown", handleCanvasTap);
 
   var animT = 0, lastFrame = 0, nextHotspot = 12;
 
@@ -1538,8 +1903,7 @@
     ctx.fillStyle = '#181a1f';
     ctx.fillRect(0, 0, CW, CH);
 
-    var entities = staticRacks.slice();
-    entities = entities.concat(corpBuildingEntities());
+    var entities = corpBuildingEntities();
 
     // Slabs & Roads
     entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
@@ -1583,7 +1947,7 @@
         if (nextHotspot <= 0 && interactiveEvents.length < 2){
           interactiveEvents.push({
             gx: 3 + Math.random() * 21, gy: 3 + Math.random() * 21,
-            type: Math.random() < 0.6 ? "spill" : "audit", t: 0
+            type: Math.random() < 0.6 ? "spill" : "audit", t: 0, z: 1.0
           });
           nextHotspot = 20 + Math.random() * 20;
         }
@@ -1596,11 +1960,18 @@
         entities.push({layer: 3, type:'prism', x:h.gx, y:h.gy, z:1.0, w:0.8 * pulse, d:0.8 * pulse, h:0.8, c:pCol});
     });
 
-    entities.forEach(function(e) {
-      e.sortKey = (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0);
-    });
+    // Only the ~40 moving entities need keying and sorting; merge them into the
+    // pre-sorted static geometry rather than re-sorting all ~300 every frame.
+    for (var si = 0; si < entities.length; si++) entities[si].sortKey = sortKeyOf(entities[si]);
     entities.sort(function(a,b){ return a.sortKey - b.sortKey; });
-    entities.forEach(drawPrism);
+
+    var ia = 0, ib = 0;
+    while (ia < staticRacks.length || ib < entities.length){
+      if (ib >= entities.length) drawPrism(staticRacks[ia++]);
+      else if (ia >= staticRacks.length) drawPrism(entities[ib++]);
+      else if (staticRacks[ia].sortKey <= entities[ib].sortKey) drawPrism(staticRacks[ia++]);
+      else drawPrism(entities[ib++]);
+    }
 
     // Particle Handling
     for(var ip = isoParticles.length - 1; ip >= 0; ip--){
@@ -1613,7 +1984,7 @@
             var p2d = pt(p.x, p.y, p.z);
             ctx.fillStyle = p.color;
             ctx.globalAlpha = Math.max(0, p.life);
-            ctx.beginPath(); ctx.arc(p2d.x, p2d.y, 3 * DPR, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(p2d.x, p2d.y, 3, 0, Math.PI*2); ctx.fill();
             ctx.globalAlpha = 1.0;
         }
     }
@@ -1623,13 +1994,15 @@
   var last = Date.now();
   setInterval(function(){
     var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
+    tickAmbientRush();
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
     if (state.contract){
       state.contract.prog += earned;
       if (state.contract.prog >= state.contract.goal){
-        state.pallets += state.contract.pallets; state.money += state.contract.cash; state.contractsDone++;
+        state.pallets += state.contract.pallets; state.contractsDone++;
+        state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
       }
@@ -1639,7 +2012,8 @@
   setInterval(saveGame, 10000);
 
   function startGame() {
-    sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init(); render();
+    sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
+    renderCompany(); renderMute(); update3DPalette(); render();
     requestAnimationFrame(frame);
     setTimeout(function(){
       var sp = document.getElementById("splash");
