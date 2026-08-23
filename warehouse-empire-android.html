@@ -663,10 +663,17 @@
   UPGRADES.push({id:"tap1", name:"Barcode Scanner", ic:"scanner", cost:500, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value"});
   UPGRADES.push({id:"tap2", name:"RF Gun", ic:"scanner", cost:60000, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value again"});
 
+  // Ordered by cost, and the new four are slotted between the originals by rough power
+  // rather than appended: cost-growth reduction compounds hardest, so Fleet Depot sits
+  // near the top, while Customs Office trims a number that was already generous.
   var CORP_BUILDINGS = [
     {id: "hr", name: "HR Annex", ic: "building", baseCost: 500e6, desc: "Global Wage Reduction", mastery: "Level 10: 72 Hour Offline Yield"},
+    {id: "customs", name: "Customs Office", ic: "building", baseCost: 2e9, desc: "Smaller Contract Quotas", mastery: "Level 10: Switching Manifest Grants a Boost"},
+    {id: "marketing", name: "Marketing Office", ic: "building", baseCost: 5e9, desc: "Longer Hot & Peak Markets", mastery: "Level 10: Always Return to a Hot Market"},
     {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
+    {id: "training", name: "Training Centre", ic: "building", baseCost: 50e9, desc: "Stronger Site Managers", mastery: "Level 10: Managers Double Their Bonus"},
     {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Immune to Hazards"},
+    {id: "depot", name: "Fleet Depot", ic: "building", baseCost: 500e9, desc: "Further Cuts Fleet Cost Inflation", mastery: "Level 10: One Free Purchase per Site"},
     {id: "server", name: "Server Farm", ic: "building", baseCost: 1e12, desc: "Combo Extender & Decelerator", mastery: "Level 10: Combo Never Decays"}
   ];
 
@@ -903,7 +910,8 @@
   var state = {
     money: 0, total: 0, lifetime: 0, rep: 0, taps: 0,
     owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
-    corp: { hr: 0, tower: 0, solar: 0, server: 0 },
+    corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
+    depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false,
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
@@ -955,11 +963,23 @@
   // Owned upgrades only change on purchase, sale and load, so cache and invalidate.
   var upMultCache = null;
   function invalidateUpMult(){ upMultCache = null; }
+  // Training Centre lifts the bonus part of a manager, not the whole multiplier: a x1.5
+  // manager carries a 0.5 bonus, so ten levels take it to x1.75 and the mastery doubles
+  // the bonus again to x2.5. Managers survive prestige, so this compounds across sites.
+  function mgrMult(base){
+    var lvl = state.corp.training || 0;
+    var bonus = (base - 1) * (1 + lvl * 0.05);
+    if (lvl >= 10) bonus *= 2;
+    return 1 + bonus;
+  }
+
   function upMult(target){
     if (!upMultCache){
       upMultCache = {};
       UPGRADES.forEach(function(u){
-        if (state.upgrades[u.id]) upMultCache[u.target] = (upMultCache[u.target] || 1) * u.mult;
+        if (!state.upgrades[u.id]) return;
+        var m = u.id.indexOf("mgr_") === 0 ? mgrMult(u.mult) : u.mult;
+        upMultCache[u.target] = (upMultCache[u.target] || 1) * m;
       });
     }
     return upMultCache[target] || 1;
@@ -1050,7 +1070,10 @@
   function costOf(g, qty){
     var owned = state.owned[g.id] || 0, sum = 0;
     var solarRed = Math.min(0.015, (state.corp.solar || 0) * 0.0015);
-    var actualGrowth = Math.max(1.135, COST_GROWTH - solarRed);
+    var depotRed = Math.min(0.015, (state.corp.depot || 0) * 0.0015);
+    // Cost growth compounds over hundreds of purchases, so the floor is what keeps this
+    // from running away -- the Depot lowers it, it does not remove it.
+    var actualGrowth = Math.max(1.12, COST_GROWTH - solarRed - depotRed);
     for (var i=0;i<qty;i++) sum += g.cost * Math.pow(actualGrowth, owned+i);
     return Math.ceil(sum * currentSite().cost);
   }
@@ -1106,7 +1129,7 @@
       if (!state.milestones) state.milestones = {};
       if (!state.notifs) state.notifs = { offline:true, daily:true, contract:true, rush:false };
       if (!state.ach) state.ach = {};
-      if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
+      if (!state.corp) state.corp = {};
 
       var validSite = false;
       for (var i = 0; i < SITES.length; i++) { if (SITES[i].id === state.site) validSite = true; }
@@ -1135,6 +1158,16 @@
           showToast("Type WIPE to confirm.");
         }
       });
+
+      // Marketing Office mastery: the market you come back to is already worth working.
+      // Only applied on a real absence, so it cannot be farmed by tabbing away.
+      if ((state.corp.marketing || 0) >= 10 && (Date.now() - state.lastSeen) > 300000){
+        var back = marketOf(state.sku);
+        if (back.id !== "hot" && back.id !== "peak"){
+          back.id = "hot";
+          back.until = Date.now() + marketWindow("hot");
+        }
+      }
 
       var secs = (Date.now() - state.lastSeen) / 1000;
       if (secs > 60){
@@ -1187,11 +1220,8 @@
     tap:     "ca-app-pub-5195464450607116/7867546956",  // Double Payout    -- taps x4, 60s
     reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
     favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
-    offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double
-    // TODO: replace with the real "Crate Shipment" rewarded unit from AdMob. The release
-    // workflow refuses to build while this placeholder is still here, so it cannot ship
-    // unwired -- it just falls back to a direct grant in a browser build.
-    crate:   "ca-app-pub-0000000000000000/0000000000"   // PLACEHOLDER     -- 2x offline earnings
+    offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double     -- 2x offline earnings
+    crate:   "ca-app-pub-5195464450607116/4517127752"   // Crate Shipment    -- +3 crates, 5/day
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
@@ -1426,8 +1456,17 @@
       c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>" +
                     '<span class="mkt" data-r="mkt"></span>';
       c.addEventListener("click", function(){
+        var switched = state.sku !== skuItem.id;
         state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
-        sfx("upgrade"); showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        sfx("upgrade");
+        // Without the mastery, switching is neutral -- you take the new manifest's numbers
+        // and nothing else. With it, the paperwork itself is worth something.
+        if (switched && (state.corp.customs || 0) >= 10){
+          boostUntil = Date.now() + 30000;
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>. Customs cleared it \u2014 <b>\u00d78 for 30s</b>.");
+        } else {
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        }
         renderSkuUI(); render(); saveGame();
       });
       container.appendChild(c);
@@ -1491,6 +1530,7 @@
         if (state.money >= cost) {
           state.money -= cost;
           state.corp[cb.id] = lvl + 1;
+          invalidateUpMult();               // Training Centre changes what a manager is worth
           sfx("build");
           if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
           else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
@@ -1910,6 +1950,7 @@
       state.network.length = NETWORK_CAP;
     }
     state.money = 0; state.total = 0;
+    state.depotFreeUsed = false;              // the Depot's free purchase refreshes per site
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
     state.upgrades = kept; invalidateUpMult(); GENS.forEach(function(g){ state.owned[g.id] = 0; });
@@ -1920,10 +1961,19 @@
     switchTab("floor"); render(); saveGame();
   });
 
+  function depotFreeReady(){ return (state.corp.depot || 0) >= 10 && !state.depotFreeUsed; }
+
   function buyGen(g){
     var c = costOf(g, buyQty);
-    if (state.money < c) return;
-    state.money -= c; state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    var free = depotFreeReady();
+    if (!free && state.money < c) return;
+    if (free){
+      state.depotFreeUsed = true;
+      showToast("Fleet Depot covered it: <b>" + buyQty + " \u00d7 " + g.name + "</b> free.");
+    } else {
+      state.money -= c;
+    }
+    state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
     sfx("buy"); render(); saveGame();
   }
 
@@ -1974,7 +2024,8 @@
     var r = totalRate();
     var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
     var conMult = getSku().conMult * (currentSite().conMult || 1) * marketMult(state.sku);
-    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION));
+    var customsCut = 1 - Math.min(0.40, (state.corp.customs || 0) * 0.04);
+    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult;
 
@@ -2512,11 +2563,18 @@
   // Must match the tap hit-zones in handleCanvasTap exactly.
   // Pulled in tight against the warehouse slab (x -2..32, y -2..28) so the towers frame
   // the site instead of sitting at the canvas edge and clipping off the corners.
+  // A ring around the slab on a 15-unit pitch. The four new plots take the corners the
+  // original four left free, so nothing overlaps and the site still reads as a yard
+  // rather than a grid of pads.
   var CORP_PLOTS = {
-    tower:  { gx: 4,  gy: -13, gw: 11, gd: 11 },
-    solar:  { gx: 19, gy: -13, gw: 11, gd: 11 },
-    server: { gx: 34, gy: 8,   gw: 11, gd: 11 },
-    hr:     { gx: 4,  gy: 30,  gw: 11, gd: 11 }
+    depot:     { gx: -11, gy: -13, gw: 11, gd: 11 },
+    tower:     { gx: 4,   gy: -13, gw: 11, gd: 11 },
+    solar:     { gx: 19,  gy: -13, gw: 11, gd: 11 },
+    customs:   { gx: 34,  gy: -13, gw: 11, gd: 11 },
+    server:    { gx: 34,  gy: 8,   gw: 11, gd: 11 },
+    hr:        { gx: 4,   gy: 30,  gw: 11, gd: 11 },
+    marketing: { gx: 19,  gy: 30,  gw: 11, gd: 11 },
+    training:  { gx: 34,  gy: 30,  gw: 11, gd: 11 }
   };
 
   function corpHeight(lvl){ return 1.2 + lvl * 0.78; }
@@ -2966,6 +3024,7 @@
              if (state.money >= cost) {
                  state.money -= cost;
                  state.corp[cb.id] = lvl + 1;
+                 invalidateUpMult();        // same as the shop path: Training changes manager maths
                  sfx("build");
                  if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
                  else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
