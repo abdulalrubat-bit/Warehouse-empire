@@ -43,17 +43,30 @@ jobs:
       # saves were living in WebView localStorage -- which Android wipes on "clear
       # cache". Preferences survives that. The migration shim in the game moves an
       # existing localStorage save across on first launch.
+      #
+      # Deliberately no @capacitor/browser: it drags in androidx.browser 1.9, which
+      # demands Android Gradle plugin 8.9.1 while Capacitor's template pins 8.7.2, and
+      # the build fails on the AAR metadata check. The store link goes through App
+      # instead, which hands the market:// URL to the Play app rather than rendering
+      # the Play web page inside a custom tab -- the better result anyway.
       - name: Add Capacitor plugins
         run: |
           npm install @capacitor-community/admob \
                       @capacitor/preferences \
                       @capacitor/haptics \
                       @capacitor/app \
-                      @capacitor/browser \
                       @capacitor/local-notifications
           npx cap sync android
           echo "--- registered plugins ---"
           npx cap ls android || true
+          echo "--- Android Gradle plugin ---"
+          grep -r "com.android.tools.build:gradle" android/build.gradle || true
+          # Fails ~2 minutes into Gradle otherwise, on an AAR metadata check whose message
+          # does not name the plugin that pulled the dependency in.
+          if grep -q '"@capacitor/browser"' package.json; then
+            echo "::error::@capacitor/browser needs Android Gradle plugin 8.9.1; the Capacitor template pins 8.7.2. Use App.openUrl for external links."
+            exit 1
+          fi
 
       # Ad misconfiguration is invisible until the revenue reports come back empty,
       # so check it here rather than after the slow Gradle build.
