@@ -1935,11 +1935,28 @@
     }
   }
 
+  // market:// is handled by the Play app directly; the https listing is the fallback for
+  // a device without it. Deliberately not the Browser plugin -- that would render the
+  // Play web page inside a custom tab, and it drags in an androidx.browser that wants a
+  // newer Android Gradle plugin than Capacitor's template pins.
+  var MARKET_URL = "market://details?id=com.abdulgames.warehouseempire";
   function openStoreListing(){
     var P = window.Capacitor && window.Capacitor.Plugins;
+    var web = function(){ try { window.open(PLAY_URL, "_blank"); } catch(e){ location.href = PLAY_URL; } };
+    if (P && P.App && P.App.openUrl){
+      // openUrl resolves with completed:false when nothing on the device claims the
+      // scheme, so a resolved promise is not on its own a success.
+      var open = function(url){
+        return P.App.openUrl({ url: url }).then(function(r){
+          if (r && r.completed === false) throw new Error("no handler for " + url);
+          return r;
+        });
+      };
+      open(MARKET_URL).catch(function(){ return open(PLAY_URL); }).catch(web);
+      return;
+    }
     if (P && P.Browser && P.Browser.open){ P.Browser.open({ url: PLAY_URL }); return; }
-    if (P && P.App && P.App.openUrl){ P.App.openUrl({ url: PLAY_URL }); return; }
-    try { window.open(PLAY_URL, "_blank"); } catch(e){ location.href = PLAY_URL; }
+    web();
   }
 
   document.getElementById("btnReviewNow").addEventListener("click", function(){
