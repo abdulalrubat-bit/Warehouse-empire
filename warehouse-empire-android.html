@@ -181,6 +181,9 @@
   .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
   .palletcount svg{width:22px; height:22px;}
+  .cratebar{border-left-color:#3f8f8a;}
+  .cratebar .palletcount{color:#2f7a75;}
+  .cratebar .adbtn{flex:0 0 auto; margin:0; min-width:150px;}
   .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
   .swatch{width:20px; height:20px; border-radius:3px; display:block;}
 
@@ -365,6 +368,11 @@
     <div class="toolbar"><div class="label">Supplies</div></div>
     <div class="shop" id="supplyList"></div>
     <div class="toolbar"><div class="label">Site Livery</div></div>
+    <div class="palletbar cratebar">
+      <div class="palletcount"><span id="crateIcon"></span><span id="crateNum">0</span></div>
+      <button id="crateAdBtn" class="adbtn alt">Crate Shipment<small id="crateAdSub">WATCH AD</small></button>
+    </div>
+    <div class="palletnote" id="crateNote">Crates buy liveries. Earned from shipments and the odd daily bonus.</div>
     <div class="shop" id="themeList"></div>
   </section>
 
@@ -596,6 +604,9 @@
   }
 
   var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', CP = 'var(--corp)';
+  // Deliberately not in the pallet's timber palette -- crates buy different things, so
+  // they have to read as a separate currency at a glance.
+  var CR = '#3f8f8a', CRD = '#26615e';
   var ICONS = {
     glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/><rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/><rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/><rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>',
     trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/><rect x="3" y="14" width="15" height="2" fill="'+S+'"/><rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/><circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
@@ -605,6 +616,7 @@
     robot:'<rect x="9.6" y="18" width="9" height="3" rx="1" fill="'+S+'"/><rect x="12.6" y="9" width="3" height="9" fill="'+S+'"/><rect x="5" y="8" width="10.6" height="2.6" fill="'+A+'"/><rect x="4.6" y="13" width="7" height="6" fill="'+BX+'"/>',
     crane:'<rect x="2" y="3.5" width="20" height="2.6" fill="'+A+'"/><rect x="3" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="18.8" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="8" y="12.5" width="8" height="7" fill="'+BX+'"/>',
     hub:'<rect x="9" y="9" width="6" height="6" rx="1" fill="'+A+'"/><rect x="2" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="2" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/>',
+    crate:'<rect x="3" y="5" width="18" height="14" rx="1" fill="'+CR+'"/><rect x="3" y="5" width="18" height="2.4" fill="'+CRD+'"/><rect x="3" y="16.6" width="18" height="2.4" fill="'+CRD+'"/><rect x="3" y="5" width="2.6" height="14" fill="'+CRD+'"/><rect x="18.4" y="5" width="2.6" height="14" fill="'+CRD+'"/><rect x="10.8" y="7.4" width="2.4" height="9.2" fill="'+CRD+'"/>',
     pallet:'<rect x="2" y="8.4" width="20" height="3.1" fill="'+BX+'"/><rect x="2" y="15" width="20" height="3.1" fill="'+BX+'"/><rect x="3" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="10.4" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="17.8" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>',
     wrench:'<rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="'+S+'" transform="rotate(-45 9.6 15.9)"/><circle cx="16.6" cy="7.4" r="5" fill="'+A+'"/>',
     hat:'<path d="M4 15.6a8 8 0 0 1 16 0z" fill="'+A+'"/><rect x="2" y="15.4" width="20" height="2.7" rx="1.35" fill="'+A+'"/>',
@@ -624,6 +636,7 @@
   function plate(name){ return '<div class="plate">'+icon(name)+'</div>'; }
   document.getElementById("headMark").innerHTML = icon("forklift");
   document.getElementById("palletIcon").innerHTML = icon("pallet");
+  document.getElementById("crateIcon").innerHTML = icon("crate");
 
   var GENS = [
     {id:"picker",   name:"Casual Picker",    ic:"glove",    cost:15,        rate:0.1,   desc:"Picks by hand, manual scan"},
@@ -701,7 +714,7 @@
       cladding:['#dfe5ea','#c1c9d1','#98a2ac'], plinth:['#7f8892','#69717a','#4e555d'],
       pools:null },
 
-    { id:"nightshift", name:"Night Shift", cost:6, ui:'night',
+    { id:"nightshift", name:"Night Shift", cost:3, ui:'night',
       accent:'#4f9ae0', accentD:'#215a91', hazard:'#79c4ee', cash:'#5fc47a',
       sky:['#0d1524','#16203a','#2a2b33'], haze:'30,44,70',
       slab:['#4a4d55','#3d4047','#2c2f35'], asphalt:['#2e333b','#262a31','#1b1f24'],
@@ -710,7 +723,7 @@
       cladding:['#59636e','#48505a','#333941'], plinth:['#3a4149','#2f353b','#22262b'],
       pools:'rgba(255,186,92,ALPHA)' },
 
-    { id:"safety", name:"Hi-Vis Lime", cost:6, ui:'day',
+    { id:"safety", name:"Hi-Vis Lime", cost:3, ui:'day',
       accent:'#6f9c22', accentD:'#4a6a13', hazard:'#8f9c17', cash:'#2c8442',
       sky:['#7fb2cf','#a9cbdd','#d6e4e6'], haze:'206,222,214',
       slab:['#b6b6a4','#9d9d8c','#77776d'], asphalt:['#7b8080','#686d6d','#4d5252'],
@@ -719,7 +732,7 @@
       cladding:['#dde5da','#bfc9bc','#96a094'], plinth:['#7d867c','#676f66','#4c524b'],
       pools:null },
 
-    { id:"radioactive", name:"Radioactive", cost:14, ui:'night',
+    { id:"radioactive", name:"Radioactive", cost:3, ui:'night',
       accent:'#7ee01f', accentD:'#3f7a08', hazard:'#c8f53a', cash:'#4fd06a',
       sky:['#0a1a0e','#12301a','#1f4322'], haze:'40,90,44',
       slab:['#4b5442','#3e4636','#2c3327'], asphalt:['#2b3529','#232c22','#19201a'],
@@ -728,7 +741,7 @@
       cladding:['#5b6a59','#495546','#333c31'], plinth:['#39423a','#2e352f','#212721'],
       pools:'rgba(150,255,80,ALPHA)' },
 
-    { id:"biohazard", name:"Biohazard", cost:14, ui:'day',
+    { id:"biohazard", name:"Biohazard", cost:3, ui:'day',
       accent:'#a8321a', accentD:'#6d1d0c', hazard:'#8f7a12', cash:'#4a7a2c',
       sky:['#6f6b3a','#928c52','#b3ac74'], haze:'170,164,110',
       slab:['#8f8a5e','#7a7550','#5c583c'], asphalt:['#5f5c44','#4f4d3a','#3a382a'],
@@ -737,7 +750,7 @@
       cladding:['#c8c49a','#a9a680','#807e5f'], plinth:['#736f4a','#5e5b3d','#43412b'],
       pools:null },
 
-    { id:"coldchain", name:"Cold Chain", cost:12, ui:'day',
+    { id:"coldchain", name:"Cold Chain", cost:3, ui:'day',
       accent:'#1f8fb0', accentD:'#0f5d75', hazard:'#4a8fa8', cash:'#2c8474',
       sky:['#a8cfe4','#c8e2ee','#e8f2f6'], haze:'226,240,247',
       slab:['#c3cdd2','#a9b4ba','#828e95'], asphalt:['#8b969d','#77828a','#5b666e'],
@@ -746,7 +759,7 @@
       cladding:['#eef5f8','#d0dde3','#a4b4bd'], plinth:['#8896a0','#717d86','#535d64'],
       pools:null },
 
-    { id:"blackout", name:"Blackout", cost:18, ui:'night',
+    { id:"blackout", name:"Blackout", cost:3, ui:'night',
       accent:'#f0a020', accentD:'#a1650a', hazard:'#d08c14', cash:'#9a8f4a',
       sky:['#08090b','#0d0f12','#17161a'], haze:'26,24,28',
       slab:['#3b3a38','#302f2e','#232222'], asphalt:['#252526','#1e1e1f','#151516'],
@@ -773,6 +786,29 @@
     { id:"pharma", name:"Cold Pharma", desc:"Temperature critical. High value (+35%), strict wages.", outMult:1.35, tapMult:0.8, wageMult:1.25, conMult:1.5 },
     { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2 }
   ];
+
+  // --- Crates ------------------------------------------------------------------------
+  // A second, ad-gated currency, kept deliberately narrow: it buys liveries and nothing
+  // else. Scarcity comes from the daily cap rather than the price, so the numbers stay
+  // small and legible.
+  var CRATES_PER_AD = 3;
+  var CRATE_ADS_PER_DAY = 5;
+  var CRATE_DAILY_BONUS_DAYS = [3, 6];      // a trickle for players who never watch ads
+
+  function crateAdsLeft(){
+    if (!sameDailyPeriod(state.crateAdDay)) return CRATE_ADS_PER_DAY;
+    return Math.max(0, CRATE_ADS_PER_DAY - (state.crateAdsToday || 0));
+  }
+
+  function spendCrateAd(){
+    if (!sameDailyPeriod(state.crateAdDay)){ state.crateAdDay = dailyPeriod(); state.crateAdsToday = 0; }
+    state.crateAdsToday = (state.crateAdsToday || 0) + 1;
+  }
+
+  // The cap rides the same 20h boundary as the login streak, so "come back tomorrow"
+  // means one thing everywhere in the game.
+  function dailyPeriod(){ return Math.floor(Date.now() / (20 * 3600000)); }
+  function sameDailyPeriod(p){ return p === dailyPeriod(); }
 
   // --- Market fluctuation -----------------------------------------------------------
   // Each manifest runs its own market clock, so the choice of SKU is a live decision
@@ -872,7 +908,7 @@
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
-    marketState: {},
+    marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
 
@@ -1044,7 +1080,7 @@
       // number where a count belongs turns every later sum into NaN, and the UI then
       // paints NaN everywhere with no way back short of a wipe.
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
-       "bestCombo","lastSeen","lastDailyClaim","dailyStreak"].forEach(function(k){
+       "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -1151,7 +1187,11 @@
     tap:     "ca-app-pub-5195464450607116/7867546956",  // Double Payout    -- taps x4, 60s
     reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
     favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
-    offline: "ca-app-pub-5195464450607116/3193699573"   // Claim Double     -- 2x offline earnings
+    offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double
+    // TODO: replace with the real "Crate Shipment" rewarded unit from AdMob. The release
+    // workflow refuses to build while this placeholder is still here, so it cannot ship
+    // unwired -- it just falls back to a direct grant in a browser build.
+    crate:   "ca-app-pub-0000000000000000/0000000000"   // PLACEHOLDER     -- 2x offline earnings
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
@@ -1209,7 +1249,7 @@
   // Reward buttons had no cooldown at all -- the unused `if (rush.disabled) return;`
   // guard shows one was intended. The cooldown starts inside the reward callback, so a
   // failed or skipped ad does not burn it.
-  var AD_COOLDOWN = { rushAdBtn: 180000, dblAdBtn: 180000, rerollBtn: 120000 };
+  var AD_COOLDOWN = { rushAdBtn: 180000, dblAdBtn: 180000, rerollBtn: 120000, crateAdBtn: 60000 };
   var adReadyAt = {};
   var adSubText = {};
   function adReady(id){ return Date.now() >= (adReadyAt[id] || 0); }
@@ -1303,7 +1343,8 @@
       var isCur = r.day === state.dailyStreak;
       var isClaimed = r.day < state.dailyStreak;
       d.className = "cal-day" + (isCur ? " active" : "") + (isClaimed ? " claimed" : "");
-      d.innerHTML = "DAY " + r.day + "<b>+" + r.pallets + " PAL</b><span>" + r.desc + "</span>";
+      d.innerHTML = "DAY " + r.day + "<b>+" + r.pallets + " PAL</b><span>" +
+                    (CRATE_DAILY_BONUS_DAYS.indexOf(r.day) !== -1 ? "+1 Crate" : r.desc) + "</span>";
       grid.appendChild(d);
     });
   }
@@ -1311,10 +1352,43 @@
   document.getElementById("btnClaimDaily").addEventListener("click", function(){
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
+    var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
+    if (crate) state.crates += 1;
     document.getElementById("modalDaily").hidden = true;
-    sfx("upgrade"); showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>.");
+    sfx("upgrade");
+    showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>" +
+              (crate ? " and <b>+1 Crate</b>" : "") + ".");
     render(); saveGame();
   });
+
+  var crateAdBtnEl = null, crateAdSubEl = null;
+  function renderCrateAd(){
+    if (!crateAdBtnEl) return;
+    var left = crateAdsLeft();
+    var ready = adReady("crateAdBtn");
+    crateAdBtnEl.disabled = left <= 0 || !ready;
+    crateAdSubEl.textContent =
+      left <= 0 ? "BACK TOMORROW"
+      : !ready  ? "AVAILABLE IN " + Math.ceil((adReadyAt["crateAdBtn"] - Date.now())/1000) + "s"
+      : "WATCH AD \u00b7 +" + CRATES_PER_AD + " CRATES \u00b7 " + left + " LEFT TODAY";
+  }
+
+  (function bindCrateAd(){
+    var b = document.getElementById("crateAdBtn");
+    if (!b) return;
+    crateAdBtnEl = b; crateAdSubEl = document.getElementById("crateAdSub");
+    b.addEventListener("click", function(){
+      if (crateAdsLeft() <= 0 || !adReady("crateAdBtn")) return;
+      Ads.show("crate", function(){
+        startAdCooldown("crateAdBtn");
+        spendCrateAd();
+        state.crates += CRATES_PER_AD;
+        sfx("upgrade");
+        showToast("Shipment received: <b>+" + CRATES_PER_AD + " Crates</b>.");
+        render(); saveGame();
+      });
+    });
+  })();
 
   function marketLabel(skuId){
     var m = MARKET[marketOf(skuId).id];
@@ -1489,8 +1563,11 @@
         b.addEventListener("click", function(){
           if (state.theme === t.id) return;
           if (!themeOwned(t)){
-            if (state.pallets < t.cost){ showToast("Need <b>" + t.cost + " pallets</b> for that livery."); return; }
-            state.pallets -= t.cost;
+            if (state.crates < t.cost){
+              showToast("Need <b>" + t.cost + " crates</b> for that livery. Watch a shipment to earn more.");
+              return;
+            }
+            state.crates -= t.cost;
             state.themesOwned[t.id] = true;      // bought once, not every time you switch
           }
           state.theme = t.id;
@@ -1674,6 +1751,8 @@
 
   function renderPalletsTab(){
     document.getElementById("palletNum").textContent = state.pallets;
+    document.getElementById("crateNum").textContent = state.crates;
+    renderCrateAd();
 
     PERKS.forEach(function(p){
       var e = perkBtnEls[p.id];
@@ -1691,9 +1770,9 @@
       if (!e) return;
       var owned = themeOwned(t), active = state.theme === t.id;
       e.btn.classList.toggle("owned", owned && !active);
-      e.btn.classList.toggle("can", !owned && state.pallets >= t.cost);
-      e.btn.classList.toggle("lock", !owned && state.pallets < t.cost);
-      e.cost.textContent = active ? "ACTIVE" : (owned ? "OWNED" : t.cost + " PAL");
+      e.btn.classList.toggle("can", !owned && state.crates >= t.cost);
+      e.btn.classList.toggle("lock", !owned && state.crates < t.cost);
+      e.cost.textContent = active ? "ACTIVE" : (owned ? "OWNED" : t.cost + " CR");
       e.desc.textContent = (t.ui === "night" ? "Night shift lighting" : "Daylight operation");
     });
 
