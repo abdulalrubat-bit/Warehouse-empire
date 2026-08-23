@@ -365,6 +365,13 @@
     </div>
 
     <div class="office-block">
+      <div class="office-title">NOTIFICATIONS</div>
+      <div class="office-text">Reminders while you're away. Nothing is sent from a server &mdash; these are scheduled on your device when you close the game.</div>
+      <div id="notifList" style="margin-top:10px;"></div>
+      <button id="notifPermBtn" class="renamebtn" hidden>ALLOW NOTIFICATIONS</button>
+    </div>
+
+    <div class="office-block">
       <div class="office-title">GRAPHICS</div>
       <div class="office-text">Detail level for the site view. <b>Auto</b> measures your device and adjusts on the fly.</div>
       <div class="qty" style="margin-top:10px; display:flex; gap:6px;">
@@ -452,6 +459,21 @@
       <input type="text" id="wipeInput" style="width:100%; padding:10px; margin-bottom:14px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); text-align:center; font-size:16px; border-radius:4px;" placeholder="Type WIPE" autocomplete="off" autocorrect="off">
       <button class="modal-btn" id="btnConfirmWipe" style="background:var(--bad); color:#fff;">CONFIRM DELETION</button>
       <button class="renamebtn" id="btnCancelWipe" style="margin-top:12px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="modalReview" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Milestone Reached</div>
+      <div class="modal-sub" id="reviewMilestone"></div>
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Milestone Bonus</div>
+        <b id="reviewBonus" style="font-family:var(--font-cond); font-size:28px; color:var(--hazard);"></b>
+        <div style="font-size:9px; color:var(--dim); margin-top:4px;">Already added to your stores.</div>
+      </div>
+      <div class="modal-sub" style="margin-bottom:12px;">Enjoying Warehouse Empire? A rating helps other people find it. Entirely up to you &mdash; the bonus above is yours either way.</div>
+      <button class="modal-btn" id="btnReviewNow">RATE ON GOOGLE PLAY</button>
+      <button class="renamebtn" id="btnReviewLater" style="margin-top:12px;">No thanks</button>
     </div>
   </div>
 
@@ -768,6 +790,7 @@
     site: "general", sku: "fmcg", network: [], muted: false,
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
+    milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
 
@@ -923,6 +946,8 @@
       invalidateUpMult();
       if (!state.perks) state.perks = {};
       if (!state.themesOwned) state.themesOwned = {};
+      if (!state.milestones) state.milestones = {};
+      if (!state.notifs) state.notifs = { offline:true, daily:true, contract:true, rush:false };
       if (!state.ach) state.ach = {};
       if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
 
@@ -1221,7 +1246,7 @@
     });
   }
 
-  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {}, themeBtnEls = {};
+  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {}, themeBtnEls = {}, notifRowEls = {};
 
   // A livery is bought once. Previously switching away and back charged again.
   function themeOwned(t){ return t.cost === 0 || !!(state.themesOwned && state.themesOwned[t.id]); }
@@ -1565,6 +1590,7 @@
     });
     renderOffice();
     renderQuality();
+    renderNotifs();
   }
 
   // Only touch the tab the player is actually looking at. This used to rewrite every
@@ -1579,7 +1605,7 @@
 
     // 32 predicates plus 32 classList writes; once a second is plenty.
     var now = Date.now();
-    if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); }
+    if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); checkMilestone(); }
   }
 
   function renderNetwork(){
@@ -1742,6 +1768,156 @@
     document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
   }
 
+  // --- Local notifications ---------------------------------------------------------
+  // Scheduled on the way out, cancelled on the way back in. Nothing here needs a server:
+  // every trigger is a time we can compute the moment the player leaves.
+  // `minDelay` is the earliest a type may fire after the player leaves, and `minGap` is
+  // the minimum wall-clock spacing between two of the same kind. Without them the short
+  // timers here (a 3-minute ad cooldown, a contract two minutes from expiry) would ping
+  // every time the player switched apps.
+  var NOTIF = {
+    offline:  { id: 101, on:true,  clamp:true,  minDelay: 60 * 1000,        minGap: 6 * 3600000,
+                title:"Storage is full",
+                body:"Your shift managers have run out of room. Come and bank the freight." },
+    daily:    { id: 102, on:true,  clamp:true,  minDelay: 60 * 1000,        minGap: 18 * 3600000,
+                title:"Morning shift handover",
+                body:"Today's pallet stipend is ready to claim." },
+    contract: { id: 103, on:true,  clamp:false, minDelay: 10 * 60 * 1000,   minGap: 6 * 3600000,
+                title:"Contract expiring",
+                body:"There's a freight contract about to run out of time." },
+    rush:     { id: 104, on:false, clamp:true,  minDelay: 4 * 3600000,      minGap: 8 * 3600000,
+                title:"Rush order on the dock",
+                body:"An overtime shift is available again." }
+  };
+
+  var NOTIF_IDS = Object.keys(NOTIF).map(function(k){ return { id: NOTIF[k].id }; });
+
+  function notifPlugin(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    return (P && P.LocalNotifications) || null;
+  }
+
+  function notifEnabled(key){
+    if (!state.notifs) return NOTIF[key].on;
+    return state.notifs[key] === undefined ? NOTIF[key].on : !!state.notifs[key];
+  }
+
+  function requestNotifPermission(){
+    var LN = notifPlugin();
+    if (!LN || !LN.requestPermissions) return Promise.resolve(false);
+    return LN.requestPermissions()
+      .then(function(r){ return !!r && r.display === "granted"; })
+      .catch(function(){ return false; });
+  }
+
+  // Everything is scheduled relative to now, so the offline cap and daily reset land at
+  // the right wall-clock moment even though the app is not running.
+  function scheduleNotifications(){
+    var LN = notifPlugin();
+    if (!LN || !LN.schedule) return;
+    if (state.notifPerm === false) return;         // asked once, told no -- don't keep trying
+    var now = Date.now(), out = [], fired = state.notifLast || (state.notifLast = {});
+
+    function at(key, ms){
+      var n = NOTIF[key];
+      if (!notifEnabled(key)) return;
+      if (ms < n.minDelay){
+        if (!n.clamp) return;                      // the moment has passed by then
+        ms = n.minDelay;                           // still true later, so push it out
+      }
+      var when = now + ms;
+      if (when - (fired[key] || 0) < n.minGap) return;
+      out.push({ id:n.id, title:n.title, body:n.body, schedule:{ at:new Date(when) },
+                 smallIcon:"ic_stat_icon_config_sample" });
+      fired[key] = when;
+    }
+
+    var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+    if (totalRate() > 0) at("offline", capHours * 3600000);
+
+    var DAY_MS = 20 * 3600000;
+    at("daily", Math.max(0, state.lastDailyClaim + DAY_MS - now));
+
+    if (state.contract && state.contract.deadline)
+      at("contract", state.contract.deadline - now - 120000);   // two minutes of warning
+
+    at("rush", (adReadyAt["rushAdBtn"] || 0) - now);
+
+    if (!out.length) return;
+    LN.cancel({ notifications: NOTIF_IDS })
+      .catch(function(){})
+      .then(function(){ return LN.schedule({ notifications: out }); })
+      .catch(function(e){ console.error("notification schedule failed", e); });
+  }
+
+  function clearNotifications(){
+    // A scheduled time in the past means it was delivered, and minGap should hold against
+    // it. One still in the future is being cancelled unseen, so it should not count.
+    var now = Date.now(), fired = state.notifLast;
+    if (fired) for (var k in fired) if (fired[k] > now) delete fired[k];
+    var LN = notifPlugin();
+    if (!LN || !LN.cancel) return;
+    LN.cancel({ notifications: NOTIF_IDS }).catch(function(){});
+  }
+
+  // Schedule when the app goes to the background, clear when it comes back.
+  function bindNotificationLifecycle(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    if (P && P.App && P.App.addListener){
+      P.App.addListener("appStateChange", function(st){
+        if (st && st.isActive) clearNotifications(); else { saveGame(); scheduleNotifications(); }
+      });
+    }
+    document.addEventListener("visibilitychange", function(){
+      if (document.hidden){ saveGame(); scheduleNotifications(); } else clearNotifications();
+    });
+  }
+
+  // --- Milestone bonus, with a review invitation alongside it ---------------------
+  // Play policy forbids incentivised reviews, so the bonus is awarded for reaching the
+  // milestone and is granted before the dialog is even shown. Reviewing changes nothing.
+  var PLAY_URL = "https://play.google.com/store/apps/details?id=com.abdulgames.warehouseempire";
+  var REVIEW_MILESTONES = [
+    { id:"m1", label:"You've fulfilled 25 freight contracts.", pallets:15,
+      test:function(){ return state.contractsDone >= 25; } },
+    { id:"m2", label:"You've sold your third business.", pallets:25,
+      test:function(){ return state.prestiges >= 3; } }
+  ];
+
+  function checkMilestone(){
+    if (state.reviewAsked) return;                       // only ever ask once
+    for (var mi = 0; mi < REVIEW_MILESTONES.length; mi++){
+      var m = REVIEW_MILESTONES[mi];
+      if (state.milestones[m.id] || !m.test()) continue;
+      state.milestones[m.id] = true;
+      state.pallets += m.pallets;                        // granted unconditionally
+      state.reviewAsked = true;
+      document.getElementById("reviewMilestone").textContent = m.label;
+      document.getElementById("reviewBonus").textContent = "+" + m.pallets + " Pallets";
+      document.getElementById("modalReview").hidden = false;
+      sfx("prestige"); saveGame();
+      return;
+    }
+  }
+
+  function openStoreListing(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    if (P && P.Browser && P.Browser.open){ P.Browser.open({ url: PLAY_URL }); return; }
+    if (P && P.App && P.App.openUrl){ P.App.openUrl({ url: PLAY_URL }); return; }
+    try { window.open(PLAY_URL, "_blank"); } catch(e){ location.href = PLAY_URL; }
+  }
+
+  document.getElementById("btnReviewNow").addEventListener("click", function(){
+    document.getElementById("modalReview").hidden = true;
+    openStoreListing();
+    showToast("Thanks for taking a look.");
+    render();
+  });
+  document.getElementById("btnReviewLater").addEventListener("click", function(){
+    document.getElementById("modalReview").hidden = true;
+    render();
+  });
+
   // --- Company rename (button existed with no handler; companyName was never populated) ---
   function escapeHtml(t){
     return String(t).replace(/[&<>"']/g, function(c){
@@ -1766,6 +1942,61 @@
     renderCompany(); sfx("upgrade");
     showToast("Now trading as <b>" + escapeHtml(v) + "</b>.");
     saveGame();
+  });
+
+  // --- Notification settings ---
+  var NOTIF_LABELS = {
+    offline:  ["Storage full",     "When offline earnings hit their cap"],
+    daily:    ["Daily stipend",    "When the morning handover is ready"],
+    contract: ["Contract expiring","Shortly before a long contract runs out"],
+    rush:     ["Rush available",   "When you have been away and a shift is waiting"]
+  };
+
+  function renderNotifs(){
+    var list = document.getElementById("notifList");
+    if (!list) return;
+    if (!list.children.length){
+      Object.keys(NOTIF_LABELS).forEach(function(key){
+        var row = document.createElement("button");
+        row.className = "up";
+        row.innerHTML = '<div><div class="uname">' + NOTIF_LABELS[key][0] + '</div>' +
+                        '<div class="udesc">' + NOTIF_LABELS[key][1] + '</div></div>' +
+                        '<div class="ucost" data-r="state"></div>';
+        row.addEventListener("click", function(){
+          if (!state.notifs) state.notifs = {};
+          state.notifs[key] = !notifEnabled(key);
+          if (state.notifs[key]) ensureNotifPermission();
+          renderNotifs(); scheduleNotifications(); saveGame();
+        });
+        list.appendChild(row);
+        notifRowEls[key] = { btn: row, state: row.querySelector('[data-r="state"]') };
+      });
+    }
+    Object.keys(NOTIF_LABELS).forEach(function(key){
+      var e = notifRowEls[key];
+      if (!e) return;
+      var on = notifEnabled(key);
+      e.state.textContent = on ? "ON" : "OFF";
+      e.btn.classList.toggle("can", on);
+      e.btn.classList.toggle("lock", !on);
+    });
+    var permBtn = document.getElementById("notifPermBtn");
+    if (permBtn) permBtn.hidden = !notifPlugin() || state.notifAsked;
+  }
+
+  function ensureNotifPermission(){
+    if (state.notifAsked) return;
+    state.notifAsked = true;
+    requestNotifPermission().then(function(granted){
+      state.notifPerm = granted;
+      if (!granted) showToast("Notifications are off in your device settings.");
+      else scheduleNotifications();
+      renderNotifs(); saveGame();
+    });
+  }
+
+  document.getElementById("notifPermBtn").addEventListener("click", function(){
+    state.notifAsked = false; state.notifPerm = null; ensureNotifPermission();
   });
 
   // --- Graphics quality ---
@@ -2818,7 +3049,8 @@
 
   function startGame() {
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
-    renderCompany(); renderMute(); update3DPalette();
+    renderCompany(); renderMute(); renderNotifs(); update3DPalette();
+    bindNotificationLifecycle();
     if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
     renderQuality(); render();
     requestAnimationFrame(frame);

@@ -39,10 +39,21 @@ jobs:
           cp warehouse-empire-android.html www/index.html
           npx cap add android
 
-      - name: Add AdMob plugin
+      # Preferences and Haptics were referenced by the game but never installed, so
+      # saves were living in WebView localStorage -- which Android wipes on "clear
+      # cache". Preferences survives that. The migration shim in the game moves an
+      # existing localStorage save across on first launch.
+      - name: Add Capacitor plugins
         run: |
-          npm install @capacitor-community/admob
+          npm install @capacitor-community/admob \
+                      @capacitor/preferences \
+                      @capacitor/haptics \
+                      @capacitor/app \
+                      @capacitor/browser \
+                      @capacitor/local-notifications
           npx cap sync android
+          echo "--- registered plugins ---"
+          npx cap ls android || true
 
       # Ad misconfiguration is invisible until the revenue reports come back empty,
       # so check it here rather than after the slow Gradle build.
@@ -110,18 +121,25 @@ jobs:
           ls android/app/src/main/res/mipmap-xxxhdpi/
 
       # Two separate things, both required:
-      #   AD_ID permission  - without it Android 13+ zeroes the advertising ID,
-      #                       so every user looks brand new and ad revenue craters
-      #   APPLICATION_ID    - without it the app crashes the instant it launches
-      - name: Inject AdMob permission and app ID into the manifest
+      #   AD_ID permission        - without it Android 13+ zeroes the advertising ID,
+      #                             so every user looks brand new and ad revenue craters
+      #   POST_NOTIFICATIONS      - Android 13+ drops every reminder without it, and the
+      #                             runtime prompt never appears
+      #   APPLICATION_ID          - without it the app crashes the instant it launches
+      - name: Inject permissions and AdMob app ID into the manifest
         run: |
           MF=android/app/src/main/AndroidManifest.xml
           sed -i '0,/<application/s|<application|<uses-permission android:name="com.google.android.gms.permission.AD_ID"/>\n\n    <application|' $MF
+          sed -i '0,/<application/s|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n\n    <application|' $MF
           sed -i 's|</application>|  <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-5195464450607116~9510776045"/>\n    </application>|' $MF
           echo "--- manifest check ---"
-          grep -E "AD_ID|APPLICATION_ID" $MF
+          grep -E "AD_ID|APPLICATION_ID|POST_NOTIFICATIONS" $MF
           if ! grep -q "permission.AD_ID" $MF; then
             echo "::error::AD_ID permission missing. Play will reject the release."
+            exit 1
+          fi
+          if ! grep -q "permission.POST_NOTIFICATIONS" $MF; then
+            echo "::error::POST_NOTIFICATIONS missing. Reminders would be silently dropped on Android 13+."
             exit 1
           fi
           if ! grep -q "ads.APPLICATION_ID" $MF; then
