@@ -215,6 +215,18 @@
   .cal-day.active b{color:var(--hivis);}
   .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
   .sku-list{display:flex; flex-direction:column; gap:8px;}
+  /* One badge style, four tints -- the colour is the whole signal, so it has to read at
+     a glance on the strip without the player opening the modal. */
+  .mkt{display:inline-block; font-family:var(--font-mono); font-size:8px; letter-spacing:1.2px;
+       text-transform:uppercase; padding:2px 6px; border-radius:3px; vertical-align:middle;
+       margin-left:7px; border:1px solid transparent; font-weight:700;}
+  .mkt.low{color:var(--dim); border-color:var(--line); background:var(--panel2);}
+  .mkt.normal{color:var(--steel); border-color:var(--line); background:var(--panel2);}
+  .mkt.hot{color:#fff; background:var(--hivis); border-color:var(--hivis);}
+  .mkt.peak{color:#3a2a00; background:linear-gradient(135deg,#ffd451,#f0a91b); border-color:#c98a10;}
+  /* .sku-card span is display:block, which stretched the chip across the whole card and
+     made it read as a button. Two classes outrank it, so the chip hugs its text again. */
+  .sku-card .mkt{display:inline-block; margin-left:0; margin-top:7px;}
   .sku-card{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px; cursor:pointer; text-align:left; color:var(--ink); font-family:inherit;}
   .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(44,132,66,.18),var(--panel2) 40%);}
   .sku-card b{font-family:var(--font-cond); font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
@@ -276,7 +288,7 @@
 
     <div class="skustrip">
       <div>
-        <b id="activeSkuName">FMCG Groceries</b>
+        <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
         <span id="activeSkuDesc">Standard consumer freight</span>
       </div>
       <button class="skubtn" id="openSkuBtn">Change SKU</button>
@@ -762,6 +774,75 @@
     { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2 }
   ];
 
+  // --- Market fluctuation -----------------------------------------------------------
+  // Each manifest runs its own market clock, so the choice of SKU is a live decision
+  // rather than something you set once and forget. Peak is deliberately rare and short:
+  // it should feel like catching something, not like a state you can sit in.
+  var MARKET = {
+    low:    { id:"low",    name:"Low",    mult:0.85, weight:30, ms:[240000, 480000] },
+    normal: { id:"normal", name:"Normal", mult:1.00, weight:45, ms:[240000, 480000] },
+    hot:    { id:"hot",    name:"Hot",    mult:1.32, weight:20, ms:[180000, 360000] },
+    peak:   { id:"peak",   name:"Peak",   mult:1.80, weight:5,  ms:[60000,  90000]  }
+  };
+  var MARKET_ORDER = ["low","normal","hot","peak"];
+  var MARKET_WEIGHT_TOTAL = MARKET_ORDER.reduce(function(a,k){ return a + MARKET[k].weight; }, 0);
+
+  function rollMarketState(){
+    var r = Math.random() * MARKET_WEIGHT_TOTAL;
+    for (var i=0;i<MARKET_ORDER.length;i++){
+      r -= MARKET[MARKET_ORDER[i]].weight;
+      if (r <= 0) return MARKET_ORDER[i];
+    }
+    return "normal";
+  }
+
+  // Peak is the one state worth protecting from a re-roll straight back into itself --
+  // two Peaks in a row would read as a bug rather than luck.
+  function nextMarketState(current){
+    var next = rollMarketState();
+    if (next === "peak" && current === "peak") next = "hot";
+    return next;
+  }
+
+  function marketWindow(stateId){
+    var r = MARKET[stateId].ms, span = r[1] - r[0];
+    var extend = 1 + Math.min(1.0, (state.corp.marketing || 0) * 0.12);
+    var base = r[0] + Math.random() * span;
+    return (stateId === "hot" || stateId === "peak") ? base * extend : base;
+  }
+
+  function marketOf(skuId){
+    if (!state.marketState) state.marketState = {};
+    var m = state.marketState[skuId];
+    if (!m || typeof m.id !== "string" || !MARKET[m.id] || !isFinite(m.until)){
+      m = state.marketState[skuId] = { id: "normal", until: Date.now() + marketWindow("normal") };
+    }
+    return m;
+  }
+
+  function marketMult(skuId){ return MARKET[marketOf(skuId).id].mult; }
+
+  // Called from the main ticker. Rolls any manifest whose window has closed, and nudges
+  // the player only when their own manifest turns good.
+  function tickMarkets(){
+    var now = Date.now();
+    SKUS.forEach(function(sk){
+      var m = marketOf(sk.id);
+      if (now < m.until) return;
+      var was = m.id;
+      m.id = nextMarketState(was);
+      m.until = now + marketWindow(m.id);
+      if (sk.id === state.sku && (m.id === "hot" || m.id === "peak") && was !== m.id){
+        showToast(MARKET[m.id].name + " market on <b>" + sk.name + "</b> — " +
+                  "+" + Math.round((MARKET[m.id].mult - 1) * 100) + "% while it lasts.");
+        sfx("upgrade");
+      }
+    });
+    // Unconditional: repainting only on a transition left the badge stale whenever the
+    // state was set from anywhere else -- a load, a manifest switch, a restored save.
+    renderMarket();
+  }
+
   var DAILY_REWARDS = [
     { day:1, pallets:2, desc:"Stipend" }, { day:2, pallets:3, desc:"Overtime" }, { day:3, pallets:4, desc:"Bulk Inbound" },
     { day:4, pallets:5, desc:"Express" }, { day:5, pallets:6, desc:"Grant" }, { day:6, pallets:8, desc:"Priority" }, { day:7, pallets:15, desc:"Mastery" }
@@ -791,6 +872,7 @@
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
+    marketState: {},
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
 
@@ -898,7 +980,7 @@
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -966,6 +1048,10 @@
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
+      // A stale or hand-edited market entry is repaired by marketOf() on read, but the
+      // container itself has to exist for an old save to survive the first tick.
+      if (!state.marketState || typeof state.marketState !== "object") state.marketState = {};
+
       if (!state.owned || typeof state.owned !== "object") state.owned = {};
       GENS.forEach(function(g){
         var v = Math.floor(Number(state.owned[g.id]));
@@ -1230,22 +1316,50 @@
     render(); saveGame();
   });
 
+  function marketLabel(skuId){
+    var m = MARKET[marketOf(skuId).id];
+    var pct = Math.round((m.mult - 1) * 100);
+    return m.name + (pct === 0 ? "" : (pct > 0 ? " +" : " ") + pct + "%");
+  }
+
+  // Four text nodes in total, so it runs unconditionally. Gating the cards on the modal
+  // being open looked like a saving but ran them a moment too early: renderSkuUI() is
+  // called before the modal is unhidden, so the badges came up blank.
+  function renderMarket(){
+    var badge = document.getElementById("activeSkuMkt");
+    if (badge){
+      badge.className = "mkt " + marketOf(state.sku).id;
+      badge.textContent = marketLabel(state.sku);
+    }
+    SKUS.forEach(function(sk){
+      var e = skuCardEls[sk.id];
+      if (!e) return;
+      e.className = "mkt " + marketOf(sk.id).id;
+      e.textContent = marketLabel(sk.id);
+    });
+  }
+
+  var skuCardEls = {};
   function renderSkuUI(){
     var s = getSku();
-    document.getElementById("activeSkuName").textContent = s.name;
+    document.getElementById("activeSkuLabel").textContent = s.name;
     document.getElementById("activeSkuDesc").textContent = s.desc;
     var container = document.getElementById("skuList"); container.innerHTML = "";
+    skuCardEls = {};
     SKUS.forEach(function(skuItem){
       var c = document.createElement("div");
       c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "");
-      c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>";
+      c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>" +
+                    '<span class="mkt" data-r="mkt"></span>';
       c.addEventListener("click", function(){
         state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
         sfx("upgrade"); showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
         renderSkuUI(); render(); saveGame();
       });
       container.appendChild(c);
+      skuCardEls[skuItem.id] = c.querySelector('[data-r="mkt"]');
     });
+    renderMarket();
   }
   document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
   document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
@@ -1780,7 +1894,7 @@
   function newContract(){
     var r = totalRate();
     var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
-    var conMult = getSku().conMult * (currentSite().conMult || 1);
+    var conMult = getSku().conMult * (currentSite().conMult || 1) * marketMult(state.sku);
     var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult;
@@ -3083,6 +3197,7 @@
   setInterval(function(){
     var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
     tickAmbientRush();
+    tickMarkets();
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
@@ -3101,7 +3216,7 @@
 
   function startGame() {
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
-    renderCompany(); renderMute(); renderNotifs(); update3DPalette();
+    renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
     bindNotificationLifecycle();
     if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
     renderQuality(); render();
