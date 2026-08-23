@@ -181,6 +181,9 @@
   .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
   .palletcount svg{width:22px; height:22px;}
+  .cratebar{border-left-color:#3f8f8a;}
+  .cratebar .palletcount{color:#2f7a75;}
+  .cratebar .adbtn{flex:0 0 auto; margin:0; min-width:150px;}
   .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
   .swatch{width:20px; height:20px; border-radius:3px; display:block;}
 
@@ -215,6 +218,18 @@
   .cal-day.active b{color:var(--hivis);}
   .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
   .sku-list{display:flex; flex-direction:column; gap:8px;}
+  /* One badge style, four tints -- the colour is the whole signal, so it has to read at
+     a glance on the strip without the player opening the modal. */
+  .mkt{display:inline-block; font-family:var(--font-mono); font-size:8px; letter-spacing:1.2px;
+       text-transform:uppercase; padding:2px 6px; border-radius:3px; vertical-align:middle;
+       margin-left:7px; border:1px solid transparent; font-weight:700;}
+  .mkt.low{color:var(--dim); border-color:var(--line); background:var(--panel2);}
+  .mkt.normal{color:var(--steel); border-color:var(--line); background:var(--panel2);}
+  .mkt.hot{color:#fff; background:var(--hivis); border-color:var(--hivis);}
+  .mkt.peak{color:#3a2a00; background:linear-gradient(135deg,#ffd451,#f0a91b); border-color:#c98a10;}
+  /* .sku-card span is display:block, which stretched the chip across the whole card and
+     made it read as a button. Two classes outrank it, so the chip hugs its text again. */
+  .sku-card .mkt{display:inline-block; margin-left:0; margin-top:7px;}
   .sku-card{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px; cursor:pointer; text-align:left; color:var(--ink); font-family:inherit;}
   .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(44,132,66,.18),var(--panel2) 40%);}
   .sku-card b{font-family:var(--font-cond); font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
@@ -276,7 +291,7 @@
 
     <div class="skustrip">
       <div>
-        <b id="activeSkuName">FMCG Groceries</b>
+        <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
         <span id="activeSkuDesc">Standard consumer freight</span>
       </div>
       <button class="skubtn" id="openSkuBtn">Change SKU</button>
@@ -353,6 +368,11 @@
     <div class="toolbar"><div class="label">Supplies</div></div>
     <div class="shop" id="supplyList"></div>
     <div class="toolbar"><div class="label">Site Livery</div></div>
+    <div class="palletbar cratebar">
+      <div class="palletcount"><span id="crateIcon"></span><span id="crateNum">0</span></div>
+      <button id="crateAdBtn" class="adbtn alt">Crate Shipment<small id="crateAdSub">WATCH AD</small></button>
+    </div>
+    <div class="palletnote" id="crateNote">Crates buy liveries. Earned from shipments and the odd daily bonus.</div>
     <div class="shop" id="themeList"></div>
   </section>
 
@@ -584,6 +604,9 @@
   }
 
   var A = 'var(--hivis)', S = 'var(--steel)', BX = '#c08a4e', BXD = '#8a6437', HZ = 'var(--hazard)', CS = 'var(--cash)', CP = 'var(--corp)';
+  // Deliberately not in the pallet's timber palette -- crates buy different things, so
+  // they have to read as a separate currency at a glance.
+  var CR = '#3f8f8a', CRD = '#26615e';
   var ICONS = {
     glove:'<rect x="7" y="8" width="10" height="11" rx="2.5" fill="'+A+'"/><rect x="7.4" y="3.6" width="2.1" height="6" rx="1" fill="'+A+'"/><rect x="10.3" y="2.6" width="2.1" height="7" rx="1" fill="'+A+'"/><rect x="13.2" y="3.2" width="2.1" height="6.4" rx="1" fill="'+A+'"/>',
     trolley:'<rect x="3" y="3" width="2.2" height="13" fill="'+S+'"/><rect x="3" y="14" width="15" height="2" fill="'+S+'"/><rect x="6.5" y="7" width="9" height="7" fill="'+BX+'"/><circle cx="7.5" cy="19" r="2.2" fill="'+S+'"/><circle cx="16" cy="19" r="2.2" fill="'+S+'"/>',
@@ -593,6 +616,7 @@
     robot:'<rect x="9.6" y="18" width="9" height="3" rx="1" fill="'+S+'"/><rect x="12.6" y="9" width="3" height="9" fill="'+S+'"/><rect x="5" y="8" width="10.6" height="2.6" fill="'+A+'"/><rect x="4.6" y="13" width="7" height="6" fill="'+BX+'"/>',
     crane:'<rect x="2" y="3.5" width="20" height="2.6" fill="'+A+'"/><rect x="3" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="18.8" y="6.1" width="2.2" height="14.4" fill="'+S+'"/><rect x="8" y="12.5" width="8" height="7" fill="'+BX+'"/>',
     hub:'<rect x="9" y="9" width="6" height="6" rx="1" fill="'+A+'"/><rect x="2" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="2" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="2" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/><rect x="16.6" y="18" width="5.4" height="4" rx="1" fill="'+S+'"/>',
+    crate:'<rect x="3" y="5" width="18" height="14" rx="1" fill="'+CR+'"/><rect x="3" y="5" width="18" height="2.4" fill="'+CRD+'"/><rect x="3" y="16.6" width="18" height="2.4" fill="'+CRD+'"/><rect x="3" y="5" width="2.6" height="14" fill="'+CRD+'"/><rect x="18.4" y="5" width="2.6" height="14" fill="'+CRD+'"/><rect x="10.8" y="7.4" width="2.4" height="9.2" fill="'+CRD+'"/>',
     pallet:'<rect x="2" y="8.4" width="20" height="3.1" fill="'+BX+'"/><rect x="2" y="15" width="20" height="3.1" fill="'+BX+'"/><rect x="3" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="10.4" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/><rect x="17.8" y="11.5" width="3.2" height="3.5" fill="'+BXD+'"/>',
     wrench:'<rect x="3.6" y="14.4" width="12" height="3" rx="1.5" fill="'+S+'" transform="rotate(-45 9.6 15.9)"/><circle cx="16.6" cy="7.4" r="5" fill="'+A+'"/>',
     hat:'<path d="M4 15.6a8 8 0 0 1 16 0z" fill="'+A+'"/><rect x="2" y="15.4" width="20" height="2.7" rx="1.35" fill="'+A+'"/>',
@@ -612,6 +636,7 @@
   function plate(name){ return '<div class="plate">'+icon(name)+'</div>'; }
   document.getElementById("headMark").innerHTML = icon("forklift");
   document.getElementById("palletIcon").innerHTML = icon("pallet");
+  document.getElementById("crateIcon").innerHTML = icon("crate");
 
   var GENS = [
     {id:"picker",   name:"Casual Picker",    ic:"glove",    cost:15,        rate:0.1,   desc:"Picks by hand, manual scan"},
@@ -638,10 +663,17 @@
   UPGRADES.push({id:"tap1", name:"Barcode Scanner", ic:"scanner", cost:500, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value"});
   UPGRADES.push({id:"tap2", name:"RF Gun", ic:"scanner", cost:60000, target:"tap", mult:2, reqGen:null, reqCount:0, desc:"Doubles hand pick value again"});
 
+  // Ordered by cost, and the new four are slotted between the originals by rough power
+  // rather than appended: cost-growth reduction compounds hardest, so Fleet Depot sits
+  // near the top, while Customs Office trims a number that was already generous.
   var CORP_BUILDINGS = [
     {id: "hr", name: "HR Annex", ic: "building", baseCost: 500e6, desc: "Global Wage Reduction", mastery: "Level 10: 72 Hour Offline Yield"},
+    {id: "customs", name: "Customs Office", ic: "building", baseCost: 2e9, desc: "Smaller Contract Quotas", mastery: "Level 10: Switching Manifest Grants a Boost"},
+    {id: "marketing", name: "Marketing Office", ic: "building", baseCost: 5e9, desc: "Longer Hot & Peak Markets", mastery: "Level 10: Always Return to a Hot Market"},
     {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
+    {id: "training", name: "Training Centre", ic: "building", baseCost: 50e9, desc: "Stronger Site Managers", mastery: "Level 10: Managers Double Their Bonus"},
     {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Immune to Hazards"},
+    {id: "depot", name: "Fleet Depot", ic: "building", baseCost: 500e9, desc: "Further Cuts Fleet Cost Inflation", mastery: "Level 10: One Free Purchase per Site"},
     {id: "server", name: "Server Farm", ic: "building", baseCost: 1e12, desc: "Combo Extender & Decelerator", mastery: "Level 10: Combo Never Decays"}
   ];
 
@@ -689,7 +721,7 @@
       cladding:['#dfe5ea','#c1c9d1','#98a2ac'], plinth:['#7f8892','#69717a','#4e555d'],
       pools:null },
 
-    { id:"nightshift", name:"Night Shift", cost:6, ui:'night',
+    { id:"nightshift", name:"Night Shift", cost:3, ui:'night',
       accent:'#4f9ae0', accentD:'#215a91', hazard:'#79c4ee', cash:'#5fc47a',
       sky:['#0d1524','#16203a','#2a2b33'], haze:'30,44,70',
       slab:['#4a4d55','#3d4047','#2c2f35'], asphalt:['#2e333b','#262a31','#1b1f24'],
@@ -698,7 +730,7 @@
       cladding:['#59636e','#48505a','#333941'], plinth:['#3a4149','#2f353b','#22262b'],
       pools:'rgba(255,186,92,ALPHA)' },
 
-    { id:"safety", name:"Hi-Vis Lime", cost:6, ui:'day',
+    { id:"safety", name:"Hi-Vis Lime", cost:3, ui:'day',
       accent:'#6f9c22', accentD:'#4a6a13', hazard:'#8f9c17', cash:'#2c8442',
       sky:['#7fb2cf','#a9cbdd','#d6e4e6'], haze:'206,222,214',
       slab:['#b6b6a4','#9d9d8c','#77776d'], asphalt:['#7b8080','#686d6d','#4d5252'],
@@ -707,7 +739,7 @@
       cladding:['#dde5da','#bfc9bc','#96a094'], plinth:['#7d867c','#676f66','#4c524b'],
       pools:null },
 
-    { id:"radioactive", name:"Radioactive", cost:14, ui:'night',
+    { id:"radioactive", name:"Radioactive", cost:3, ui:'night',
       accent:'#7ee01f', accentD:'#3f7a08', hazard:'#c8f53a', cash:'#4fd06a',
       sky:['#0a1a0e','#12301a','#1f4322'], haze:'40,90,44',
       slab:['#4b5442','#3e4636','#2c3327'], asphalt:['#2b3529','#232c22','#19201a'],
@@ -716,7 +748,7 @@
       cladding:['#5b6a59','#495546','#333c31'], plinth:['#39423a','#2e352f','#212721'],
       pools:'rgba(150,255,80,ALPHA)' },
 
-    { id:"biohazard", name:"Biohazard", cost:14, ui:'day',
+    { id:"biohazard", name:"Biohazard", cost:3, ui:'day',
       accent:'#a8321a', accentD:'#6d1d0c', hazard:'#8f7a12', cash:'#4a7a2c',
       sky:['#6f6b3a','#928c52','#b3ac74'], haze:'170,164,110',
       slab:['#8f8a5e','#7a7550','#5c583c'], asphalt:['#5f5c44','#4f4d3a','#3a382a'],
@@ -725,7 +757,7 @@
       cladding:['#c8c49a','#a9a680','#807e5f'], plinth:['#736f4a','#5e5b3d','#43412b'],
       pools:null },
 
-    { id:"coldchain", name:"Cold Chain", cost:12, ui:'day',
+    { id:"coldchain", name:"Cold Chain", cost:3, ui:'day',
       accent:'#1f8fb0', accentD:'#0f5d75', hazard:'#4a8fa8', cash:'#2c8474',
       sky:['#a8cfe4','#c8e2ee','#e8f2f6'], haze:'226,240,247',
       slab:['#c3cdd2','#a9b4ba','#828e95'], asphalt:['#8b969d','#77828a','#5b666e'],
@@ -734,7 +766,7 @@
       cladding:['#eef5f8','#d0dde3','#a4b4bd'], plinth:['#8896a0','#717d86','#535d64'],
       pools:null },
 
-    { id:"blackout", name:"Blackout", cost:18, ui:'night',
+    { id:"blackout", name:"Blackout", cost:3, ui:'night',
       accent:'#f0a020', accentD:'#a1650a', hazard:'#d08c14', cash:'#9a8f4a',
       sky:['#08090b','#0d0f12','#17161a'], haze:'26,24,28',
       slab:['#3b3a38','#302f2e','#232222'], asphalt:['#252526','#1e1e1f','#151516'],
@@ -762,6 +794,98 @@
     { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2 }
   ];
 
+  // --- Crates ------------------------------------------------------------------------
+  // A second, ad-gated currency, kept deliberately narrow: it buys liveries and nothing
+  // else. Scarcity comes from the daily cap rather than the price, so the numbers stay
+  // small and legible.
+  var CRATES_PER_AD = 3;
+  var CRATE_ADS_PER_DAY = 5;
+  var CRATE_DAILY_BONUS_DAYS = [3, 6];      // a trickle for players who never watch ads
+
+  function crateAdsLeft(){
+    if (!sameDailyPeriod(state.crateAdDay)) return CRATE_ADS_PER_DAY;
+    return Math.max(0, CRATE_ADS_PER_DAY - (state.crateAdsToday || 0));
+  }
+
+  function spendCrateAd(){
+    if (!sameDailyPeriod(state.crateAdDay)){ state.crateAdDay = dailyPeriod(); state.crateAdsToday = 0; }
+    state.crateAdsToday = (state.crateAdsToday || 0) + 1;
+  }
+
+  // The cap rides the same 20h boundary as the login streak, so "come back tomorrow"
+  // means one thing everywhere in the game.
+  function dailyPeriod(){ return Math.floor(Date.now() / (20 * 3600000)); }
+  function sameDailyPeriod(p){ return p === dailyPeriod(); }
+
+  // --- Market fluctuation -----------------------------------------------------------
+  // Each manifest runs its own market clock, so the choice of SKU is a live decision
+  // rather than something you set once and forget. Peak is deliberately rare and short:
+  // it should feel like catching something, not like a state you can sit in.
+  var MARKET = {
+    low:    { id:"low",    name:"Low",    mult:0.85, weight:30, ms:[240000, 480000] },
+    normal: { id:"normal", name:"Normal", mult:1.00, weight:45, ms:[240000, 480000] },
+    hot:    { id:"hot",    name:"Hot",    mult:1.32, weight:20, ms:[180000, 360000] },
+    peak:   { id:"peak",   name:"Peak",   mult:1.80, weight:5,  ms:[60000,  90000]  }
+  };
+  var MARKET_ORDER = ["low","normal","hot","peak"];
+  var MARKET_WEIGHT_TOTAL = MARKET_ORDER.reduce(function(a,k){ return a + MARKET[k].weight; }, 0);
+
+  function rollMarketState(){
+    var r = Math.random() * MARKET_WEIGHT_TOTAL;
+    for (var i=0;i<MARKET_ORDER.length;i++){
+      r -= MARKET[MARKET_ORDER[i]].weight;
+      if (r <= 0) return MARKET_ORDER[i];
+    }
+    return "normal";
+  }
+
+  // Peak is the one state worth protecting from a re-roll straight back into itself --
+  // two Peaks in a row would read as a bug rather than luck.
+  function nextMarketState(current){
+    var next = rollMarketState();
+    if (next === "peak" && current === "peak") next = "hot";
+    return next;
+  }
+
+  function marketWindow(stateId){
+    var r = MARKET[stateId].ms, span = r[1] - r[0];
+    var extend = 1 + Math.min(1.0, (state.corp.marketing || 0) * 0.12);
+    var base = r[0] + Math.random() * span;
+    return (stateId === "hot" || stateId === "peak") ? base * extend : base;
+  }
+
+  function marketOf(skuId){
+    if (!state.marketState) state.marketState = {};
+    var m = state.marketState[skuId];
+    if (!m || typeof m.id !== "string" || !MARKET[m.id] || !isFinite(m.until)){
+      m = state.marketState[skuId] = { id: "normal", until: Date.now() + marketWindow("normal") };
+    }
+    return m;
+  }
+
+  function marketMult(skuId){ return MARKET[marketOf(skuId).id].mult; }
+
+  // Called from the main ticker. Rolls any manifest whose window has closed, and nudges
+  // the player only when their own manifest turns good.
+  function tickMarkets(){
+    var now = Date.now();
+    SKUS.forEach(function(sk){
+      var m = marketOf(sk.id);
+      if (now < m.until) return;
+      var was = m.id;
+      m.id = nextMarketState(was);
+      m.until = now + marketWindow(m.id);
+      if (sk.id === state.sku && (m.id === "hot" || m.id === "peak") && was !== m.id){
+        showToast(MARKET[m.id].name + " market on <b>" + sk.name + "</b> — " +
+                  "+" + Math.round((MARKET[m.id].mult - 1) * 100) + "% while it lasts.");
+        sfx("upgrade");
+      }
+    });
+    // Unconditional: repainting only on a transition left the badge stale whenever the
+    // state was set from anywhere else -- a load, a manifest switch, a restored save.
+    renderMarket();
+  }
+
   var DAILY_REWARDS = [
     { day:1, pallets:2, desc:"Stipend" }, { day:2, pallets:3, desc:"Overtime" }, { day:3, pallets:4, desc:"Bulk Inbound" },
     { day:4, pallets:5, desc:"Express" }, { day:5, pallets:6, desc:"Grant" }, { day:6, pallets:8, desc:"Priority" }, { day:7, pallets:15, desc:"Mastery" }
@@ -786,11 +910,13 @@
   var state = {
     money: 0, total: 0, lifetime: 0, rep: 0, taps: 0,
     owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
-    corp: { hr: 0, tower: 0, solar: 0, server: 0 },
+    corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
+    depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false,
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
+    marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
 
@@ -837,11 +963,23 @@
   // Owned upgrades only change on purchase, sale and load, so cache and invalidate.
   var upMultCache = null;
   function invalidateUpMult(){ upMultCache = null; }
+  // Training Centre lifts the bonus part of a manager, not the whole multiplier: a x1.5
+  // manager carries a 0.5 bonus, so ten levels take it to x1.75 and the mastery doubles
+  // the bonus again to x2.5. Managers survive prestige, so this compounds across sites.
+  function mgrMult(base){
+    var lvl = state.corp.training || 0;
+    var bonus = (base - 1) * (1 + lvl * 0.05);
+    if (lvl >= 10) bonus *= 2;
+    return 1 + bonus;
+  }
+
   function upMult(target){
     if (!upMultCache){
       upMultCache = {};
       UPGRADES.forEach(function(u){
-        if (state.upgrades[u.id]) upMultCache[u.target] = (upMultCache[u.target] || 1) * u.mult;
+        if (!state.upgrades[u.id]) return;
+        var m = u.id.indexOf("mgr_") === 0 ? mgrMult(u.mult) : u.mult;
+        upMultCache[u.target] = (upMultCache[u.target] || 1) * m;
       });
     }
     return upMultCache[target] || 1;
@@ -898,7 +1036,7 @@
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -932,7 +1070,10 @@
   function costOf(g, qty){
     var owned = state.owned[g.id] || 0, sum = 0;
     var solarRed = Math.min(0.015, (state.corp.solar || 0) * 0.0015);
-    var actualGrowth = Math.max(1.135, COST_GROWTH - solarRed);
+    var depotRed = Math.min(0.015, (state.corp.depot || 0) * 0.0015);
+    // Cost growth compounds over hundreds of purchases, so the floor is what keeps this
+    // from running away -- the Depot lowers it, it does not remove it.
+    var actualGrowth = Math.max(1.12, COST_GROWTH - solarRed - depotRed);
     for (var i=0;i<qty;i++) sum += g.cost * Math.pow(actualGrowth, owned+i);
     return Math.ceil(sum * currentSite().cost);
   }
@@ -962,10 +1103,14 @@
       // number where a count belongs turns every later sum into NaN, and the UI then
       // paints NaN everywhere with no way back short of a wipe.
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
-       "bestCombo","lastSeen","lastDailyClaim","dailyStreak"].forEach(function(k){
+       "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
+      // A stale or hand-edited market entry is repaired by marketOf() on read, but the
+      // container itself has to exist for an old save to survive the first tick.
+      if (!state.marketState || typeof state.marketState !== "object") state.marketState = {};
+
       if (!state.owned || typeof state.owned !== "object") state.owned = {};
       GENS.forEach(function(g){
         var v = Math.floor(Number(state.owned[g.id]));
@@ -984,7 +1129,7 @@
       if (!state.milestones) state.milestones = {};
       if (!state.notifs) state.notifs = { offline:true, daily:true, contract:true, rush:false };
       if (!state.ach) state.ach = {};
-      if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
+      if (!state.corp) state.corp = {};
 
       var validSite = false;
       for (var i = 0; i < SITES.length; i++) { if (SITES[i].id === state.site) validSite = true; }
@@ -1013,6 +1158,16 @@
           showToast("Type WIPE to confirm.");
         }
       });
+
+      // Marketing Office mastery: the market you come back to is already worth working.
+      // Only applied on a real absence, so it cannot be farmed by tabbing away.
+      if ((state.corp.marketing || 0) >= 10 && (Date.now() - state.lastSeen) > 300000){
+        var back = marketOf(state.sku);
+        if (back.id !== "hot" && back.id !== "peak"){
+          back.id = "hot";
+          back.until = Date.now() + marketWindow("hot");
+        }
+      }
 
       var secs = (Date.now() - state.lastSeen) / 1000;
       if (secs > 60){
@@ -1065,7 +1220,8 @@
     tap:     "ca-app-pub-5195464450607116/7867546956",  // Double Payout    -- taps x4, 60s
     reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
     favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
-    offline: "ca-app-pub-5195464450607116/3193699573"   // Claim Double     -- 2x offline earnings
+    offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double     -- 2x offline earnings
+    crate:   "ca-app-pub-5195464450607116/4517127752"   // Crate Shipment    -- +3 crates, 5/day
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
@@ -1123,7 +1279,7 @@
   // Reward buttons had no cooldown at all -- the unused `if (rush.disabled) return;`
   // guard shows one was intended. The cooldown starts inside the reward callback, so a
   // failed or skipped ad does not burn it.
-  var AD_COOLDOWN = { rushAdBtn: 180000, dblAdBtn: 180000, rerollBtn: 120000 };
+  var AD_COOLDOWN = { rushAdBtn: 180000, dblAdBtn: 180000, rerollBtn: 120000, crateAdBtn: 60000 };
   var adReadyAt = {};
   var adSubText = {};
   function adReady(id){ return Date.now() >= (adReadyAt[id] || 0); }
@@ -1217,7 +1373,8 @@
       var isCur = r.day === state.dailyStreak;
       var isClaimed = r.day < state.dailyStreak;
       d.className = "cal-day" + (isCur ? " active" : "") + (isClaimed ? " claimed" : "");
-      d.innerHTML = "DAY " + r.day + "<b>+" + r.pallets + " PAL</b><span>" + r.desc + "</span>";
+      d.innerHTML = "DAY " + r.day + "<b>+" + r.pallets + " PAL</b><span>" +
+                    (CRATE_DAILY_BONUS_DAYS.indexOf(r.day) !== -1 ? "+1 Crate" : r.desc) + "</span>";
       grid.appendChild(d);
     });
   }
@@ -1225,27 +1382,97 @@
   document.getElementById("btnClaimDaily").addEventListener("click", function(){
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
+    var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
+    if (crate) state.crates += 1;
     document.getElementById("modalDaily").hidden = true;
-    sfx("upgrade"); showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>.");
+    sfx("upgrade");
+    showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>" +
+              (crate ? " and <b>+1 Crate</b>" : "") + ".");
     render(); saveGame();
   });
 
+  var crateAdBtnEl = null, crateAdSubEl = null;
+  function renderCrateAd(){
+    if (!crateAdBtnEl) return;
+    var left = crateAdsLeft();
+    var ready = adReady("crateAdBtn");
+    crateAdBtnEl.disabled = left <= 0 || !ready;
+    crateAdSubEl.textContent =
+      left <= 0 ? "BACK TOMORROW"
+      : !ready  ? "AVAILABLE IN " + Math.ceil((adReadyAt["crateAdBtn"] - Date.now())/1000) + "s"
+      : "WATCH AD \u00b7 +" + CRATES_PER_AD + " CRATES \u00b7 " + left + " LEFT TODAY";
+  }
+
+  (function bindCrateAd(){
+    var b = document.getElementById("crateAdBtn");
+    if (!b) return;
+    crateAdBtnEl = b; crateAdSubEl = document.getElementById("crateAdSub");
+    b.addEventListener("click", function(){
+      if (crateAdsLeft() <= 0 || !adReady("crateAdBtn")) return;
+      Ads.show("crate", function(){
+        startAdCooldown("crateAdBtn");
+        spendCrateAd();
+        state.crates += CRATES_PER_AD;
+        sfx("upgrade");
+        showToast("Shipment received: <b>+" + CRATES_PER_AD + " Crates</b>.");
+        render(); saveGame();
+      });
+    });
+  })();
+
+  function marketLabel(skuId){
+    var m = MARKET[marketOf(skuId).id];
+    var pct = Math.round((m.mult - 1) * 100);
+    return m.name + (pct === 0 ? "" : (pct > 0 ? " +" : " ") + pct + "%");
+  }
+
+  // Four text nodes in total, so it runs unconditionally. Gating the cards on the modal
+  // being open looked like a saving but ran them a moment too early: renderSkuUI() is
+  // called before the modal is unhidden, so the badges came up blank.
+  function renderMarket(){
+    var badge = document.getElementById("activeSkuMkt");
+    if (badge){
+      badge.className = "mkt " + marketOf(state.sku).id;
+      badge.textContent = marketLabel(state.sku);
+    }
+    SKUS.forEach(function(sk){
+      var e = skuCardEls[sk.id];
+      if (!e) return;
+      e.className = "mkt " + marketOf(sk.id).id;
+      e.textContent = marketLabel(sk.id);
+    });
+  }
+
+  var skuCardEls = {};
   function renderSkuUI(){
     var s = getSku();
-    document.getElementById("activeSkuName").textContent = s.name;
+    document.getElementById("activeSkuLabel").textContent = s.name;
     document.getElementById("activeSkuDesc").textContent = s.desc;
     var container = document.getElementById("skuList"); container.innerHTML = "";
+    skuCardEls = {};
     SKUS.forEach(function(skuItem){
       var c = document.createElement("div");
       c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "");
-      c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>";
+      c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>" +
+                    '<span class="mkt" data-r="mkt"></span>';
       c.addEventListener("click", function(){
+        var switched = state.sku !== skuItem.id;
         state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
-        sfx("upgrade"); showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        sfx("upgrade");
+        // Without the mastery, switching is neutral -- you take the new manifest's numbers
+        // and nothing else. With it, the paperwork itself is worth something.
+        if (switched && (state.corp.customs || 0) >= 10){
+          boostUntil = Date.now() + 30000;
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>. Customs cleared it \u2014 <b>\u00d78 for 30s</b>.");
+        } else {
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        }
         renderSkuUI(); render(); saveGame();
       });
       container.appendChild(c);
+      skuCardEls[skuItem.id] = c.querySelector('[data-r="mkt"]');
     });
+    renderMarket();
   }
   document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
   document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
@@ -1303,6 +1530,7 @@
         if (state.money >= cost) {
           state.money -= cost;
           state.corp[cb.id] = lvl + 1;
+          invalidateUpMult();               // Training Centre changes what a manager is worth
           sfx("build");
           if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
           else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
@@ -1375,8 +1603,11 @@
         b.addEventListener("click", function(){
           if (state.theme === t.id) return;
           if (!themeOwned(t)){
-            if (state.pallets < t.cost){ showToast("Need <b>" + t.cost + " pallets</b> for that livery."); return; }
-            state.pallets -= t.cost;
+            if (state.crates < t.cost){
+              showToast("Need <b>" + t.cost + " crates</b> for that livery. Watch a shipment to earn more.");
+              return;
+            }
+            state.crates -= t.cost;
             state.themesOwned[t.id] = true;      // bought once, not every time you switch
           }
           state.theme = t.id;
@@ -1560,6 +1791,8 @@
 
   function renderPalletsTab(){
     document.getElementById("palletNum").textContent = state.pallets;
+    document.getElementById("crateNum").textContent = state.crates;
+    renderCrateAd();
 
     PERKS.forEach(function(p){
       var e = perkBtnEls[p.id];
@@ -1577,9 +1810,9 @@
       if (!e) return;
       var owned = themeOwned(t), active = state.theme === t.id;
       e.btn.classList.toggle("owned", owned && !active);
-      e.btn.classList.toggle("can", !owned && state.pallets >= t.cost);
-      e.btn.classList.toggle("lock", !owned && state.pallets < t.cost);
-      e.cost.textContent = active ? "ACTIVE" : (owned ? "OWNED" : t.cost + " PAL");
+      e.btn.classList.toggle("can", !owned && state.crates >= t.cost);
+      e.btn.classList.toggle("lock", !owned && state.crates < t.cost);
+      e.cost.textContent = active ? "ACTIVE" : (owned ? "OWNED" : t.cost + " CR");
       e.desc.textContent = (t.ui === "night" ? "Night shift lighting" : "Daylight operation");
     });
 
@@ -1717,6 +1950,7 @@
       state.network.length = NETWORK_CAP;
     }
     state.money = 0; state.total = 0;
+    state.depotFreeUsed = false;              // the Depot's free purchase refreshes per site
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
     state.upgrades = kept; invalidateUpMult(); GENS.forEach(function(g){ state.owned[g.id] = 0; });
@@ -1727,10 +1961,19 @@
     switchTab("floor"); render(); saveGame();
   });
 
+  function depotFreeReady(){ return (state.corp.depot || 0) >= 10 && !state.depotFreeUsed; }
+
   function buyGen(g){
     var c = costOf(g, buyQty);
-    if (state.money < c) return;
-    state.money -= c; state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    var free = depotFreeReady();
+    if (!free && state.money < c) return;
+    if (free){
+      state.depotFreeUsed = true;
+      showToast("Fleet Depot covered it: <b>" + buyQty + " \u00d7 " + g.name + "</b> free.");
+    } else {
+      state.money -= c;
+    }
+    state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
     sfx("buy"); render(); saveGame();
   }
 
@@ -1780,8 +2023,9 @@
   function newContract(){
     var r = totalRate();
     var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
-    var conMult = getSku().conMult * (currentSite().conMult || 1);
-    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION));
+    var conMult = getSku().conMult * (currentSite().conMult || 1) * marketMult(state.sku);
+    var customsCut = 1 - Math.min(0.40, (state.corp.customs || 0) * 0.04);
+    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult;
 
@@ -2319,11 +2563,18 @@
   // Must match the tap hit-zones in handleCanvasTap exactly.
   // Pulled in tight against the warehouse slab (x -2..32, y -2..28) so the towers frame
   // the site instead of sitting at the canvas edge and clipping off the corners.
+  // A ring around the slab on a 15-unit pitch. The four new plots take the corners the
+  // original four left free, so nothing overlaps and the site still reads as a yard
+  // rather than a grid of pads.
   var CORP_PLOTS = {
-    tower:  { gx: 4,  gy: -13, gw: 11, gd: 11 },
-    solar:  { gx: 19, gy: -13, gw: 11, gd: 11 },
-    server: { gx: 34, gy: 8,   gw: 11, gd: 11 },
-    hr:     { gx: 4,  gy: 30,  gw: 11, gd: 11 }
+    depot:     { gx: -11, gy: -13, gw: 11, gd: 11 },
+    tower:     { gx: 4,   gy: -13, gw: 11, gd: 11 },
+    solar:     { gx: 19,  gy: -13, gw: 11, gd: 11 },
+    customs:   { gx: 34,  gy: -13, gw: 11, gd: 11 },
+    server:    { gx: 34,  gy: 8,   gw: 11, gd: 11 },
+    hr:        { gx: 4,   gy: 30,  gw: 11, gd: 11 },
+    marketing: { gx: 19,  gy: 30,  gw: 11, gd: 11 },
+    training:  { gx: 34,  gy: 30,  gw: 11, gd: 11 }
   };
 
   function corpHeight(lvl){ return 1.2 + lvl * 0.78; }
@@ -2773,6 +3024,7 @@
              if (state.money >= cost) {
                  state.money -= cost;
                  state.corp[cb.id] = lvl + 1;
+                 invalidateUpMult();        // same as the shop path: Training changes manager maths
                  sfx("build");
                  if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
                  else showToast("Constructed: <b>" + cb.name + " Level " + (lvl+1) + "</b>.");
@@ -3083,6 +3335,7 @@
   setInterval(function(){
     var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
     tickAmbientRush();
+    tickMarkets();
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
@@ -3101,7 +3354,7 @@
 
   function startGame() {
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
-    renderCompany(); renderMute(); renderNotifs(); update3DPalette();
+    renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
     bindNotificationLifecycle();
     if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
     renderQuality(); render();

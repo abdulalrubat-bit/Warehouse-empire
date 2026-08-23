@@ -88,12 +88,18 @@ jobs:
             echo "::error::$EMPTY ad unit(s) left empty — those placements would earn nothing."
             exit 1
           fi
-          if [ "$COUNT" -ne 5 ]; then
-            echo "::error::Expected 5 rewarded ad units, found $COUNT."
+          if [ "$COUNT" -ne 6 ]; then
+            echo "::error::Expected 6 rewarded ad units, found $COUNT."
             exit 1
           fi
           if [ "$UNIQ" -ne "$COUNT" ]; then
             echo "::error::Duplicate ad unit id — two placements would report against the same unit."
+            exit 1
+          fi
+          # A placeholder id parses as a valid unit and fails silently at runtime, which is
+          # worse than an empty string: the placement looks wired and earns nothing.
+          if printf '%s\n' "$IDS" | grep -qE 'ca-app-pub-0+/'; then
+            echo "::error::A placeholder ad unit id is still in AD_UNITS. Replace it with the real unit from AdMob."
             exit 1
           fi
 
