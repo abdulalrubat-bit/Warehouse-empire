@@ -6,10 +6,23 @@
 <title>Warehouse Empire v3.2.0</title>
 <style>
   :root{
-    --bg:#232529; --panel:#2c2f34; --panel2:#383c42; --line:#474c53;
-    --ink:#edeff1; --dim:#969ca4; --steel:#79818b;
-    --hivis:#f2620f; --hivis-d:#a83d00; --hazard:#f0c000;
-    --cash:#74c46e; --bad:#e05252; --corp:#a855f7;
+    /* Light industrial: the same concrete, cladding and steel tones the site view
+       uses, so the chrome and the canvas read as one place. Accent hues are darkened
+       from their dark-theme values because they now sit on light surfaces. */
+    --bg:#d6d2c7; --panel:#efece5; --panel2:#dedad0; --line:#b2ac9f;
+    --ink:#22262b; --dim:#6b7076; --steel:#7c828a;
+    --hivis:#e0560a; --hivis-d:#a03c02; --hazard:#b3860a;
+    --cash:#2c8442; --bad:#bf3b30; --corp:#7238d6;
+    /* The money readout stays a dark instrument panel -- it is the one thing that
+       should look like a screen rather than a printed card. */
+    --screen:#1e2226; --screen-2:#171a1d; --screen-ink:#eef1f3; --screen-dim:#8f979f;
+    /* Raised and recessed surfaces, kept as properties so a theme can drive the whole
+       app rather than just the accent colour. */
+    --raise-1:#f6f4ef; --raise-2:#ddd8cd;
+    --tab-1:#f4f1ea;   --tab-2:#e2ded4;
+    --can-1:#e2f1e4;   --can-2:#cfe6d3;
+    --scrim:rgba(30,34,38,.62); --sky-mid:#9cc4e4;
+    --shadow:rgba(60,55,45,.16);
     --font-cond:'Roboto Condensed','Noto Sans Condensed','Liberation Sans Narrow','Arial Narrow',sans-serif;
     --font-mono:'Roboto Mono','Noto Sans Mono','Droid Sans Mono','DejaVu Sans Mono',monospace;
   }
@@ -17,13 +30,13 @@
   [hidden]{display:none !important;}
   input{-webkit-user-select:text; user-select:text;}
 
-  #splash{position:fixed; inset:0; z-index:60; background:#232529; display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
+  #splash{position:fixed; inset:0; z-index:60; background:var(--bg); display:flex; align-items:center; justify-content:center; transition:opacity .5s ease;}
   #splash.hide{opacity:0; pointer-events:none;}
   .splashwrap{text-align:center; opacity:0; transform:translateY(6px); animation:splashFade 1.4s .15s ease forwards;}
-  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px; filter:drop-shadow(0 8px 18px rgba(0,0,0,.55)); animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
+  #splashMark{width:130px; height:130px; display:block; margin:0 auto 22px; filter:drop-shadow(0 8px 18px rgba(0,0,0,.22)); animation:markPop .9s .3s cubic-bezier(.2,.9,.3,1.2) both;}
   #splashName{font-family:var(--font-cond); font-weight:800; font-size:38px; letter-spacing:6px; color:var(--ink); text-transform:uppercase;}
   #splashSub{font-family:var(--font-cond); font-weight:600; font-size:12px; letter-spacing:8px; color:var(--steel); margin-top:2px; text-transform:uppercase;}
-  #splashBand{width:180px; height:6px; margin:22px auto 14px; background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,#141414 8px 16px); border-radius:2px; animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
+  #splashBand{width:180px; height:6px; margin:22px auto 14px; background:repeating-linear-gradient(45deg,var(--hazard) 0 8px,var(--ink) 8px 16px); border-radius:2px; animation:bandGrow 1.2s .55s cubic-bezier(.2,.9,.3,1) both;}
   #splashTag{font-family:var(--font-mono); font-size:9px; letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
 
   @keyframes splashFade{ 0%{opacity:0; transform:translateY(6px);} 100%{opacity:1; transform:translateY(0);} }
@@ -36,24 +49,24 @@
   section { padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
   #tab-floor { padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px)); }
 
-  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 6px 14px rgba(0,0,0,.35);}
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 4px 12px var(--shadow);}
   header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
   header h1{margin:0; font-family:var(--font-cond); font-weight:800; font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
   header h1 span{color:var(--ink);}
   #headMark svg{width:22px; height:22px; display:block;}
 
-  .terminal{margin:0 14px; background:linear-gradient(180deg,#1c1e21,#191b1e); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
-  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--ink); line-height:1; letter-spacing:.5px;}
-  .rate{font-size:10.5px; color:var(--dim); margin-top:4px; letter-spacing:.3px;}
+  .terminal{margin:0 14px; background:linear-gradient(180deg,var(--screen),var(--screen-2)); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
+  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--screen-ink); line-height:1; letter-spacing:.5px;}
+  .rate{font-size:10.5px; color:var(--screen-dim); margin-top:4px; letter-spacing:.3px;}
   .rate b{color:var(--cash); font-weight:600;}
   .logistics-flow{margin:6px 0 2px; display:flex; align-items:center; gap:8px; font-size:9.5px;}
   .flow-bar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
   .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
-  .flow-tag{color:var(--dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
+  .flow-tag{color:var(--screen-dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
 
-  .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -6px 14px rgba(0,0,0,.45); pointer-events:none;}
+  .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -4px 12px var(--shadow); pointer-events:none;}
   .pickwrap > *{pointer-events:auto;}
-  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),#d85508); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 6px 14px rgba(0,0,0,.4); cursor:pointer; user-select:none;}
+  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 5px 12px rgba(60,55,45,.24); cursor:pointer; user-select:none;}
   #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
   #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
 
@@ -64,11 +77,11 @@
   .adbtn.alt{border-style:solid; border-color:var(--hazard); color:var(--hazard);}
 
   .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
-  .combobar{flex:1; height:5px; background:#1d2023; border-radius:3px; overflow:hidden; border:1px solid var(--line);}
+  .combobar{flex:1; height:5px; background:var(--panel2); border-radius:3px; overflow:hidden; border:1px solid var(--line);}
   .combobar i{display:block; height:100%; width:0; background:var(--hivis);}
   #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
 
-  .objective{margin:10px 14px 0; padding:10px 12px; background:#1c1e21; border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3);}
+  .objective{margin:10px 14px 0; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3);}
   .objective:active{transform:scale(.99);}
   .objective .otag{font-family:var(--font-cond); font-weight:800; font-size:9px; letter-spacing:1.5px; color:var(--hazard); writing-mode:vertical-rl; transform:rotate(180deg);}
   .objective .obody{flex:1; min-width:0;}
@@ -90,11 +103,11 @@
   .sphead b{display:block; font-family:var(--font-cond); font-weight:800; font-size:16px; letter-spacing:1.2px; text-transform:uppercase; color:var(--ink);}
   .sphead span{display:block; font-size:9.5px; color:var(--steel); margin:3px 0 10px; line-height:1.5;}
   .splist{display:flex; flex-direction:column; gap:7px;}
-  .sitecard{width:100%; text-align:left; background:#26282c; border:1px solid var(--line); border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
+  .sitecard{width:100%; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:9px 11px; cursor:pointer; color:var(--ink); font-family:var(--font-mono);}
   .sitecard b{font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
   .sitecard .sblurb{font-size:9.5px; color:var(--dim); line-height:1.5; margin-top:2px;}
 
-  .netbar{margin:10px 14px 0; padding:8px 10px; background:#26282c; border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px;}
+  .netbar{margin:10px 14px 0; padding:8px 10px; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px;}
   .netbar .nsite{flex:1; min-width:0;}
   .netbar .nsite b{display:block; font-family:var(--font-cond); font-weight:700; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .netbar .nsite span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
@@ -103,7 +116,7 @@
   .ctitle{font-family:var(--font-cond); font-weight:600; font-size:14px; letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
   .ctime{color:var(--steel); white-space:nowrap;}
   .creward{color:var(--hazard); white-space:nowrap;}
-  .cbar{height:5px; background:#1d2023; border-radius:3px; margin:7px 0 5px; overflow:hidden;}
+  .cbar{height:5px; background:var(--panel2); border-radius:3px; margin:7px 0 5px; overflow:hidden;}
   .cbar i{display:block; height:100%; background:var(--hazard); transition:width .3s;}
 
   .shift{display:flex; gap:7px; margin:8px 14px 0;}
@@ -111,7 +124,7 @@
   .shift b{display:block; font-family:var(--font-cond); font-weight:800; font-size:17px; color:var(--cash); line-height:1.1;}
   .shift span{font-size:8px; color:var(--dim); letter-spacing:.5px; text-transform:uppercase;}
   .scale{display:flex; gap:1px; margin:10px 14px 0; background:var(--line); border:1px solid var(--line); border-radius:4px; overflow:hidden;}
-  .scale div{flex:1; background:#26282c; padding:6px 4px; text-align:center;}
+  .scale div{flex:1; background:var(--panel); padding:6px 4px; text-align:center;}
   .scale .sv{font-family:var(--font-cond); font-weight:800; font-size:14px; color:var(--ink); line-height:1.1;}
   .scale .sv i{font-style:normal; font-size:10px; color:var(--steel);}
   .scale .sl{font-size:7.5px; letter-spacing:1px; text-transform:uppercase; color:var(--steel); margin-top:2px;}
@@ -122,7 +135,7 @@
   .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:5px 12px; font-family:inherit; font-size:11px; cursor:pointer;}
   .qty button.on{background:var(--hivis); color:#20130a; border-color:var(--hivis); font-weight:600;}
 
-  .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px; background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
+  .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
   .plate svg{width:24px; height:24px; display:block;}
 
   .gens{padding:0 14px 8px; display:flex; flex-direction:column; gap:9px;}
@@ -134,15 +147,15 @@
   .gen-card-title .name{font-family:var(--font-cond); font-weight:700; font-size:16px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .gen-card-title .count{color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
   .gen-card-title .desc{font-size:9.5px; color:var(--dim); margin-top:1px;}
-  .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:#202226; border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
+  .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
   .gen-card-metrics{display:flex; flex-direction:column; gap:3px;}
   .gen-card-metrics .prod{font-size:11.5px; color:var(--cash); font-weight:600;}
   .gen-card-metrics .pay{font-size:9.5px; color:var(--dim);}
-  .gen-card-buy{background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); border-radius:4px; color:var(--dim); font-family:var(--font-cond); font-weight:800; font-size:15px; padding:8px 14px; cursor:pointer; text-align:center; min-width:94px;}
+  .gen-card-buy{background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-radius:4px; color:var(--dim); font-family:var(--font-cond); font-weight:800; font-size:15px; padding:8px 14px; cursor:pointer; text-align:center; min-width:94px;}
   .gen-card-buy small{display:block; font-family:var(--font-mono); font-weight:400; font-size:8.5px; letter-spacing:.6px; text-transform:uppercase; opacity:.75;}
-  .gen-card-buy.can{border-color:var(--cash); color:var(--cash); background:linear-gradient(180deg,#2b3f2e,#1e2d20); box-shadow:0 0 0 1px rgba(116,196,110,.2);}
+  .gen-card-buy.can{border-color:var(--cash); color:var(--cash); background:linear-gradient(180deg,var(--can-1),var(--can-2)); box-shadow:0 0 0 1px rgba(44,132,66,.3);}
   .gen-card-buy:disabled{cursor:default; opacity:.5;}
-  .gen-card-progress{height:4px; background:#191b1e; border-radius:2px; overflow:hidden;}
+  .gen-card-progress{height:4px; background:var(--panel2); border-radius:2px; overflow:hidden;}
   .gen-card-progress i{display:block; height:100%; background:var(--hazard); transition:width .3s ease;}
 
   .shop{display:flex; flex-direction:column; gap:7px; padding:0 14px;}
@@ -150,7 +163,7 @@
   .up .uname{font-family:var(--font-cond); font-weight:600; font-size:15px; letter-spacing:1px; text-transform:uppercase;}
   .up .udesc{font-size:9.5px; color:var(--hazard); margin-top:2px;}
   .up .ucost{font-family:var(--font-cond); font-weight:800; font-size:15px; color:var(--dim); margin-left:auto; white-space:nowrap;}
-  .up.can{border-left-color:var(--cash); background:linear-gradient(90deg,rgba(116,196,110,.08),var(--panel) 45%);}
+  .up.can{border-left-color:var(--cash); background:linear-gradient(90deg,rgba(44,132,66,.16),var(--panel) 45%);}
   .up.can .ucost{color:var(--cash);}
   .up.lock{opacity:.4; filter:grayscale(.7); cursor:default;}
   .adbtn.cooling, .rerollbtn.cooling{opacity:.45; filter:grayscale(.6); cursor:default;}
@@ -158,24 +171,24 @@
 
   .badge{text-align:center; padding:9px 4px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; font-size:8.5px; color:var(--dim);}
   .badge .bicon{display:block; margin:0 auto 4px; width:22px; height:22px; opacity:.28;}
-  .badge.got{border-color:var(--hazard); color:var(--ink); background:linear-gradient(180deg,rgba(240,192,0,.1),var(--panel2));}
+  .badge.got{border-color:var(--hazard); color:var(--ink); background:linear-gradient(180deg,rgba(179,134,10,.22),var(--panel2));}
   .badge.got .bicon{opacity:1;}
   #achPanel{margin:8px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:7px;}
 
-  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:#181a1f; position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
+  .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--sky-mid); position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
   .floorview canvas{display:block; width:100%; height:clamp(200px, 36vh, 320px); cursor:crosshair; touch-action:none;}
 
-  .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,#3c4046,#2e3238); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
+  .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
   .palletcount svg{width:22px; height:22px;}
   .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
   .swatch{width:20px; height:20px; border-radius:3px; display:block;}
 
-  .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,#32363b,#282b2f); border-top:1px solid var(--line);}
-  .tabs button{flex:1; background:none; border:none; color:var(--steel); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
+  .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,var(--tab-1),var(--tab-2)); border-top:1px solid var(--line); box-shadow:0 -3px 10px var(--shadow);}
+  .tabs button{flex:1; background:none; border:none; color:var(--dim); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
   .tabs button svg{width:21px; height:21px;}
   .tabs button span{font-size:8.5px; letter-spacing:.6px; text-transform:uppercase;}
-  .tabs button.on{color:var(--hivis); box-shadow:inset 0 3px 0 var(--hivis); background:rgba(242,98,15,.07);}
+  .tabs button.on{color:var(--hivis); box-shadow:inset 0 3px 0 var(--hivis); background:rgba(224,86,10,.10);}
 
   .office-block{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--steel); border-radius:4px; padding:12px;}
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
@@ -185,25 +198,25 @@
   #sellBtn.armed{background:var(--hazard); color:#20180a;}
   .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--steel); border-radius:4px; padding:10px; font-family:var(--font-cond); font-weight:800; font-size:13px; cursor:pointer;}
 
-  #toast{position:fixed; left:50%; bottom:110px; z-index:9; transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none; background:var(--panel2); border:1px solid var(--hazard); border-left:3px solid var(--hazard); border-radius:4px; padding:11px 14px; font-size:11px; max-width:calc(100% - 28px); transition:transform .3s ease, opacity .3s ease;}
+  #toast{position:fixed; left:50%; bottom:110px; z-index:9; transform:translateX(-50%) translateY(220px); opacity:0; pointer-events:none; box-shadow:0 6px 18px var(--shadow); background:var(--panel); border:1px solid var(--hazard); border-left:3px solid var(--hazard); border-radius:4px; padding:11px 14px; font-size:11px; max-width:calc(100% - 28px); transition:transform .3s ease, opacity .3s ease;}
   #toast.show{transform:translateX(-50%) translateY(0); opacity:1;}
   .float{position:fixed; pointer-events:none; color:var(--cash); font-weight:600; font-size:14px; animation:rise .8s ease-out forwards; z-index:8;}
   @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
 
-  .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(12,13,15,.92);}
+  .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--scrim);}
   .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--hivis); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
   .modal-title{font-family:var(--font-cond); font-weight:800; font-size:22px; letter-spacing:2px; text-transform:uppercase; color:var(--ink); margin-bottom:4px;}
   .modal-sub{font-size:10.5px; color:var(--dim); margin-bottom:14px; line-height:1.5;}
   .cal-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px;}
   .cal-day{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 4px; text-align:center; font-size:9px; color:var(--dim);}
-  .cal-day.active{border-color:var(--hivis); background:rgba(242,98,15,.12); color:var(--ink);}
+  .cal-day.active{border-color:var(--hivis); background:rgba(224,86,10,.16); color:var(--ink);}
   .cal-day.claimed{border-color:var(--cash); opacity:.5;}
   .cal-day b{display:block; font-family:var(--font-cond); font-size:14px; color:var(--ink); margin-top:2px;}
   .cal-day.active b{color:var(--hivis);}
-  .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
+  .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
   .sku-list{display:flex; flex-direction:column; gap:8px;}
   .sku-card{background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px; cursor:pointer; text-align:left; color:var(--ink); font-family:inherit;}
-  .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(116,196,110,.1),var(--panel2) 40%);}
+  .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(44,132,66,.18),var(--panel2) 40%);}
   .sku-card b{font-family:var(--font-cond); font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
   .sku-card span{font-size:9.5px; color:var(--dim); display:block; margin-top:2px; line-height:1.4;}
 </style>
@@ -350,6 +363,25 @@
       <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
       <button id="renameBtn" class="renamebtn">RENAME COMPANY</button>
     </div>
+
+    <div class="office-block">
+      <div class="office-title">NOTIFICATIONS</div>
+      <div class="office-text">Reminders while you're away. Nothing is sent from a server &mdash; these are scheduled on your device when you close the game.</div>
+      <div id="notifList" style="margin-top:10px;"></div>
+      <button id="notifPermBtn" class="renamebtn" hidden>ALLOW NOTIFICATIONS</button>
+    </div>
+
+    <div class="office-block">
+      <div class="office-title">GRAPHICS</div>
+      <div class="office-text">Detail level for the site view. <b>Auto</b> measures your device and adjusts on the fly.</div>
+      <div class="qty" style="margin-top:10px; display:flex; gap:6px;">
+        <button id="qAuto">AUTO</button>
+        <button id="qLow">LOW</button>
+        <button id="qMed">MED</button>
+        <button id="qHigh">HIGH</button>
+      </div>
+      <div class="office-text" id="qualityNote" style="margin-top:8px;"></div>
+    </div>
     
     <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--corp);">Corporate Real Estate</div></div>
     <div class="office-block" style="border-left-color: var(--corp); margin-top:0;">
@@ -427,6 +459,21 @@
       <input type="text" id="wipeInput" style="width:100%; padding:10px; margin-bottom:14px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); text-align:center; font-size:16px; border-radius:4px;" placeholder="Type WIPE" autocomplete="off" autocorrect="off">
       <button class="modal-btn" id="btnConfirmWipe" style="background:var(--bad); color:#fff;">CONFIRM DELETION</button>
       <button class="renamebtn" id="btnCancelWipe" style="margin-top:12px;">Cancel</button>
+    </div>
+  </div>
+
+  <div id="modalReview" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Milestone Reached</div>
+      <div class="modal-sub" id="reviewMilestone"></div>
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Milestone Bonus</div>
+        <b id="reviewBonus" style="font-family:var(--font-cond); font-size:28px; color:var(--hazard);"></b>
+        <div style="font-size:9px; color:var(--dim); margin-top:4px;">Already added to your stores.</div>
+      </div>
+      <div class="modal-sub" style="margin-bottom:12px;">Enjoying Warehouse Empire? A rating helps other people find it. Entirely up to you &mdash; the bonus above is yours either way.</div>
+      <button class="modal-btn" id="btnReviewNow">RATE ON GOOGLE PLAY</button>
+      <button class="renamebtn" id="btnReviewLater" style="margin-top:12px;">No thanks</button>
     </div>
   </div>
 
@@ -611,11 +658,97 @@
     {id:"callrush", ic:"flame", name:"Call a Rush", cost:2, desc:"Trigger a ×8 rush order instantly"}
   ];
 
+  // Two UI bases. A theme picks one and layers its accents on top, so a night livery
+  // flips the whole app rather than just recolouring the canvas.
+  var UI_BASE = {
+    day: {
+      bg:'#d6d2c7', panel:'#efece5', panel2:'#dedad0', line:'#b2ac9f',
+      ink:'#22262b', dim:'#6b7076', steel:'#7c828a',
+      raise1:'#f6f4ef', raise2:'#ddd8cd', tab1:'#f4f1ea', tab2:'#e2ded4',
+      screen:'#1e2226', screen2:'#171a1d', screenInk:'#eef1f3', screenDim:'#8f979f',
+      scrim:'rgba(30,34,38,.62)', shadow:'rgba(60,55,45,.16)'
+    },
+    night: {
+      bg:'#191c20', panel:'#242930', panel2:'#2e343b', line:'#3d444d',
+      ink:'#e9edf1', dim:'#8d959e', steel:'#79818b',
+      raise1:'#333a42', raise2:'#262b31', tab1:'#272c32', tab2:'#1e2227',
+      screen:'#0f1215', screen2:'#0a0c0e', screenInk:'#eef1f3', screenDim:'#8f979f',
+      scrim:'rgba(4,6,8,.80)', shadow:'rgba(0,0,0,.45)'
+    }
+  };
+
+  // Seven liveries. Each differs in hue AND in mood -- four run the site in daylight,
+  // three at night, which is what the light-pool machinery was kept for.
   var THEMES = [
-    {id:"hivis", name:"Safety Orange", cost:0, hivis:"#f2620f", hivisD:"#a83d00", hazard:"#f0c000"},
-    {id:"nightshift", name:"Night Shift", cost:6, hivis:"#3f8fd8", hivisD:"#1d5285", hazard:"#79c4ee"},
-    {id:"safety", name:"Hi-Vis Lime", cost:6, hivis:"#8dc63f", hivisD:"#4e7a1e", hazard:"#d4e157"}
+    { id:"hivis", name:"Safety Orange", cost:0, ui:'day',
+      accent:'#e0560a', accentD:'#a03c02', hazard:'#b3860a', cash:'#2c8442',
+      sky:['#6ba3d8','#9cc4e4','#cfe0ec'], haze:'196,216,232',
+      slab:['#b3ae9f','#9a9587','#75726a'], asphalt:['#7c8087','#696d74','#4e525a'],
+      grass:['#77a05a','#61864a','#456134'], shadow:'rgba(46,66,92,0.30)',
+      canvasAccent:['#ff9424','#f2620f','#b8480c'], rackPost:['#5a95c9','#3f77a8','#2a557d'], rackBeam:['#f0954a','#d1762f','#96501d'],
+      cladding:['#dfe5ea','#c1c9d1','#98a2ac'], plinth:['#7f8892','#69717a','#4e555d'],
+      pools:null },
+
+    { id:"nightshift", name:"Night Shift", cost:6, ui:'night',
+      accent:'#4f9ae0', accentD:'#215a91', hazard:'#79c4ee', cash:'#5fc47a',
+      sky:['#0d1524','#16203a','#2a2b33'], haze:'30,44,70',
+      slab:['#4a4d55','#3d4047','#2c2f35'], asphalt:['#2e333b','#262a31','#1b1f24'],
+      grass:['#2f4433','#26372a','#1a261d'], shadow:'rgba(0,0,0,0.45)',
+      canvasAccent:['#7cc0ff','#3f8fd8','#1d5285'], rackPost:['#3f6f9e','#2d5478','#1c3450'], rackBeam:['#8fbfe8','#6d9ac0','#45647f'],
+      cladding:['#59636e','#48505a','#333941'], plinth:['#3a4149','#2f353b','#22262b'],
+      pools:'rgba(255,186,92,ALPHA)' },
+
+    { id:"safety", name:"Hi-Vis Lime", cost:6, ui:'day',
+      accent:'#6f9c22', accentD:'#4a6a13', hazard:'#8f9c17', cash:'#2c8442',
+      sky:['#7fb2cf','#a9cbdd','#d6e4e6'], haze:'206,222,214',
+      slab:['#b6b6a4','#9d9d8c','#77776d'], asphalt:['#7b8080','#686d6d','#4d5252'],
+      grass:['#7fa851','#688c42','#4a642f'], shadow:'rgba(52,72,60,0.30)',
+      canvasAccent:['#c2ee6a','#8dc63f','#4e7a1e'], rackPost:['#8fa870','#71875a','#4e6039'], rackBeam:['#c2ee6a','#9dc94b','#6b8f2c'],
+      cladding:['#dde5da','#bfc9bc','#96a094'], plinth:['#7d867c','#676f66','#4c524b'],
+      pools:null },
+
+    { id:"radioactive", name:"Radioactive", cost:14, ui:'night',
+      accent:'#7ee01f', accentD:'#3f7a08', hazard:'#c8f53a', cash:'#4fd06a',
+      sky:['#0a1a0e','#12301a','#1f4322'], haze:'40,90,44',
+      slab:['#4b5442','#3e4636','#2c3327'], asphalt:['#2b3529','#232c22','#19201a'],
+      grass:['#3c5a26','#30481e','#212f14'], shadow:'rgba(10,40,12,0.50)',
+      canvasAccent:['#b6ff4d','#7ee01f','#3f7a08'], rackPost:['#5c6b52','#48553f','#31392b'], rackBeam:['#b6ff4d','#8bd424','#548c10'],
+      cladding:['#5b6a59','#495546','#333c31'], plinth:['#39423a','#2e352f','#212721'],
+      pools:'rgba(150,255,80,ALPHA)' },
+
+    { id:"biohazard", name:"Biohazard", cost:14, ui:'day',
+      accent:'#a8321a', accentD:'#6d1d0c', hazard:'#8f7a12', cash:'#4a7a2c',
+      sky:['#6f6b3a','#928c52','#b3ac74'], haze:'170,164,110',
+      slab:['#8f8a5e','#7a7550','#5c583c'], asphalt:['#5f5c44','#4f4d3a','#3a382a'],
+      grass:['#66702f','#525a26','#3a4019'], shadow:'rgba(48,44,14,0.38)',
+      canvasAccent:['#ffb03d','#d48a1f','#8f5a0d'], rackPost:['#8a8452','#6f6a41','#4c4a2c'], rackBeam:['#e0801f','#b86414','#7d420b'],
+      cladding:['#c8c49a','#a9a680','#807e5f'], plinth:['#736f4a','#5e5b3d','#43412b'],
+      pools:null },
+
+    { id:"coldchain", name:"Cold Chain", cost:12, ui:'day',
+      accent:'#1f8fb0', accentD:'#0f5d75', hazard:'#4a8fa8', cash:'#2c8474',
+      sky:['#a8cfe4','#c8e2ee','#e8f2f6'], haze:'226,240,247',
+      slab:['#c3cdd2','#a9b4ba','#828e95'], asphalt:['#8b969d','#77828a','#5b666e'],
+      grass:['#8fa89b','#758d81','#556a5f'], shadow:'rgba(60,96,120,0.26)',
+      canvasAccent:['#7fe0f5','#22b3d6','#116f8c'], rackPost:['#cfe0e8','#adc2cd','#7f96a3'], rackBeam:['#3fc3e0','#2b9bb5','#1a6c80'],
+      cladding:['#eef5f8','#d0dde3','#a4b4bd'], plinth:['#8896a0','#717d86','#535d64'],
+      pools:null },
+
+    { id:"blackout", name:"Blackout", cost:18, ui:'night',
+      accent:'#f0a020', accentD:'#a1650a', hazard:'#d08c14', cash:'#9a8f4a',
+      sky:['#08090b','#0d0f12','#17161a'], haze:'26,24,28',
+      slab:['#3b3a38','#302f2e','#232222'], asphalt:['#252526','#1e1e1f','#151516'],
+      grass:['#2a2d27','#222520','#171a16'], shadow:'rgba(0,0,0,0.58)',
+      canvasAccent:['#ffc45c','#f0a020','#96610d'], rackPost:['#3a3a3c','#2e2e30','#202022'], rackBeam:['#f0a020','#c07a12','#7d4d09'],
+      cladding:['#4a4a4c','#3b3b3d','#2a2a2c'], plinth:['#2e2e30','#252526','#1a1a1b'],
+      pools:'rgba(255,170,60,ALPHA)' }
   ];
+
+  function currentTheme(){
+    for (var ti = 0; ti < THEMES.length; ti++) if (THEMES[ti].id === state.theme) return THEMES[ti];
+    return THEMES[0];
+  }
+  function triple(a){ return { top:a[0], left:a[1], right:a[2] }; }
 
   var SITES = [
     { id:"general", name:"General Distribution", blurb:"Steady balanced operations.", cost:0.96, out:1.02, tap:1.05, wage:1.00, cap:0, conMult:1.0 },
@@ -656,9 +789,13 @@
     corp: { hr: 0, tower: 0, solar: 0, server: 0 },
     site: "general", sku: "fmcg", network: [], muted: false,
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
-    company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(),
+    company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
+    milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
+
+  // Taken before any save is merged in, so load can fall back field by field.
+  var STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
 
   window.state = state;
   window.render = render;
@@ -669,11 +806,24 @@
   var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
   var sessionEarned = 0, maxCombo = 1.0;
 
+  // The ladder used to stop at Qi (1e18), which a committed player passes in a couple of
+  // weeks -- after that the display read "1000000Qi" and then raw scientific notation
+  // spliced onto a suffix. It now runs to Vg (1e63) and switches cleanly to exponent
+  // form beyond that. Non-finite input is painted as a symbol rather than "NaN", so a
+  // single bad number can never smear across the whole UI.
+  var FMT_UNITS = ["K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc",
+                   "UDc","DDc","TDc","QaDc","QiDc","SxDc","SpDc","OcDc","NoDc","Vg"];
   function fmt(n){
+    if (typeof n !== "number" || !isFinite(n)) return (n === Infinity) ? "\u221E" : "0";
+    if (n < 0) return "-" + fmt(-n);
     if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
-    var units = ["K","M","B","T","Qa","Qi"], u = -1;
-    while (n >= 1000 && u < units.length-1){ n /= 1000; u++; }
-    return (Math.floor(n*100)/100) + units[u];
+    if (n >= 1e66) return n.toExponential(2).replace("e+", "e");
+    // Picking the unit by exponent rather than dividing in a loop: ten successive
+    // divisions accumulate enough error to render 1e33 as "999.99No" instead of "1Dc".
+    var u = Math.min(FMT_UNITS.length - 1, Math.floor(Math.log10(n) / 3) - 1);
+    var v = n / Math.pow(1000, u + 1);
+    if (v >= 1000 && u < FMT_UNITS.length - 1){ u++; v = n / Math.pow(1000, u + 1); }
+    return (Math.floor(v*100)/100) + FMT_UNITS[u];
   }
   function money(n){ return "$" + fmt(n); }
 
@@ -808,9 +958,31 @@
           showToast("Save file was unreadable — starting a fresh site.");
         }
       }
+      // A save can parse cleanly and still be nonsense: a null, a string, or a missing
+      // number where a count belongs turns every later sum into NaN, and the UI then
+      // paints NaN everywhere with no way back short of a wipe.
+      ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
+       "bestCombo","lastSeen","lastDailyClaim","dailyStreak"].forEach(function(k){
+        var v = Number(state[k]);
+        state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
+      });
+      if (!state.owned || typeof state.owned !== "object") state.owned = {};
+      GENS.forEach(function(g){
+        var v = Math.floor(Number(state.owned[g.id]));
+        state.owned[g.id] = (isFinite(v) && v >= 0) ? v : 0;
+      });
+      if (!state.corp || typeof state.corp !== "object") state.corp = {};
+      CORP_BUILDINGS.forEach(function(cb){
+        var v = Math.floor(Number(state.corp[cb.id]));
+        state.corp[cb.id] = (isFinite(v) && v >= 0) ? v : 0;
+      });
+
       if (!state.upgrades) state.upgrades = {};
       invalidateUpMult();
       if (!state.perks) state.perks = {};
+      if (!state.themesOwned) state.themesOwned = {};
+      if (!state.milestones) state.milestones = {};
+      if (!state.notifs) state.notifs = { offline:true, daily:true, contract:true, rush:false };
       if (!state.ach) state.ach = {};
       if (!state.corp) state.corp = { hr: 0, tower: 0, solar: 0, server: 0 };
 
@@ -1109,7 +1281,10 @@
     });
   }
 
-  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {};
+  var upEls = {}, perkBtnEls = {}, supplyBtnEls = {}, corpBtnEls = {}, themeBtnEls = {}, notifRowEls = {};
+
+  // A livery is bought once. Previously switching away and back charged again.
+  function themeOwned(t){ return t.cost === 0 || !!(state.themesOwned && state.themesOwned[t.id]); }
 
   function buildCorpShop(){
     var corpShop = document.getElementById("corpShop");
@@ -1189,21 +1364,31 @@
       tList.innerHTML = "";
       THEMES.forEach(function(t){
         var b = document.createElement("button"); b.className = "up";
-        var costTxt = t.cost === 0 ? "FREE" : t.cost + " PAL";
-        b.innerHTML = '<div class="swatch" style="background:'+t.hivis+';"></div><div><div class="uname">'+t.name+'</div></div><div class="ucost">'+costTxt+'</div>';
+        // Two-swatch chip so the liveries are distinguishable in the list without
+        // having to apply each one.
+        b.innerHTML =
+          '<div class="swatch" style="background:linear-gradient(135deg,' + t.accent +
+            ' 0 50%,' + t.sky[1] + ' 50% 100%);"></div>' +
+          '<div><div class="uname">' + t.name + '</div>' +
+          '<div class="udesc" data-r="tdesc"></div></div>' +
+          '<div class="ucost" data-r="tcost"></div>';
         b.addEventListener("click", function(){
           if (state.theme === t.id) return;
-          if (state.pallets >= t.cost || t.cost === 0) {
-            if (t.cost > 0) state.pallets -= t.cost;
-            state.theme = t.id;
-            update3DPalette();
-            sfx("upgrade");
-            showToast("Livery applied: <b>" + t.name + "</b>.");
-            render();
-            saveGame();
+          if (!themeOwned(t)){
+            if (state.pallets < t.cost){ showToast("Need <b>" + t.cost + " pallets</b> for that livery."); return; }
+            state.pallets -= t.cost;
+            state.themesOwned[t.id] = true;      // bought once, not every time you switch
           }
+          state.theme = t.id;
+          update3DPalette();
+          sfx("upgrade");
+          showToast("Livery applied: <b>" + t.name + "</b>.");
+          render();
+          saveGame();
         });
         tList.appendChild(b);
+        themeBtnEls[t.id] = { btn: b, cost: b.querySelector('[data-r="tcost"]'),
+                              desc: b.querySelector('[data-r="tdesc"]') };
       });
     }
   }
@@ -1387,6 +1572,17 @@
       }
     });
 
+    THEMES.forEach(function(t){
+      var e = themeBtnEls[t.id];
+      if (!e) return;
+      var owned = themeOwned(t), active = state.theme === t.id;
+      e.btn.classList.toggle("owned", owned && !active);
+      e.btn.classList.toggle("can", !owned && state.pallets >= t.cost);
+      e.btn.classList.toggle("lock", !owned && state.pallets < t.cost);
+      e.cost.textContent = active ? "ACTIVE" : (owned ? "OWNED" : t.cost + " PAL");
+      e.desc.textContent = (t.ui === "night" ? "Night shift lighting" : "Daylight operation");
+    });
+
     SUPPLIES.forEach(function(sp){
       var elObj = supplyBtnEls[sp.id];
       if (elObj && elObj.costElem){
@@ -1428,6 +1624,8 @@
       }
     });
     renderOffice();
+    renderQuality();
+    renderNotifs();
   }
 
   // Only touch the tab the player is actually looking at. This used to rewrite every
@@ -1442,7 +1640,7 @@
 
     // 32 predicates plus 32 classList writes; once a second is plenty.
     var now = Date.now();
-    if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); }
+    if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); checkMilestone(); }
   }
 
   function renderNetwork(){
@@ -1605,6 +1803,156 @@
     document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
   }
 
+  // --- Local notifications ---------------------------------------------------------
+  // Scheduled on the way out, cancelled on the way back in. Nothing here needs a server:
+  // every trigger is a time we can compute the moment the player leaves.
+  // `minDelay` is the earliest a type may fire after the player leaves, and `minGap` is
+  // the minimum wall-clock spacing between two of the same kind. Without them the short
+  // timers here (a 3-minute ad cooldown, a contract two minutes from expiry) would ping
+  // every time the player switched apps.
+  var NOTIF = {
+    offline:  { id: 101, on:true,  clamp:true,  minDelay: 60 * 1000,        minGap: 6 * 3600000,
+                title:"Storage is full",
+                body:"Your shift managers have run out of room. Come and bank the freight." },
+    daily:    { id: 102, on:true,  clamp:true,  minDelay: 60 * 1000,        minGap: 18 * 3600000,
+                title:"Morning shift handover",
+                body:"Today's pallet stipend is ready to claim." },
+    contract: { id: 103, on:true,  clamp:false, minDelay: 10 * 60 * 1000,   minGap: 6 * 3600000,
+                title:"Contract expiring",
+                body:"There's a freight contract about to run out of time." },
+    rush:     { id: 104, on:false, clamp:true,  minDelay: 4 * 3600000,      minGap: 8 * 3600000,
+                title:"Rush order on the dock",
+                body:"An overtime shift is available again." }
+  };
+
+  var NOTIF_IDS = Object.keys(NOTIF).map(function(k){ return { id: NOTIF[k].id }; });
+
+  function notifPlugin(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    return (P && P.LocalNotifications) || null;
+  }
+
+  function notifEnabled(key){
+    if (!state.notifs) return NOTIF[key].on;
+    return state.notifs[key] === undefined ? NOTIF[key].on : !!state.notifs[key];
+  }
+
+  function requestNotifPermission(){
+    var LN = notifPlugin();
+    if (!LN || !LN.requestPermissions) return Promise.resolve(false);
+    return LN.requestPermissions()
+      .then(function(r){ return !!r && r.display === "granted"; })
+      .catch(function(){ return false; });
+  }
+
+  // Everything is scheduled relative to now, so the offline cap and daily reset land at
+  // the right wall-clock moment even though the app is not running.
+  function scheduleNotifications(){
+    var LN = notifPlugin();
+    if (!LN || !LN.schedule) return;
+    if (state.notifPerm === false) return;         // asked once, told no -- don't keep trying
+    var now = Date.now(), out = [], fired = state.notifLast || (state.notifLast = {});
+
+    function at(key, ms){
+      var n = NOTIF[key];
+      if (!notifEnabled(key)) return;
+      if (ms < n.minDelay){
+        if (!n.clamp) return;                      // the moment has passed by then
+        ms = n.minDelay;                           // still true later, so push it out
+      }
+      var when = now + ms;
+      if (when - (fired[key] || 0) < n.minGap) return;
+      out.push({ id:n.id, title:n.title, body:n.body, schedule:{ at:new Date(when) },
+                 smallIcon:"ic_stat_icon_config_sample" });
+      fired[key] = when;
+    }
+
+    var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+    if (totalRate() > 0) at("offline", capHours * 3600000);
+
+    var DAY_MS = 20 * 3600000;
+    at("daily", Math.max(0, state.lastDailyClaim + DAY_MS - now));
+
+    if (state.contract && state.contract.deadline)
+      at("contract", state.contract.deadline - now - 120000);   // two minutes of warning
+
+    at("rush", (adReadyAt["rushAdBtn"] || 0) - now);
+
+    if (!out.length) return;
+    LN.cancel({ notifications: NOTIF_IDS })
+      .catch(function(){})
+      .then(function(){ return LN.schedule({ notifications: out }); })
+      .catch(function(e){ console.error("notification schedule failed", e); });
+  }
+
+  function clearNotifications(){
+    // A scheduled time in the past means it was delivered, and minGap should hold against
+    // it. One still in the future is being cancelled unseen, so it should not count.
+    var now = Date.now(), fired = state.notifLast;
+    if (fired) for (var k in fired) if (fired[k] > now) delete fired[k];
+    var LN = notifPlugin();
+    if (!LN || !LN.cancel) return;
+    LN.cancel({ notifications: NOTIF_IDS }).catch(function(){});
+  }
+
+  // Schedule when the app goes to the background, clear when it comes back.
+  function bindNotificationLifecycle(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    if (P && P.App && P.App.addListener){
+      P.App.addListener("appStateChange", function(st){
+        if (st && st.isActive) clearNotifications(); else { saveGame(); scheduleNotifications(); }
+      });
+    }
+    document.addEventListener("visibilitychange", function(){
+      if (document.hidden){ saveGame(); scheduleNotifications(); } else clearNotifications();
+    });
+  }
+
+  // --- Milestone bonus, with a review invitation alongside it ---------------------
+  // Play policy forbids incentivised reviews, so the bonus is awarded for reaching the
+  // milestone and is granted before the dialog is even shown. Reviewing changes nothing.
+  var PLAY_URL = "https://play.google.com/store/apps/details?id=com.abdulgames.warehouseempire";
+  var REVIEW_MILESTONES = [
+    { id:"m1", label:"You've fulfilled 25 freight contracts.", pallets:15,
+      test:function(){ return state.contractsDone >= 25; } },
+    { id:"m2", label:"You've sold your third business.", pallets:25,
+      test:function(){ return state.prestiges >= 3; } }
+  ];
+
+  function checkMilestone(){
+    if (state.reviewAsked) return;                       // only ever ask once
+    for (var mi = 0; mi < REVIEW_MILESTONES.length; mi++){
+      var m = REVIEW_MILESTONES[mi];
+      if (state.milestones[m.id] || !m.test()) continue;
+      state.milestones[m.id] = true;
+      state.pallets += m.pallets;                        // granted unconditionally
+      state.reviewAsked = true;
+      document.getElementById("reviewMilestone").textContent = m.label;
+      document.getElementById("reviewBonus").textContent = "+" + m.pallets + " Pallets";
+      document.getElementById("modalReview").hidden = false;
+      sfx("prestige"); saveGame();
+      return;
+    }
+  }
+
+  function openStoreListing(){
+    var P = window.Capacitor && window.Capacitor.Plugins;
+    if (P && P.Browser && P.Browser.open){ P.Browser.open({ url: PLAY_URL }); return; }
+    if (P && P.App && P.App.openUrl){ P.App.openUrl({ url: PLAY_URL }); return; }
+    try { window.open(PLAY_URL, "_blank"); } catch(e){ location.href = PLAY_URL; }
+  }
+
+  document.getElementById("btnReviewNow").addEventListener("click", function(){
+    document.getElementById("modalReview").hidden = true;
+    openStoreListing();
+    showToast("Thanks for taking a look.");
+    render();
+  });
+  document.getElementById("btnReviewLater").addEventListener("click", function(){
+    document.getElementById("modalReview").hidden = true;
+    render();
+  });
+
   // --- Company rename (button existed with no handler; companyName was never populated) ---
   function escapeHtml(t){
     return String(t).replace(/[&<>"']/g, function(c){
@@ -1629,6 +1977,80 @@
     renderCompany(); sfx("upgrade");
     showToast("Now trading as <b>" + escapeHtml(v) + "</b>.");
     saveGame();
+  });
+
+  // --- Notification settings ---
+  var NOTIF_LABELS = {
+    offline:  ["Storage full",     "When offline earnings hit their cap"],
+    daily:    ["Daily stipend",    "When the morning handover is ready"],
+    contract: ["Contract expiring","Shortly before a long contract runs out"],
+    rush:     ["Rush available",   "When you have been away and a shift is waiting"]
+  };
+
+  function renderNotifs(){
+    var list = document.getElementById("notifList");
+    if (!list) return;
+    if (!list.children.length){
+      Object.keys(NOTIF_LABELS).forEach(function(key){
+        var row = document.createElement("button");
+        row.className = "up";
+        row.innerHTML = '<div><div class="uname">' + NOTIF_LABELS[key][0] + '</div>' +
+                        '<div class="udesc">' + NOTIF_LABELS[key][1] + '</div></div>' +
+                        '<div class="ucost" data-r="state"></div>';
+        row.addEventListener("click", function(){
+          if (!state.notifs) state.notifs = {};
+          state.notifs[key] = !notifEnabled(key);
+          if (state.notifs[key]) ensureNotifPermission();
+          renderNotifs(); scheduleNotifications(); saveGame();
+        });
+        list.appendChild(row);
+        notifRowEls[key] = { btn: row, state: row.querySelector('[data-r="state"]') };
+      });
+    }
+    Object.keys(NOTIF_LABELS).forEach(function(key){
+      var e = notifRowEls[key];
+      if (!e) return;
+      var on = notifEnabled(key);
+      e.state.textContent = on ? "ON" : "OFF";
+      e.btn.classList.toggle("can", on);
+      e.btn.classList.toggle("lock", !on);
+    });
+    var permBtn = document.getElementById("notifPermBtn");
+    if (permBtn) permBtn.hidden = !notifPlugin() || state.notifAsked;
+  }
+
+  function ensureNotifPermission(){
+    if (state.notifAsked) return;
+    state.notifAsked = true;
+    requestNotifPermission().then(function(granted){
+      state.notifPerm = granted;
+      if (!granted) showToast("Notifications are off in your device settings.");
+      else scheduleNotifications();
+      renderNotifs(); saveGame();
+    });
+  }
+
+  document.getElementById("notifPermBtn").addEventListener("click", function(){
+    state.notifAsked = false; state.notifPerm = null; ensureNotifPermission();
+  });
+
+  // --- Graphics quality ---
+  function renderQuality(){
+    var on = qualityAuto ? "qAuto" : {low:"qLow", medium:"qMed", high:"qHigh"}[QUALITY_ORDER[qualityIdx]];
+    ["qAuto","qLow","qMed","qHigh"].forEach(function(id){
+      document.getElementById(id).classList.toggle("on", id === on);
+    });
+    document.getElementById("qualityNote").innerHTML =
+      "Currently rendering at <b>" + QUALITY.name + "</b>" + (qualityAuto ? " (auto)" : " (pinned)") + ".";
+  }
+  document.getElementById("qAuto").addEventListener("click", function(){
+    qualityAuto = true; state.quality = null; frameSamples.length = 0;
+    lastQualityChange = 0; renderQuality(); saveGame();
+  });
+  [["qLow","low"],["qMed","medium"],["qHigh","high"]].forEach(function(pair){
+    document.getElementById(pair[0]).addEventListener("click", function(){
+      setQuality(pair[1], true); renderQuality(); saveGame();
+    });
   });
 
   // --- SFX toggle (button existed with no handler; state.muted was read but never written) ---
@@ -1672,7 +2094,7 @@
   // ==========================================
   var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
-  var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9;
+  var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9, TW_BASE = 18;
 
   function sizeCanvas(){
     var w = cv.clientWidth, h = cv.clientHeight;
@@ -1682,37 +2104,180 @@
     CW = w; CH = h;
     cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    TW = Math.max(5, Math.min(8.5, CW / 55));
+    TW_BASE = Math.max(5, Math.min(8.5, CW / 55));
+    applyCamera();
+  }
+
+  // Corporate towers grow well above the racking, so the camera pulls back and drops
+  // as the skyline rises. Without this the tallest buildings clip off the top edge.
+  function applyCamera(){
+    if (!CW) return;
+    var tallest = 0;
+    for (var k in state.corp) if ((state.corp[k] || 0) > tallest) tallest = state.corp[k] || 0;
+    var zoom = 1 / (1 + tallest * 0.032);
+    TW = TW_BASE * zoom;
     TH = TW / 2;
     cx = CW * 0.40;
-    cy = CH * 0.16;
+    cy = CH * (0.16 + Math.min(0.10, tallest * 0.010));
   }
   window.addEventListener("resize", sizeCanvas);
 
+  // Daylight lighting model. Top faces catch warm sun, left faces sit in half-light,
+  // right faces are in shade and lit only by the sky, so they shift cool rather than
+  // just going darker. Kept bright-overcast rather than blown out, so the panel does
+  // not fight the dark UI around it.
   var PALETTES = {
-    steel:  { top: '#5d636b', left: '#474c53', right: '#2c2f34' },
-    dark:   { top: '#383c42', left: '#2c2f34', right: '#1c1e21' },
-    box:    { top: '#e0b088', left: '#c08a4e', right: '#8a6437' },
-    hivis:  { top: '#ff7b00', left: '#f2620f', right: '#c94e08' },
-    spill:  { top: '#ff5a5a', left: '#e05252', right: '#a32929' },
-    audit:  { top: '#7ce3ff', left: '#38bdf8', right: '#0284c7' },
-    hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
-    slab:   { top: '#2a2d34', left: '#24272d', right: '#1a1c20' },
-    wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' },
-    corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' }
+    steel:  { top: '#c2c8ce', left: '#9aa2aa', right: '#6b747e' },
+    dark:   { top: '#7a828b', left: '#626a73', right: '#464e58' },
+    box:    { top: '#e8bf90', left: '#cb9a63', right: '#94703f' },
+    hivis:  { top: '#ff9424', left: '#f2620f', right: '#b8480c' },
+    spill:  { top: '#ff7070', left: '#e05252', right: '#9e3232' },
+    audit:  { top: '#9fe9ff', left: '#38bdf8', right: '#0d6f9e' },
+    hazard: { top: '#ffe173', left: '#f5b90b', right: '#b07a09' },
+    slab:   { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
+    wall:   { top: '#b9c0c8', left: '#98a0a9', right: '#6d7680' },
+    corp:   { top: '#d4a3ff', left: '#a855f7', right: '#6f2cc4' },
+    corpLit:{ top: '#f0dcff', left: '#c58bff', right: '#8a4fd4' },
+    worker: { top: '#ffb066', left: '#f2620f', right: '#a8420c' },
+    vest:   { top: '#ffec9e', left: '#f0c000', right: '#a37f0c' },
+    truck:  { top: '#aeb6bf', left: '#8d959e', right: '#636b76' },
+    robot:  { top: '#a9dfff', left: '#38bdf8', right: '#1a6f96' },
+    gantry: { top: '#c8ced5', left: '#a5adb5', right: '#787f88' },
+    dock:   { top: '#8b939c', left: '#717981', right: '#525a63' },
+    container:  { top: '#5f9bbe', left: '#457e9f', right: '#2d576f' },
+    containerB: { top: '#a87360', left: '#875a4a', right: '#5c3c31' },
+    containerC: { top: '#6faa78', left: '#53875e', right: '#376040' },
+    containerD: { top: '#cfab5c', left: '#a88742', right: '#735c2c' },
+
+    // Painted racking: blue uprights, orange beams. The largest mass on screen.
+    rackPost: { top: '#5a95c9', left: '#3f77a8', right: '#2a557d' },
+    rackBeam: { top: '#f0954a', left: '#d1762f', right: '#96501d' },
+
+    // Ground: pale concrete inside, asphalt in the yard, grass on the verges.
+    slabWarm: { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
+    asphalt:  { top: '#7c8087', left: '#696d74', right: '#4e525a' },
+    grass:    { top: '#77a05a', left: '#61864a', right: '#456134' },
+
+    // Building skin: pale profiled cladding over a plinth, company band at the eaves.
+    cladding: { top: '#dfe5ea', left: '#c1c9d1', right: '#98a2ac' },
+    plinth:   { top: '#7f8892', left: '#69717a', right: '#4e555d' },
+    band:     { top: '#f89a3e', left: '#dd7a20', right: '#a05413' },
+    doorSkin: { top: '#6a9ac6', left: '#4f7ca8', right: '#375a7d' },
+    doorSkinB:{ top: '#b4bfc9', left: '#94a0ab', right: '#6c7780' }
   };
 
-  function update3DPalette() {
-    if (state.theme === "nightshift") {
-      PALETTES.hivis = { top: '#63aaff', left: '#3f8fd8', right: '#1d5285' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
-    } else if (state.theme === "safety") {
-      PALETTES.hivis = { top: '#a7e058', left: '#8dc63f', right: '#4e7a1e' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
-    } else {
-      PALETTES.hivis = { top: '#ff7b00', left: '#f2620f', right: '#c94e08' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+  // A little colour variety across pallets so a full rack does not read as one flat mass.
+  var CONTAINER_SHADES = [], TRAILER_LIVERY = [], CAR_COLOURS = [], DOOR_SKINS = [];
+  var BOX_SHADES = [
+    { top:'#e8c194', left:'#c9995f', right:'#95724a' },
+    { top:'#dcb181', left:'#bd8a51', right:'#8c663d' },
+    { top:'#f0d0aa', left:'#d2a973', right:'#9c7d51' },
+    { top:'#dcaa8e', left:'#b98663', right:'#8a6349' }
+  ];
+
+  CONTAINER_SHADES.push(PALETTES.container, PALETTES.containerB, PALETTES.containerC, PALETTES.containerD);
+
+  // Carrier liveries -- a yard full of identical grey boxes reads as clutter; a yard
+  // full of different carriers reads as a working site.
+  TRAILER_LIVERY.push(
+    { top:'#d8dde2', left:'#b3bac1', right:'#7c848c' },   // plain white curtainsider
+    { top:'#3f79b5', left:'#2f5e8f', right:'#1e3d5e' },   // blue
+    { top:'#b8524a', left:'#93403a', right:'#5f2926' },   // red
+    { top:'#58916a', left:'#437252', right:'#2b4936' }    // green
+  );
+  CAR_COLOURS.push(
+    { top:'#c9d0d6', left:'#a3abb2', right:'#6f767c' },
+    { top:'#a8433d', left:'#853430', right:'#57211e' },
+    { top:'#3b6fa0', left:'#2d567c', right:'#1d3750' },
+    { top:'#4b5259', left:'#3c4248', right:'#272c31' },
+    { top:'#b08a3e', left:'#8b6d31', right:'#59461f' }
+  );
+  DOOR_SKINS.push(PALETTES.doorSkin, PALETTES.doorSkinB);
+
+  // Graphics quality. Auto-picked from measured draw time on the first few seconds,
+  // overridable from the Office tab. Scales the things that actually cost frames.
+  var QUALITY_LEVELS = {
+    low:    { name:'Low',    rackRows:8,  rackLevels:2, workers:12, forklifts:5,  detail:0.35, shadows:false, depth:false },
+    medium: { name:'Medium', rackRows:10, rackLevels:3, workers:20, forklifts:8,  detail:0.7,  shadows:true,  depth:true  },
+    high:   { name:'High',   rackRows:12, rackLevels:4, workers:28, forklifts:11, detail:1.0,  shadows:true,  depth:true  }
+  };
+  var QUALITY_ORDER = ['low', 'medium', 'high'];
+  var QUALITY = QUALITY_LEVELS.high;
+  var qualityIdx = 2, qualityAuto = true;
+
+  // Rather than guess what a given phone can manage, measure the real draw time and
+  // step the detail down until the frame fits, back up if there is headroom. A manual
+  // choice in the Office tab pins it and turns the adaptation off.
+  var FRAME_BUDGET_MS = 9.0;     // of a 16.7ms frame; the rest is the game loop and compositing
+  var FRAME_HEADROOM_MS = 4.0;
+  var frameSamples = [], lastQualityChange = 0;
+
+  function applyQuality(){
+    QUALITY = QUALITY_LEVELS[QUALITY_ORDER[qualityIdx]];
+    warehouseTier = -1;          // force a rebuild at the new level of detail
+  }
+
+  function setQuality(name, manual){
+    var i = QUALITY_ORDER.indexOf(name);
+    if (i < 0) return;
+    qualityIdx = i;
+    if (manual){ qualityAuto = false; state.quality = name; }
+    applyQuality();
+  }
+
+  function noteFrameTime(ms){
+    if (!qualityAuto) return;
+    frameSamples.push(ms);
+    if (frameSamples.length < 30) return;
+    var sorted = frameSamples.slice().sort(function(a,b){ return a - b; });
+    var median = sorted[sorted.length >> 1];
+    frameSamples.length = 0;
+
+    var now = Date.now();
+    if (now - lastQualityChange < 2200) return;    // hysteresis, so it cannot oscillate
+    if (median > FRAME_BUDGET_MS && qualityIdx > 0){
+      qualityIdx--; applyQuality(); lastQualityChange = now;
+    } else if (median < FRAME_HEADROOM_MS && qualityIdx < QUALITY_ORDER.length - 1){
+      qualityIdx++; applyQuality(); lastQualityChange = now;
     }
+  }
+
+  // Applies the active livery to the whole app: CSS custom properties for the chrome,
+  // palette objects and the sky/haze/shadow for the site view.
+  function update3DPalette() {
+    var t = currentTheme(), base = UI_BASE[t.ui] || UI_BASE.day;
+    var css = document.documentElement.style;
+    var vars = {
+      '--bg':base.bg, '--panel':base.panel, '--panel2':base.panel2, '--line':base.line,
+      '--ink':base.ink, '--dim':base.dim, '--steel':base.steel,
+      '--raise-1':base.raise1, '--raise-2':base.raise2,
+      '--tab-1':base.tab1, '--tab-2':base.tab2,
+      '--screen':base.screen, '--screen-2':base.screen2,
+      '--screen-ink':base.screenInk, '--screen-dim':base.screenDim,
+      '--scrim':base.scrim, '--shadow':base.shadow,
+      '--hivis':t.accent, '--hivis-d':t.accentD, '--hazard':t.hazard, '--cash':t.cash,
+      '--sky-mid':t.sky[1]
+    };
+    for (var k in vars) css.setProperty(k, vars[k]);
+
+    // Affordable-buy tint derives from the theme's cash colour so it never clashes.
+    css.setProperty('--can-1', t.ui === 'night' ? '#2b3f2e' : '#e2f1e4');
+    css.setProperty('--can-2', t.ui === 'night' ? '#1e2d20' : '#cfe6d3');
+
+    PALETTES.hivis    = triple(t.canvasAccent);
+    PALETTES.slab     = triple(t.slab);
+    PALETTES.slabWarm = triple(t.slab);
+    PALETTES.asphalt  = triple(t.asphalt);
+    PALETTES.grass    = triple(t.grass);
+    PALETTES.rackPost = triple(t.rackPost);
+    PALETTES.rackBeam = triple(t.rackBeam);
+    PALETTES.cladding = triple(t.cladding);
+    PALETTES.plinth   = triple(t.plinth);
+    PALETTES.band     = triple([t.accent, t.accentD, t.accentD]);
+
+    themeSky = t.sky; themeHaze = t.haze; themeShadow = t.shadow; themePools = t.pools;
+    skyGrad = null; depthGrad = null;      // rebuilt next frame at the new colours
+    warehouseTier = -1;                    // ground colours are baked into the geometry
   }
 
   var pt = function(px, py, pz) {
@@ -1735,14 +2300,16 @@
 
   // --- CORPORATE REAL ESTATE PLOT DEFINITIONS ---
   // Must match the tap hit-zones in handleCanvasTap exactly.
+  // Pulled in tight against the warehouse slab (x -2..32, y -2..28) so the towers frame
+  // the site instead of sitting at the canvas edge and clipping off the corners.
   var CORP_PLOTS = {
-    hr:     { gx: 3,  gy: 31, gw: 15, gd: 15 },
-    tower:  { gx: 3,  gy: -19, gw: 15, gd: 15 },
-    solar:  { gx: 21, gy: -19, gw: 15, gd: 15 },
-    server: { gx: 38, gy: 5,  gw: 15, gd: 15 }
+    tower:  { gx: 4,  gy: -13, gw: 11, gd: 11 },
+    solar:  { gx: 19, gy: -13, gw: 11, gd: 11 },
+    server: { gx: 34, gy: 8,   gw: 11, gd: 11 },
+    hr:     { gx: 4,  gy: 30,  gw: 11, gd: 11 }
   };
 
-  function corpHeight(lvl){ return 1.5 + lvl * 1.1; }
+  function corpHeight(lvl){ return 1.2 + lvl * 0.78; }
 
   function corpBuildingEntities(){
     var out = [];
@@ -1750,58 +2317,371 @@
       var plot = CORP_PLOTS[cb.id];
       var lvl = state.corp[cb.id] || 0;
 
-      // Empty land plot marker, always visible so the tap zone reads as buildable land
-      out.push({layer: 1, type:'prism', x: plot.gx, y: plot.gy, z: -0.4, w: plot.gw, d: plot.gd, h: 0.15, c: PALETTES.slab});
+      // Empty land plot. Dressed as a prepared building site -- hardstand, hoarding and
+      // a signboard -- so the tap zone reads as "you can build here" instead of a blank
+      // grey pad, and so the ground around the warehouse is not dead space.
+      out.push({layer: 1, type:'prism', x: plot.gx, y: plot.gy, z: -0.4,
+                w: plot.gw, d: plot.gd, h: 0.15, c: PALETTES.slabWarm});
 
-      if (lvl <= 0) return;
+      if (lvl <= 0) {
+        var hoard = Math.max(2, Math.round(4 * QUALITY.detail));
+        for (var hh = 0; hh <= hoard; hh++){
+          var t = hh / hoard;
+          out.push({layer:1, type:'prism', x: plot.gx + t*(plot.gw-0.4), y: plot.gy - 0.3,
+                    z:-0.25, w:0.3, d:0.3, h:0.8, c:PALETTES.hivis});
+          out.push({layer:1, type:'prism', x: plot.gx - 0.3, y: plot.gy + t*(plot.gd-0.4),
+                    z:-0.25, w:0.3, d:0.3, h:0.8, c:PALETTES.hivis});
+        }
+        // Landscaping and a site board, so an unbuilt plot still has something in it.
+        out.push({layer:1, type:'prism', x: plot.gx + 1.2, y: plot.gy + 1.2, z:-0.25,
+                  w: plot.gw - 2.4, d: plot.gd - 2.4, h: 0.2, c: PALETTES.grass});
+        out.push({layer:1, type:'prism', x: plot.gx + plot.gw*0.42, y: plot.gy - 0.6, z:-0.25,
+                  w: 2.6, d: 0.25, h: 1.9, c: PALETTES.corp});
+        out.push({layer:1, type:'prism', x: plot.gx + plot.gw*0.44, y: plot.gy - 0.7, z:0.35,
+                  w: 0.5, d: 0.2, h: 0.5, c: PALETTES.corpLit});
+        return;
+      }
 
-      // Tower height scales with level; footprint shrinks slightly per level for a "denser" look
-      var footprint = Math.max(4, plot.gw * 0.5);
+      var footprint = plot.gw * 0.52;
       var offset = (plot.gw - footprint) / 2;
       var height = corpHeight(lvl);
+      var bx = plot.gx + offset, by = plot.gy + offset;
       var pal = (lvl >= 10) ? PALETTES.hazard : PALETTES.corp;
 
-      out.push({
-        layer: 2, type:'prism',
-        x: plot.gx + offset, y: plot.gy + offset,
-        z: 0, w: footprint, d: footprint, h: height,
-        c: pal
-      });
+      // Plinth, so the tower meets the ground instead of ending in mid-air.
+      out.push({layer: 2, type:'prism', x: bx-0.5, y: by-0.5, z: 0,
+                w: footprint+1, d: footprint+1, h: 0.5, c: PALETTES.wall});
 
-      // Small rooftop marker for maxed-out (Mastery) buildings
+      // Built as stacked storeys in two alternating shades. A single slab with thin
+      // banding read as sub-pixel specks at this scale; whole storeys read as floors.
+      var storey = height / lvl;
+      for (var fl = 0; fl < lvl; fl++){
+        var lit = (fl % 2 === 1);
+        var inset = lit ? 0.09 : 0;
+        out.push({layer: 2, type:'prism',
+                  x: bx + inset, y: by + inset, z: 0.5 + fl * storey,
+                  w: footprint - inset*2, d: footprint - inset*2, h: storey + 0.02,
+                  c: lit ? (lvl >= 10 ? PALETTES.hivis : PALETTES.corpLit) : pal});
+      }
+
+      // Roof plant, and a beacon once the building is mastered.
+      out.push({layer: 3, type:'prism', x: bx + footprint*0.28, y: by + footprint*0.28,
+                z: 0.5 + height, w: footprint*0.44, d: footprint*0.44, h: 0.55, c: PALETTES.wall});
       if (lvl >= 10) {
-        out.push({
-          layer: 3, type:'prism',
-          x: plot.gx + offset + footprint*0.3, y: plot.gy + offset + footprint*0.3,
-          z: height, w: footprint*0.4, d: footprint*0.4, h: 0.8,
-          c: PALETTES.corp
-        });
+        out.push({layer: 3, type:'prism', x: bx + footprint*0.44, y: by + footprint*0.44,
+                  z: 0.5 + height + 0.55, w: footprint*0.12, d: footprint*0.12, h: 0.9, c: PALETTES.hivis});
       }
     });
     return out;
   }
 
-  // --- PRE-BAKED STATIC GEOMETRY ---
-  var staticRacks = [], interactiveEvents = [], isoParticles = [];
-  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:34, d:0.5, h:10, c:PALETTES.wall});
-  staticRacks.push({layer: 1, type:'prism', x:-2, y:-2, z:0, w:0.5, d:30, h:10, c:PALETTES.wall});
-
-  for(var col=0; col<4; col++) {
-    for(var row=0; row<12; row++) {
-      var rx = 9 + col * 6.5;
-      var ry = 2 + row * 2.2;
-      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx+3.6, y:ry, z:0, w:0.4, d:0.6, h:5.5, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx, y:ry, z:0.2, w:4, d:0.6, h:0.1, c:PALETTES.steel});
-      staticRacks.push({layer: 2, type:'prism', x:rx+0.5, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.0, c:PALETTES.box});
-      staticRacks.push({layer: 2, type:'prism', x:rx+2.2, y:ry+0.1, z:0.3, w:1.2, d:0.4, h:1.1, c:PALETTES.box});
-    }
+  // Painted floor markings are flat, so they draw as a single parallelogram --
+  // a third of the cost of a prism, which matters when there are dozens of them.
+  var floorDecals = [];
+  function drawDecal(d){
+    var a = pt(d.x, d.y, 0), b = pt(d.x + d.w, d.y, 0),
+        c = pt(d.x + d.w, d.y + d.d, 0), e = pt(d.x, d.y + d.d, 0);
+    ctx.fillStyle = d.c;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(e.x, e.y);
+    ctx.fill();
   }
 
-  // Static racks never move, so key and sort them once instead of every frame.
-  function sortKeyOf(e){ return (e.layer || 2) * 100000 + (e.x + e.y) * 100 + (e.z || 0); }
-  staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
-  staticRacks.sort(function(a,b){ return a.sortKey - b.sortKey; });
+  // --- WAREHOUSE GEOMETRY ---
+  // Rebuilt only when the fill tier changes, so it stays pre-sorted and the frame
+  // loop keeps merging it against the small dynamic list instead of re-sorting ~700.
+  var staticRacks = [], interactiveEvents = [], isoParticles = [];
+  var RACK_COLS = 4, RACK_ROWS = 12, RACK_PITCH = 6.5, BAY_W = 4;
+  // NB: `e.layer || 2` was wrong -- layer 0 is falsy, so every ground-plane entity
+  // (slabs, roads, the apron) sorted as if it were layer 2 and painted over things
+  // that should sit on top of it.
+  function sortKeyOf(e){ return (e.layer === undefined ? 2 : e.layer) * 100000 + (e.x + e.y) * 100 + (e.z || 0); }
+
+  // Aisle centres between the rack runs, so vehicles drive lanes instead of
+  // wandering through the racking.
+  var AISLES = [];
+  for (var ai = 0; ai < RACK_COLS; ai++) AISLES.push(9 + ai*RACK_PITCH - 1.25);
+  AISLES.push(9 + RACK_COLS*RACK_PITCH - 1.25);
+
+  // Stable per-slot noise: the same bay always fills in the same order, so the
+  // warehouse grows rather than reshuffling on every rebuild.
+  function slotNoise(a, b, c){
+    var h = (a * 73856093) ^ (b * 19349663) ^ (c * 83492791);
+    h = (h ^ (h >>> 13)) >>> 0;
+    return (h % 1024) / 1024;
+  }
+
+  // How full the site looks, from the fleet. Resets when you sell the business,
+  // so a new site starts bare and visibly fills as you re-equip it.
+  function warehouseFill(){
+    var n = 0;
+    GENS.forEach(function(g){ n += (state.owned[g.id] || 0); });
+    return Math.min(1, Math.pow(n / 260, 0.55));
+  }
+
+  function buildWarehouse(fill, levels){
+    staticRacks.length = 0;
+    // Two flat grey slabs became a clad building: dark plinth, profiled cladding,
+    // and a company colour band at the eaves.
+    var WALLS = [ {x:-2, y:-2, w:34,  d:0.5}, {x:-2, y:-2, w:0.5, d:30} ];
+    for (var wi = 0; wi < WALLS.length; wi++){
+      var W0 = WALLS[wi];
+      staticRacks.push({layer:1, x:W0.x, y:W0.y, z:0,   w:W0.w, d:W0.d, h:1.6, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:W0.x, y:W0.y, z:1.6, w:W0.w, d:W0.d, h:6.6, c:PALETTES.cladding});
+      staticRacks.push({layer:1, x:W0.x - 0.06, y:W0.y - 0.06, z:8.2,
+                        w:W0.w + 0.12, d:W0.d + 0.12, h:1.0, c:PALETTES.band});
+      staticRacks.push({layer:1, x:W0.x - 0.12, y:W0.y - 0.12, z:9.2,
+                        w:W0.w + 0.24, d:W0.d + 0.24, h:0.35, c:PALETTES.plinth});
+    }
+
+    var rows = Math.min(RACK_ROWS, QUALITY.rackRows);
+    var upright = 0.9 + levels * 1.35;          // racking itself grows taller
+    for (var col = 0; col < RACK_COLS; col++){
+      for (var row = 0; row < rows; row++){
+        var rx = 9 + col * RACK_PITCH, ry = 2 + row * 2.2, bay = col * RACK_ROWS + row;
+        staticRacks.push({layer:2, x:rx,             y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
+        staticRacks.push({layer:2, x:rx+BAY_W-0.4,   y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
+        for (var L = 0; L < levels; L++){
+          var bz = 0.25 + L * 1.35;
+          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:0.6, h:0.12, c:PALETTES.rackBeam});
+          // Kept as two discrete pallets per level. Merging them into one prism saved
+          // ~200 prisms but turned a full rack into a solid brown wall -- the gap is
+          // what makes it read as shelving.
+          for (var slot = 0; slot < 2; slot++){
+            if (slotNoise(bay, L, slot) >= fill) continue;
+            staticRacks.push({layer:2, x:rx + 0.45 + slot*1.75, y:ry + 0.1, z:bz + 0.12,
+                              w:1.25, d:0.4, h:0.85 + slotNoise(bay, L, slot+7) * 0.3,
+                              c: BOX_SHADES[(bay + L + slot) % BOX_SHADES.length]});
+          }
+        }
+      }
+    }
+    // End frames. Real racking is braced across the ends of each run; cheap here
+    // because it is only the two ends of each column, not every bay.
+    for (var ec = 0; ec < RACK_COLS; ec++){
+      var ex = 9 + ec * RACK_PITCH;
+      for (var side = 0; side < 2; side++){
+        var ey = side ? 2 + (rows - 1) * 2.2 : 2;
+        for (var br = 0; br < levels; br++){
+          var brz = 0.55 + br * 1.35;
+          staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
+                            z:brz, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+        }
+        staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
+                          z:0.15, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+      }
+    }
+
+    buildFitOut(fill);
+
+    staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
+    staticRacks.sort(function(a,b){ return a.sortKey - b.sortKey; });
+  }
+
+  // Everything that makes it read as a working site rather than racking on an empty
+  // slab: dock doors, staged freight, empty pallets, roll cages, the yard, and painted
+  // floor markings. Volume scales with fill, so a new site starts nearly bare.
+  function buildFitOut(fill){
+    floorDecals.length = 0;
+    lightPools.length = 0;
+    // Colour-coded zones, the way a real site marks up its floor.
+    var LINE  = 'rgba(226,176,20,0.55)';      // hazard yellow
+    var HATCH = 'rgba(226,176,20,0.34)';
+    var BAY   = 'rgba(255,255,255,0.22)';
+    var WALK  = 'rgba(46,138,78,0.42)';      // safety-green pedestrian walkway
+    var INB   = 'rgba(58,132,196,0.26)';     // blue inbound
+    var OUTB  = 'rgba(196,120,52,0.26)';     // amber outbound
+    var FIRE  = 'rgba(190,58,50,0.42)';      // red fire lane
+
+    // Aisle guide lines down each rack aisle.
+    for (var a = 0; a < AISLES.length; a++)
+      floorDecals.push({x: AISLES[a] - 0.08, y: 1.5, w: 0.16, d: 25, c: LINE});
+
+    // Hatched keep-clear strip along the dock, and the outbound cross-aisle.
+    for (var hy = 0; hy < 26; hy += 2.2)
+      floorDecals.push({x: 1.2, y: hy, w: 0.9, d: 1.2, c: HATCH});
+    floorDecals.push({x: 3, y: 27.2, w: 28, d: 0.16, c: LINE});
+
+    // Marked-out staging bays on the dock strip, on a blue inbound apron.
+    floorDecals.push({x: 3.0, y: 1.5, w: 5.2, d: 25, c: INB});
+    for (var by = 2; by < 26; by += 4.2)
+      floorDecals.push({x: 3.2, y: by, w: 4.6, d: 3.2, c: BAY});
+
+    // Green pedestrian walkway running the length of the dock, and a red fire lane
+    // along the back wall.
+    floorDecals.push({x: 8.4, y: 1.5, w: 0.75, d: 25, c: WALK});
+    floorDecals.push({x: 1.0, y: 0.2, w: 0.55, d: 26, c: FIRE});
+    floorDecals.push({x: 9,   y: 27.9, w: 24, d: 0.55, c: FIRE});
+
+    // Amber outbound apron across the cross-aisle.
+    floorDecals.push({x: 9, y: 29.2, w: 24, d: 3.0, c: OUTB});
+
+    // --- staged freight in the marked bays, filling as the operation grows ---
+    var staged = Math.round(fill * 12 * QUALITY.detail);
+    for (var sI = 0; sI < staged; sI++){
+      var sy = 2.3 + (sI % 6) * 4.2, sx = 3.5 + Math.floor(sI / 6) * 2.4;
+      var stack = 1 + Math.floor(slotNoise(sI, 40, 1) * 2);
+      for (var sk = 0; sk < stack; sk++)
+        staticRacks.push({layer:2, x:sx, y:sy, z:sk*0.72, w:2.0, d:2.4, h:0.7,
+                          c: BOX_SHADES[(sI + sk) % BOX_SHADES.length]});
+    }
+
+    // --- empty pallet stacks against the back wall ---
+    for (var ep = 0; ep < 4; ep++)
+      staticRacks.push({layer:2, x:4.5 + ep*1.5, y:-1.2, z:0, w:1.2, d:1.0,
+                        h:0.5 + slotNoise(ep, 41, 2) * 1.1, c: BOX_SHADES[3]});
+
+    // --- roll cages parked on the cross-aisle ---
+    var cages = Math.round(fill * 6 * QUALITY.detail);
+    for (var cg = 0; cg < cages; cg++){
+      var cgx = 10 + cg * 3.4;
+      staticRacks.push({layer:2, x:cgx, y:28.6, z:0,   w:1.3, d:1.1, h:0.15, c:PALETTES.gantry});
+      staticRacks.push({layer:2, x:cgx, y:28.6, z:0.15,w:1.3, d:1.1, h:1.3,
+                        c: cg % 2 ? PALETTES.rackPost : PALETTES.containerC});
+    }
+
+    // --- dock doors down the loading wall ---
+    for (var dd = 0; dd < Math.max(2, Math.round(6 * QUALITY.detail)); dd++){
+      var ddy = 1.5 + dd * 4.3;
+      staticRacks.push({layer:1, x:-2.05, y:ddy, z:0,   w:0.6, d:2.6, h:2.9,
+                        c: DOOR_SKINS[dd % DOOR_SKINS.length]});
+      staticRacks.push({layer:1, x:-2.10, y:ddy, z:2.9, w:0.7, d:2.6, h:0.3, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-0.4,  y:ddy-0.3, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-0.4,  y:ddy+2.6, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
+      if (QUALITY.detail >= 0.6){
+        // Dock leveller plate, rubber buffers either side, and a bay number panel.
+        staticRacks.push({layer:1, x:-1.5, y:ddy+0.25, z:0.02, w:1.2, d:2.1, h:0.1, c:PALETTES.gantry});
+        staticRacks.push({layer:1, x:-2.2, y:ddy-0.05, z:0.35, w:0.22, d:0.35, h:0.5, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:-2.2, y:ddy+2.3,  z:0.35, w:0.22, d:0.35, h:0.5, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:-2.12, y:ddy+1.0, z:3.05, w:0.16, d:0.7,  h:0.55, c:PALETTES.doorSkinB});
+      }
+    }
+
+    // --- building detail: canopy over the dock, gutter line, downpipes, roof plant ---
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-3.6, y:0.5, z:4.2, w:1.7, d:26, h:0.22, c:PALETTES.plinth});
+      for (var cp = 0; cp < 5; cp++)
+        staticRacks.push({layer:1, x:-3.4, y:1.5 + cp*6, z:0, w:0.22, d:0.22, h:4.2, c:PALETTES.gantry});
+      // Gutter along the eaves and downpipes running to the ground.
+      staticRacks.push({layer:1, x:-2.35, y:-2.3, z:7.9, w:0.3, d:30.4, h:0.3, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:-2.3,  y:-2.35, z:7.9, w:34.4, d:0.3, h:0.3, c:PALETTES.plinth});
+      for (var dp = 0; dp < 4; dp++){
+        staticRacks.push({layer:1, x:-2.4, y:1 + dp*8, z:0, w:0.26, d:0.26, h:7.9, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:2 + dp*8, y:-2.4, z:0, w:0.26, d:0.26, h:7.9, c:PALETTES.plinth});
+      }
+      // Roof plant sitting on the wall head.
+      for (var rp = 0; rp < 3; rp++)
+        staticRacks.push({layer:1, x:3 + rp*9, y:-1.9, z:9.55, w:2.4, d:0.4, h:0.9, c:PALETTES.gantry});
+    }
+
+    // --- the yard ---
+    // Placements below were chosen by projecting candidate coordinates and keeping only
+    // the zones that land inside the viewport; an earlier yard sat at x -22 and only 22%
+    // of it was ever on screen.
+
+    // Inbound: trailers on the dock and a container stack behind them.
+    staticRacks.push({layer:1, x:-9, y:2.2,  z:0.55, w:6.5, d:2.5, h:2.3, c:TRAILER_LIVERY[1]});
+    staticRacks.push({layer:1, x:-9, y:2.2,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:-9, y:7.6,  z:0.55, w:6.5, d:2.5, h:2.3, c:TRAILER_LIVERY[0]});
+    staticRacks.push({layer:1, x:-9, y:7.6,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:-10, y:0.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
+
+    // Bogies under the parked inbound trailers.
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-4.6, y:2.3, z:0, w:1.5, d:2.3, h:0.55, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:-4.6, y:7.7, z:0, w:1.5, d:2.3, h:0.55, c:PALETTES.plinth});
+    }
+
+    // Outbound court, front-right of the site.
+    var court = Math.max(1, Math.round((2 + fill * 4) * QUALITY.detail));
+    for (var oc = 0; oc < court; oc++){
+      var ocy = 21 + (oc % 3) * 3.6, ocz = Math.floor(oc / 3) * 2.0;
+      staticRacks.push({layer:1, x:36, y:ocy, z:ocz, w:6.5, d:2.6, h:1.9,
+                        c: CONTAINER_SHADES[oc % CONTAINER_SHADES.length]});
+      if (QUALITY.detail >= 0.6)   // contrasting door end, so a stack is not one flat block
+        staticRacks.push({layer:1, x:42.4, y:ocy+0.06, z:ocz+0.1, w:0.16, d:2.5, h:1.7,
+                          c: PALETTES.plinth});
+      if (ocz === 0) floorDecals.push({x:35.6, y:ocy-0.3, w:7.3, d:0.14, c:'rgba(226,176,20,0.45)'});
+    }
+    staticRacks.push({layer:1, x:44, y:20.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
+
+    // Front apron: marked trailer bays across the bottom of the site.
+    for (var fa = 0; fa < 3; fa++){
+      var fax = 17 + fa * 5.2;
+      floorDecals.push({x:fax, y:30.4, w:4.4, d:0.16, c:'rgba(226,176,20,0.45)'});
+      floorDecals.push({x:fax, y:33.6, w:4.4, d:0.16, c:'rgba(226,176,20,0.45)'});
+      if (fa < 1 + Math.round(fill * 2)){
+        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0.5, w:3.7, d:2.4, h:2.2,
+                          c: TRAILER_LIVERY[(fa + 2) % TRAILER_LIVERY.length]});
+        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0,   w:1.2, d:2.4, h:0.5, c:PALETTES.gantry});
+      }
+    }
+
+    // Site apron. The visible world region works out to roughly x -23..60, y -29..54,
+    // so one big slab under everything replaces the void the camera used to show.
+    staticRacks.push({layer:0, x:-14, y:-8, z:-0.75, w:64, d:52, h:0.5, c:PALETTES.asphalt});
+
+    // Grass verges outside the fence line.
+    staticRacks.push({layer:0, x:-14, y:41.5, z:-0.7, w:64, d:8,  h:0.42, c:PALETTES.grass});
+    staticRacks.push({layer:0, x:47,  y:-8,   z:-0.7, w:8,  d:52, h:0.42, c:PALETTES.grass});
+
+    // Perimeter fence along the two open sides.
+    staticRacks.push({layer:0, x:-12, y:40.5, z:0, w:58, d:0.18, h:1.5, c:PALETTES.dock});
+    staticRacks.push({layer:0, x:46,  y:-4,   z:0, w:0.18, d:45, h:1.5, c:PALETTES.dock});
+    for (var fp = 0; fp < Math.round(10 * QUALITY.detail); fp++)
+      staticRacks.push({layer:0, x:-11 + fp*6, y:40.4, z:0, w:0.3, d:0.35, h:1.9, c:PALETTES.gantry});
+    for (var fq = 0; fq < Math.round(8 * QUALITY.detail); fq++)
+      staticRacks.push({layer:0, x:45.9, y:-3 + fq*5.5, z:0, w:0.35, d:0.3, h:1.9, c:PALETTES.gantry});
+
+    // Staff parking across the front of the site.
+    for (var pk = 0; pk < Math.max(2, Math.round(6 * QUALITY.detail)); pk++){
+      var pkx = 16 + pk * 2.1;
+      floorDecals.push({x:pkx, y:37, w:0.14, d:3.4, c:'rgba(255,255,255,0.30)'});
+      if (pk < 5){
+        var car = CAR_COLOURS[pk % CAR_COLOURS.length];
+        staticRacks.push({layer:0, x:pkx+0.35, y:37.6, z:0,    w:1.4, d:2.3, h:0.5, c: car});
+        staticRacks.push({layer:0, x:pkx+0.55, y:38.0, z:0.5,  w:0.9, d:1.5, h:0.45, c: PALETTES.plinth});
+      }
+    }
+
+    // Gatehouse and barrier on the approach, bollards protecting the dock corners.
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-8.5, y:34.5, z:0,   w:3.2, d:2.6, h:2.2, c:PALETTES.cladding});
+      staticRacks.push({layer:1, x:-8.7, y:34.3, z:2.2, w:3.6, d:3.0, h:0.3, c:PALETTES.band});
+      staticRacks.push({layer:1, x:-4.9, y:35.4, z:0,   w:0.3, d:0.3, h:1.3, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-4.8, y:35.5, z:1.05,w:5.0, d:0.18,h:0.18,c:PALETTES.hivis});
+      for (var bo = 0; bo < 6; bo++)
+        staticRacks.push({layer:1, x:0.4, y:1.2 + bo*4.6, z:0, w:0.28, d:0.28, h:0.85, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-6.4, y:31.2, z:0,   w:0.22, d:0.22, h:2.0, c:PALETTES.gantry});
+      staticRacks.push({layer:1, x:-7.2, y:31.1, z:2.0, w:2.0, d:0.2,  h:1.1, c:PALETTES.band});
+    }
+
+    // Sodium light pools -- what actually lifts the dark apron.
+    lightPools.push({x:-10,  y:0.5,  r:10, a:0.30});
+    lightPools.push({x:44,   y:20.5, r:10, a:0.30});
+    for (var dl = 0; dl < Math.max(2, Math.round(6 * QUALITY.detail)); dl++)
+      lightPools.push({x:-1, y:1.5 + dl * 4.3 + 1.3, r:5.0, a:0.20});
+    lightPools.push({x:20, y:33, r:9, a:0.18});
+    lightPools.push({x:6,  y:14, r:8, a:0.16});
+
+    // Plant strip along the right-hand side.
+    staticRacks.push({layer:1, x:34, y:1.5, z:0, w:5, d:4.5, h:1.6, c:PALETTES.dock});
+    staticRacks.push({layer:1, x:35, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
+    staticRacks.push({layer:1, x:37.2, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
+    for (var bin = 0; bin < 3; bin++)
+      staticRacks.push({layer:1, x:34.5 + bin*1.7, y:6.4, z:0, w:1.4, d:1.8, h:1.2,
+                        c: CONTAINER_SHADES[(bin + 1) % CONTAINER_SHADES.length]});
+  }
+
+  var warehouseTier = -1;
+  function syncWarehouse(){
+    var fill = warehouseFill();
+    var levels = Math.max(1, Math.min(QUALITY.rackLevels, 1 + Math.round(fill * 3)));
+    var tier = levels * 1000 + Math.round(fill * 40);      // rebuild in ~2.5% steps
+    if (tier === warehouseTier) return;
+    warehouseTier = tier;
+    buildWarehouse(fill, levels);
+  }
 
   function handleCanvasTap(ev){
     if (!renderActive) return;
@@ -1891,54 +2771,223 @@
   cv.addEventListener("pointerdown", handleCanvasTap);
 
   var animT = 0, lastFrame = 0, nextHotspot = 12;
+  var shadowsThisFrame = [], levelsThisFrame = 1, shadowsDone = true;
+  var depthGrad = null, depthGradH = 0, skyGrad = null, skyGradH = 0;
+  var themeSky = ['#6ba3d8','#9cc4e4','#cfe0ec'], themeHaze = '196,216,232';
+  var themeShadow = 'rgba(46,66,92,0.30)', themePools = null;
+  var lightPools = [];
+
+  // Ground pass: painted markings, then contact shadows. Both belong after the slab
+  // and before anything standing on it.
+  // Radial gradients are expensive to build, so cache one per integer radius and
+  // reuse it translated -- the pools never change size within a quality level.
+  var poolCache = {};
+  function poolGradient(rpx){
+    // Cache by radius AND livery -- but the radius passed to the gradient has to stay
+    // numeric; keying and sizing off the same value made it a string and threw.
+    var radius = Math.max(1, Math.round(rpx) || 1);
+    var key = radius + '|' + (themePools || 'none');
+    if (!poolCache[key]){
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+      var pc = themePools || 'rgba(255,186,92,ALPHA)';
+      g.addColorStop(0,   pc.replace('ALPHA','0.85'));
+      g.addColorStop(0.5, pc.replace('ALPHA','0.30'));
+      g.addColorStop(1,   pc.replace('ALPHA','0'));
+      poolCache[key] = g;
+    }
+    return poolCache[key];
+  }
+
+  // A distant industrial skyline behind the site. Drawn in screen space rather than
+  // world space -- it is backdrop, it should not swing around as the camera pulls back.
+  var SKYLINE = [];
+  (function(){
+    var x = -0.04;
+    while (x < 1.08){
+      var w = 0.045 + ((SKYLINE.length * 37) % 11) / 160;
+      var h = 0.020 + ((SKYLINE.length * 53) % 13) / 190;
+      SKYLINE.push({ x: x, w: w, h: h, lit: (SKYLINE.length % 3) === 0 });
+      x += w + 0.006;
+    }
+  })();
+
+  function drawHorizon(){
+    var base = CH * 0.235;
+    ctx.fillStyle = themeSky[2];
+    for (var i = 0; i < SKYLINE.length; i++){
+      var b = SKYLINE[i], bw = b.w * CW, bh = b.h * CH;
+      ctx.fillRect(b.x * CW, base - bh, bw, bh);
+    }
+    // Window glints and a haze band along the skyline.
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    for (var j = 0; j < SKYLINE.length; j++){
+      var q = SKYLINE[j];
+      if (!q.lit) continue;
+      ctx.fillRect(q.x * CW + q.w * CW * 0.35, base - q.h * CH * 0.62, 1.6, 1.6);
+    }
+    ctx.fillStyle = 'rgba(' + themeHaze + ',0.55)';
+    ctx.fillRect(0, base - 2, CW, 12);
+  }
+
+  function flushShadows(){
+    if (shadowsDone) return;
+    shadowsDone = true;
+
+    // Lamp pools are a dusk effect; in daylight the sun does the lighting, so this
+    // stays disabled but the machinery is kept for a possible night cycle.
+    if (themePools && QUALITY.depth && lightPools.length){
+      ctx.globalCompositeOperation = 'lighter';
+      for (var lp = 0; lp < lightPools.length; lp++){
+        var L = lightPools[lp], c0 = pt(L.x, L.y, 0), rpx = L.r * TW;
+        ctx.save();
+        ctx.translate(c0.x, c0.y);
+        ctx.scale(1, TH / TW);                 // circle on the ground plane, not on screen
+        ctx.globalAlpha = L.a;
+        ctx.fillStyle = poolGradient(rpx);
+        ctx.beginPath(); ctx.arc(0, 0, rpx, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+
+    for (var fd = 0; fd < floorDecals.length; fd++) drawDecal(floorDecals[fd]);
+    if (!QUALITY.shadows) return;
+    ctx.fillStyle = themeShadow;
+    for (var sh = 0; sh < shadowsThisFrame.length; sh++){
+      var s0 = shadowsThisFrame[sh], sp = pt(s0.x, s0.y, 0);
+      ctx.beginPath();
+      ctx.ellipse(sp.x, sp.y, s0.r * TW * 1.15, s0.r * TH * 1.15, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+  function emit(e){ if (!shadowsDone && e.sortKey >= 200000) flushShadows(); drawPrism(e); }
 
   function frame(ts){
     requestAnimationFrame(frame);
     if (!renderActive || !CW || CW === 0) return;
+    var frameT0 = performance.now();
 
     var dt = Math.min(0.05, (ts - lastFrame) / 1000 || 0);
     lastFrame = ts; animT += dt;
     var speed = (boostActive() || incidentActive()) ? 2.5 : 1;
 
-    ctx.fillStyle = '#181a1f';
+    if (!skyGrad || skyGradH !== CH){
+      skyGrad = ctx.createLinearGradient(0, 0, 0, CH);
+      skyGrad.addColorStop(0,   themeSky[0]);
+      skyGrad.addColorStop(0.5, themeSky[1]);
+      skyGrad.addColorStop(1,   themeSky[2]);
+      skyGradH = CH;
+    }
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, CW, CH);
+    drawHorizon();
+
+    syncWarehouse();
+    applyCamera();
+    shadowsThisFrame.length = 0;
+    levelsThisFrame = Math.max(1, Math.min(QUALITY.rackLevels, 1 + Math.round(warehouseFill() * 3)));
 
     var entities = corpBuildingEntities();
 
     // Slabs & Roads
     entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
-    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:{top:'#1c1e22', left:'#141619', right:'#0f1013'}});
+    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:PALETTES.asphalt});
 
-    // Parked Trucks
-    entities.push({layer: 1, type:'prism', x:-12, y:4.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
-    entities.push({layer: 1, type:'prism', x:-12, y:18.5, z:0.4, w:10, d:2.5, h:2.5, c:PALETTES.steel});
-
-    // Elevated Conveyor Belt
-    if ((state.owned.conveyor || 0) > 0) {
-      entities.push({layer: 2, type:'prism', x:0, y:1.0, z:4, w:32, d:1.5, h:0.2, c:PALETTES.steel});
-      for (var i3 = 0; i3 < 5; i3++) {
-        var bx_conv = ((animT * 8 * speed) + i3 * 6.5) % 34 - 2;
-        if (bx_conv > 0 && bx_conv < 31) {
-          entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:4.2, w:1.0, d:1.0, h:1.0, c:PALETTES.box});
-        }
+    // Elevated Conveyor Belt -- length and box density scale with how many lines you run.
+    var convN = state.owned.conveyor || 0;
+    if (convN > 0) {
+      var convLen = Math.min(32, 12 + convN * 1.6);
+      entities.push({layer: 2, type:'prism', x:0, y:1.0, z:4, w:convLen, d:1.5, h:0.2, c:PALETTES.steel});
+      for (var cs = 0; cs < convLen; cs += 6.5)           // support legs, so it stops floating
+        entities.push({layer: 2, type:'prism', x:cs, y:1.35, z:0, w:0.35, d:0.35, h:4, c:PALETTES.gantry});
+      var convBoxes = Math.min(9, 2 + Math.floor(convN / 3));
+      for (var i3 = 0; i3 < convBoxes; i3++) {
+        var bx_conv = ((animT * 8 * speed) + i3 * (convLen / convBoxes)) % (convLen + 2) - 2;
+        if (bx_conv > 0 && bx_conv < convLen - 1)
+          entities.push({layer: 2, type:'prism', x:bx_conv, y:1.2, z:4.2, w:1.0, d:1.0, h:1.0,
+                         c:BOX_SHADES[i3 % BOX_SHADES.length]});
       }
     }
 
-    // Workers
-    var maxW = Math.min(24, Math.max(3, (state.owned.picker||0) + (state.owned.trolley||0)));
+    // Workers -- two prisms each (legs + hi-vis torso) so they read as people, and they
+    // walk the aisles rather than drifting through the racking.
+    var crew = (state.owned.picker||0) + (state.owned.trolley||0);
+    var maxW = Math.min(QUALITY.workers, Math.max(3, crew));
     for(var iw=0; iw<maxW; iw++) {
-      var wy = 3.9 + (iw % 12) * 2.2;
-      var wx = 16.0 + Math.sin(animT*0.6*speed + iw) * 12.0;
-      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.8, w:0.8, d:0.8, h:0.8, c:PALETTES.hivis});
+      var phase = animT * (0.42 + (iw % 5) * 0.05) * speed + iw * 1.7;
+      var wx, wy;
+      if (iw % 3 === 0) {
+        // Every third hand works the open dock strip between the trucks and the racking,
+        // where tall racks cannot hide them.
+        wx = 3.5 + ((iw * 5) % 5);
+        wy = 13.5 + Math.sin(phase) * 11.5;
+      } else {
+        var lane = AISLES[iw % AISLES.length];
+        wy = 13.5 + Math.sin(phase) * 10.5;
+        wx = lane + Math.sin(phase * 0.5 + iw) * 0.7;
+      }
+      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0,    w:0.5, d:0.5, h:0.55, c:PALETTES.truck});
+      entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.55, w:0.6, d:0.6, h:0.6,  c:PALETTES.vest});
+      if (QUALITY.detail >= 0.95)
+        entities.push({layer: 2, type:'prism', x:wx+0.09, y:wy+0.09, z:1.15, w:0.42, d:0.42, h:0.3,
+                       c: (iw % 4 === 0) ? PALETTES.doorSkinB : PALETTES.hivis});   // hard hat
+      shadowsThisFrame.push({x:wx, y:wy, r:0.5});
     }
 
-    // Forklifts
-    var maxF = Math.min(12, Math.max(1, (state.owned.forklift||0) + (state.owned.reach||0)));
+    // Forklifts -- body, mast and a carried pallet, running the aisles.
+    var fleet = (state.owned.forklift||0) + (state.owned.reach||0);
+    var maxF = Math.min(QUALITY.forklifts, Math.max(1, fleet));
     for(var ifk=0; ifk<maxF; ifk++) {
-      var fx = [7.0, 14.0, 21.0, 28.0][ifk % 4];
-      var fy = 14.5 + Math.sin(animT*0.7*speed + ifk) * 10.0;
-      entities.push({layer: 2, type:'prism', x:fx, y:fy, z:0.3, w:1.6, d:1.2, h:1.0, c:PALETTES.hivis});
-      entities.push({layer: 2, type:'prism', x:fx-0.4, y:fy+0.3, z:0.3, w:0.8, d:1.0, h:0.8, c:PALETTES.box});
+      var flane = AISLES[ifk % AISLES.length];
+      var fdir = (ifk % 2) ? 1 : -1;
+      var fy = 13.5 + Math.sin(animT * 0.5 * speed + ifk * 2.1) * fdir * 10.0;
+      entities.push({layer: 2, type:'prism', x:flane-0.6, y:fy,     z:0.18, w:1.5, d:1.1, h:0.8, c:PALETTES.hivis});
+      entities.push({layer: 2, type:'prism', x:flane+0.7, y:fy+0.1, z:0,    w:0.25,d:0.9, h:2.4, c:PALETTES.gantry});
+      entities.push({layer: 2, type:'prism', x:flane+0.5, y:fy+0.1, z:0.5,  w:1.0, d:0.9, h:0.8,
+                     c:BOX_SHADES[ifk % BOX_SHADES.length]});
+      if (QUALITY.detail >= 0.6){
+        entities.push({layer: 2, type:'prism', x:flane-0.55, y:fy-0.06, z:0, w:1.1, d:1.2, h:0.32, c:PALETTES.plinth});
+        entities.push({layer: 2, type:'prism', x:flane-0.85, y:fy+0.08, z:0.18, w:0.4, d:0.9, h:1.1, c:PALETTES.hivis});
+        entities.push({layer: 2, type:'prism', x:flane-0.28, y:fy+0.2,  z:0.98, w:0.42,d:0.5, h:0.5, c:PALETTES.vest});
+      }
+      shadowsThisFrame.push({x:flane, y:fy+0.5, r:1.1});
+    }
+
+    // Sorting Robots -- flat AGVs shuttling across the cross-aisle at the dock end.
+    var sortN = state.owned.sorter || 0;
+    if (sortN > 0) {
+      var bots = Math.min(10, 1 + Math.floor(sortN / 2));
+      for (var ib = 0; ib < bots; ib++) {
+        var bt = (animT * 0.35 * speed + ib / bots) % 1;
+        var bx = 5 + bt * 26;
+        var by = 27.5 - (ib % 2) * 1.6;
+        entities.push({layer: 2, type:'prism', x:bx, y:by, z:0, w:1.2, d:0.9, h:0.3, c:PALETTES.robot});
+        entities.push({layer: 2, type:'prism', x:bx+0.15, y:by+0.05, z:0.3, w:0.9, d:0.8, h:0.7,
+                       c:BOX_SHADES[ib % BOX_SHADES.length]});
+        shadowsThisFrame.push({x:bx+0.5, y:by+0.4, r:0.8});
+      }
+    }
+
+    // Automated Crane -- a gantry that actually travels the length of the racking.
+    var craneN = state.owned.crane || 0;
+    if (craneN > 0) {
+      var gy = 13.5 + Math.sin(animT * 0.22 * speed) * 11.0;
+      var gh = 1.0 + levelsThisFrame * 1.35 + 1.2;
+      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:gh,  w:27,  d:0.7, h:0.5, c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:33, y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      var hoistX = 12 + (Math.sin(animT * 0.5 * speed) * 0.5 + 0.5) * 16;
+      entities.push({layer: 3, type:'prism', x:hoistX, y:gy, z:gh-1.4, w:1.4, d:0.7, h:1.4, c:PALETTES.hivis});
+    }
+
+    // Distribution Hub -- outbound bays along the dock, built out as hubs are added.
+    var hubN = state.owned.hub || 0;
+    for (var ih = 0; ih < Math.min(4, hubN); ih++) {
+      var hy = 3 + ih * 6.5;
+      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:0,   w:7, d:4.5, h:2.4, c:PALETTES.cladding});
+      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:2.4, w:7, d:4.5, h:0.8, c:PALETTES.band});
+      entities.push({layer: 1, type:'prism', x:-3.2, y:hy+0.6, z:0.6, w:0.6, d:3.3, h:2.2, c:PALETTES.hivis});
     }
 
     // Interactive Spills/Audits
@@ -1965,12 +3014,32 @@
     for (var si = 0; si < entities.length; si++) entities[si].sortKey = sortKeyOf(entities[si]);
     entities.sort(function(a,b){ return a.sortKey - b.sortKey; });
 
+    // Contact shadows belong on the ground: after the layer 0/1 slabs and roads, before
+    // anything standing on them. sortKey packs layer as layer*100000, so layer 2 starts
+    // at 200000 -- flush the shadows the first time the merged stream crosses it.
+    shadowsDone = false;
+
     var ia = 0, ib = 0;
     while (ia < staticRacks.length || ib < entities.length){
-      if (ib >= entities.length) drawPrism(staticRacks[ia++]);
-      else if (ia >= staticRacks.length) drawPrism(entities[ib++]);
-      else if (staticRacks[ia].sortKey <= entities[ib].sortKey) drawPrism(staticRacks[ia++]);
-      else drawPrism(entities[ib++]);
+      if (ib >= entities.length) emit(staticRacks[ia++]);
+      else if (ia >= staticRacks.length) emit(entities[ib++]);
+      else if (staticRacks[ia].sortKey <= entities[ib].sortKey) emit(staticRacks[ia++]);
+      else emit(entities[ib++]);
+    }
+    flushShadows();   // nothing above layer 1 this frame
+
+    // Depth cue: distance maps to screen Y in isometric, so one gradient fill gives
+    // aerial perspective for the cost of a single rect.
+    if (QUALITY.depth){
+      if (!depthGrad || depthGradH !== CH){
+        depthGrad = ctx.createLinearGradient(0, 0, 0, CH);
+        depthGrad.addColorStop(0,    'rgba(' + themeHaze + ',0.38)');   // distance washes out
+        depthGrad.addColorStop(0.45, 'rgba(' + themeHaze + ',0.09)');
+        depthGrad.addColorStop(1,    'rgba(' + themeHaze + ',0.00)');
+        depthGradH = CH;
+      }
+      ctx.fillStyle = depthGrad;
+      ctx.fillRect(0, 0, CW, CH);
     }
 
     // Particle Handling
@@ -1988,6 +3057,8 @@
             ctx.globalAlpha = 1.0;
         }
     }
+
+    noteFrameTime(performance.now() - frameT0);
   }
 
   // --- TICKER LOOP (100ms) ---
@@ -2013,7 +3084,10 @@
 
   function startGame() {
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
-    renderCompany(); renderMute(); update3DPalette(); render();
+    renderCompany(); renderMute(); renderNotifs(); update3DPalette();
+    bindNotificationLifecycle();
+    if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
+    renderQuality(); render();
     requestAnimationFrame(frame);
     setTimeout(function(){
       var sp = document.getElementById("splash");
