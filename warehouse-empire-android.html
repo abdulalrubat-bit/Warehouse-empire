@@ -1732,55 +1732,57 @@
   }
   window.addEventListener("resize", sizeCanvas);
 
+  // Daylight lighting model. Top faces catch warm sun, left faces sit in half-light,
+  // right faces are in shade and lit only by the sky, so they shift cool rather than
+  // just going darker. Kept bright-overcast rather than blown out, so the panel does
+  // not fight the dark UI around it.
   var PALETTES = {
-    steel:  { top: '#5d636b', left: '#474c53', right: '#2c2f34' },
-    dark:   { top: '#383c42', left: '#2c2f34', right: '#1c1e21' },
-    box:    { top: '#e0b088', left: '#c08a4e', right: '#8a6437' },
-    hivis:  { top: '#ff7b00', left: '#f2620f', right: '#c94e08' },
-    spill:  { top: '#ff5a5a', left: '#e05252', right: '#a32929' },
-    audit:  { top: '#7ce3ff', left: '#38bdf8', right: '#0284c7' },
-    hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
-    slab:   { top: '#3a3833', left: '#302e2a', right: '#242220' },
-    wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' },
-    corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' },
-    corpLit:{ top: '#e6c8ff', left: '#c58bff', right: '#8f45e8' },
-    worker: { top: '#ffa24d', left: '#f2620f', right: '#b8460a' },
-    vest:   { top: '#ffe08a', left: '#f0c000', right: '#a88600' },
-    truck:  { top: '#6d757f', left: '#565d66', right: '#383d44' },
-    robot:  { top: '#8fd4ff', left: '#38bdf8', right: '#1a6f96' },
-    gantry: { top: '#9aa3ad', left: '#79818b', right: '#4a5057' },
-    dock:   { top: '#3d434b', left: '#31363d', right: '#23272c' },
-    container:  { top: '#4f7f9e', left: '#3d6580', right: '#26414f' },
-    containerB: { top: '#8a5f4e', left: '#6e4a3c', right: '#452e25' },
-    containerC: { top: '#5c8f63', left: '#456b4b', right: '#2b442f' },
-    containerD: { top: '#b09048', left: '#8a7038', right: '#564722' },
+    steel:  { top: '#c2c8ce', left: '#9aa2aa', right: '#6b747e' },
+    dark:   { top: '#7a828b', left: '#626a73', right: '#464e58' },
+    box:    { top: '#e8bf90', left: '#cb9a63', right: '#94703f' },
+    hivis:  { top: '#ff9424', left: '#f2620f', right: '#b8480c' },
+    spill:  { top: '#ff7070', left: '#e05252', right: '#9e3232' },
+    audit:  { top: '#9fe9ff', left: '#38bdf8', right: '#0d6f9e' },
+    hazard: { top: '#ffe173', left: '#f5b90b', right: '#b07a09' },
+    slab:   { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
+    wall:   { top: '#b9c0c8', left: '#98a0a9', right: '#6d7680' },
+    corp:   { top: '#d4a3ff', left: '#a855f7', right: '#6f2cc4' },
+    corpLit:{ top: '#f0dcff', left: '#c58bff', right: '#8a4fd4' },
+    worker: { top: '#ffb066', left: '#f2620f', right: '#a8420c' },
+    vest:   { top: '#ffec9e', left: '#f0c000', right: '#a37f0c' },
+    truck:  { top: '#aeb6bf', left: '#8d959e', right: '#636b76' },
+    robot:  { top: '#a9dfff', left: '#38bdf8', right: '#1a6f96' },
+    gantry: { top: '#c8ced5', left: '#a5adb5', right: '#787f88' },
+    dock:   { top: '#8b939c', left: '#717981', right: '#525a63' },
+    container:  { top: '#5f9bbe', left: '#457e9f', right: '#2d576f' },
+    containerB: { top: '#a87360', left: '#875a4a', right: '#5c3c31' },
+    containerC: { top: '#6faa78', left: '#53875e', right: '#376040' },
+    containerD: { top: '#cfab5c', left: '#a88742', right: '#735c2c' },
 
-    // Real racking is painted: blue uprights, orange beams. This is the largest
-    // mass on screen, so it carries most of the colour.
-    rackPost: { top: '#3d6d9b', left: '#2d5275', right: '#1b3550' },
-    rackBeam: { top: '#cf7433', left: '#ad5b26', right: '#7a3d16' },
+    // Painted racking: blue uprights, orange beams. The largest mass on screen.
+    rackPost: { top: '#5a95c9', left: '#3f77a8', right: '#2a557d' },
+    rackBeam: { top: '#f0954a', left: '#d1762f', right: '#96501d' },
 
-    // Ground: warm concrete inside, cooler asphalt in the yard, green verges.
-    slabWarm: { top: '#3a3833', left: '#302e2a', right: '#242220' },
-    asphalt:  { top: '#26292f', left: '#1f2227', right: '#171a1e' },
-    grass:    { top: '#35462f', left: '#2a3826', right: '#1c261a' },
+    // Ground: pale concrete inside, asphalt in the yard, grass on the verges.
+    slabWarm: { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
+    asphalt:  { top: '#7c8087', left: '#696d74', right: '#4e525a' },
+    grass:    { top: '#77a05a', left: '#61864a', right: '#456134' },
 
-    // Building skin: pale profiled cladding over a dark plinth, with a company
-    // colour band near the eaves.
-    cladding: { top: '#7d8a99', left: '#66727f', right: '#454e58' },
-    plinth:   { top: '#333a42', left: '#2a3038', right: '#1c2127' },
-    band:     { top: '#f2872c', left: '#cf6d1d', right: '#8f4a11' },
-    doorSkin: { top: '#4f7ca8', left: '#3d6183', right: '#274156' },
-    doorSkinB:{ top: '#8a9aa8', left: '#6e7d8a', right: '#48545e' }
+    // Building skin: pale profiled cladding over a plinth, company band at the eaves.
+    cladding: { top: '#dfe5ea', left: '#c1c9d1', right: '#98a2ac' },
+    plinth:   { top: '#7f8892', left: '#69717a', right: '#4e555d' },
+    band:     { top: '#f89a3e', left: '#dd7a20', right: '#a05413' },
+    doorSkin: { top: '#6a9ac6', left: '#4f7ca8', right: '#375a7d' },
+    doorSkinB:{ top: '#b4bfc9', left: '#94a0ab', right: '#6c7780' }
   };
 
   // A little colour variety across pallets so a full rack does not read as one flat mass.
   var CONTAINER_SHADES = [], TRAILER_LIVERY = [], CAR_COLOURS = [], DOOR_SKINS = [];
   var BOX_SHADES = [
-    { top:'#e0b088', left:'#c08a4e', right:'#8a6437' },
-    { top:'#d5a071', left:'#b07c42', right:'#7d5931' },
-    { top:'#e8c39c', left:'#cb9760', right:'#946c3c' },
-    { top:'#cf9a80', left:'#ab7752', right:'#79553a' }
+    { top:'#e8c194', left:'#c9995f', right:'#95724a' },
+    { top:'#dcb181', left:'#bd8a51', right:'#8c663d' },
+    { top:'#f0d0aa', left:'#d2a973', right:'#9c7d51' },
+    { top:'#dcaa8e', left:'#b98663', right:'#8a6349' }
   ];
 
   CONTAINER_SHADES.push(PALETTES.container, PALETTES.containerB, PALETTES.containerC, PALETTES.containerD);
@@ -1806,8 +1808,8 @@
   // overridable from the Office tab. Scales the things that actually cost frames.
   var QUALITY_LEVELS = {
     low:    { name:'Low',    rackRows:8,  rackLevels:2, workers:12, forklifts:5,  detail:0.35, shadows:false, depth:false },
-    medium: { name:'Medium', rackRows:10, rackLevels:3, workers:24, forklifts:9,  detail:0.7,  shadows:true,  depth:true  },
-    high:   { name:'High',   rackRows:12, rackLevels:4, workers:38, forklifts:13, detail:1.0,  shadows:true,  depth:true  }
+    medium: { name:'Medium', rackRows:10, rackLevels:3, workers:20, forklifts:8,  detail:0.7,  shadows:true,  depth:true  },
+    high:   { name:'High',   rackRows:12, rackLevels:4, workers:28, forklifts:11, detail:1.0,  shadows:true,  depth:true  }
   };
   var QUALITY_ORDER = ['low', 'medium', 'high'];
   var QUALITY = QUALITY_LEVELS.high;
@@ -1836,13 +1838,13 @@
   function noteFrameTime(ms){
     if (!qualityAuto) return;
     frameSamples.push(ms);
-    if (frameSamples.length < 45) return;
+    if (frameSamples.length < 30) return;
     var sorted = frameSamples.slice().sort(function(a,b){ return a - b; });
     var median = sorted[sorted.length >> 1];
     frameSamples.length = 0;
 
     var now = Date.now();
-    if (now - lastQualityChange < 4000) return;    // hysteresis, so it cannot oscillate
+    if (now - lastQualityChange < 2200) return;    // hysteresis, so it cannot oscillate
     if (median > FRAME_BUDGET_MS && qualityIdx > 0){
       qualityIdx--; applyQuality(); lastQualityChange = now;
     } else if (median < FRAME_HEADROOM_MS && qualityIdx < QUALITY_ORDER.length - 1){
@@ -1853,13 +1855,10 @@
   function update3DPalette() {
     if (state.theme === "nightshift") {
       PALETTES.hivis = { top: '#63aaff', left: '#3f8fd8', right: '#1d5285' };
-      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     } else if (state.theme === "safety") {
       PALETTES.hivis = { top: '#a7e058', left: '#8dc63f', right: '#4e7a1e' };
-      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     } else {
       PALETTES.hivis = { top: '#ff7b00', left: '#f2620f', right: '#c94e08' };
-      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     }
   }
 
@@ -2039,6 +2038,22 @@
         }
       }
     }
+    // End frames. Real racking is braced across the ends of each run; cheap here
+    // because it is only the two ends of each column, not every bay.
+    for (var ec = 0; ec < RACK_COLS; ec++){
+      var ex = 9 + ec * RACK_PITCH;
+      for (var side = 0; side < 2; side++){
+        var ey = side ? 2 + (rows - 1) * 2.2 : 2;
+        for (var br = 0; br < levels; br++){
+          var brz = 0.55 + br * 1.35;
+          staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
+                            z:brz, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+        }
+        staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
+                          z:0.15, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+      }
+    }
+
     buildFitOut(fill);
 
     staticRacks.forEach(function(e){ e.sortKey = sortKeyOf(e); });
@@ -2052,13 +2067,13 @@
     floorDecals.length = 0;
     lightPools.length = 0;
     // Colour-coded zones, the way a real site marks up its floor.
-    var LINE  = 'rgba(240,192,0,0.26)';      // hazard yellow
-    var HATCH = 'rgba(240,192,0,0.16)';
-    var BAY   = 'rgba(255,255,255,0.05)';
-    var WALK  = 'rgba(64,170,96,0.20)';      // safety-green pedestrian walkway
-    var INB   = 'rgba(58,132,196,0.17)';     // blue inbound
-    var OUTB  = 'rgba(196,120,52,0.17)';     // amber outbound
-    var FIRE  = 'rgba(200,66,58,0.20)';      // red fire lane
+    var LINE  = 'rgba(226,176,20,0.55)';      // hazard yellow
+    var HATCH = 'rgba(226,176,20,0.34)';
+    var BAY   = 'rgba(255,255,255,0.22)';
+    var WALK  = 'rgba(46,138,78,0.42)';      // safety-green pedestrian walkway
+    var INB   = 'rgba(58,132,196,0.26)';     // blue inbound
+    var OUTB  = 'rgba(196,120,52,0.26)';     // amber outbound
+    var FIRE  = 'rgba(190,58,50,0.42)';      // red fire lane
 
     // Aisle guide lines down each rack aisle.
     for (var a = 0; a < AISLES.length; a++)
@@ -2115,6 +2130,30 @@
       staticRacks.push({layer:1, x:-2.10, y:ddy, z:2.9, w:0.7, d:2.6, h:0.3, c:PALETTES.hivis});
       staticRacks.push({layer:1, x:-0.4,  y:ddy-0.3, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
       staticRacks.push({layer:1, x:-0.4,  y:ddy+2.6, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
+      if (QUALITY.detail >= 0.6){
+        // Dock leveller plate, rubber buffers either side, and a bay number panel.
+        staticRacks.push({layer:1, x:-1.5, y:ddy+0.25, z:0.02, w:1.2, d:2.1, h:0.1, c:PALETTES.gantry});
+        staticRacks.push({layer:1, x:-2.2, y:ddy-0.05, z:0.35, w:0.22, d:0.35, h:0.5, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:-2.2, y:ddy+2.3,  z:0.35, w:0.22, d:0.35, h:0.5, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:-2.12, y:ddy+1.0, z:3.05, w:0.16, d:0.7,  h:0.55, c:PALETTES.doorSkinB});
+      }
+    }
+
+    // --- building detail: canopy over the dock, gutter line, downpipes, roof plant ---
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-3.6, y:0.5, z:4.2, w:1.7, d:26, h:0.22, c:PALETTES.plinth});
+      for (var cp = 0; cp < 5; cp++)
+        staticRacks.push({layer:1, x:-3.4, y:1.5 + cp*6, z:0, w:0.22, d:0.22, h:4.2, c:PALETTES.gantry});
+      // Gutter along the eaves and downpipes running to the ground.
+      staticRacks.push({layer:1, x:-2.35, y:-2.3, z:7.9, w:0.3, d:30.4, h:0.3, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:-2.3,  y:-2.35, z:7.9, w:34.4, d:0.3, h:0.3, c:PALETTES.plinth});
+      for (var dp = 0; dp < 4; dp++){
+        staticRacks.push({layer:1, x:-2.4, y:1 + dp*8, z:0, w:0.26, d:0.26, h:7.9, c:PALETTES.plinth});
+        staticRacks.push({layer:1, x:2 + dp*8, y:-2.4, z:0, w:0.26, d:0.26, h:7.9, c:PALETTES.plinth});
+      }
+      // Roof plant sitting on the wall head.
+      for (var rp = 0; rp < 3; rp++)
+        staticRacks.push({layer:1, x:3 + rp*9, y:-1.9, z:9.55, w:2.4, d:0.4, h:0.9, c:PALETTES.gantry});
     }
 
     // --- the yard ---
@@ -2129,21 +2168,30 @@
     staticRacks.push({layer:1, x:-9, y:7.6,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
     staticRacks.push({layer:1, x:-10, y:0.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
 
+    // Bogies under the parked inbound trailers.
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-4.6, y:2.3, z:0, w:1.5, d:2.3, h:0.55, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:-4.6, y:7.7, z:0, w:1.5, d:2.3, h:0.55, c:PALETTES.plinth});
+    }
+
     // Outbound court, front-right of the site.
     var court = Math.max(1, Math.round((2 + fill * 4) * QUALITY.detail));
     for (var oc = 0; oc < court; oc++){
       var ocy = 21 + (oc % 3) * 3.6, ocz = Math.floor(oc / 3) * 2.0;
       staticRacks.push({layer:1, x:36, y:ocy, z:ocz, w:6.5, d:2.6, h:1.9,
                         c: CONTAINER_SHADES[oc % CONTAINER_SHADES.length]});
-      if (ocz === 0) floorDecals.push({x:35.6, y:ocy-0.3, w:7.3, d:0.14, c:'rgba(240,192,0,0.18)'});
+      if (QUALITY.detail >= 0.6)   // contrasting door end, so a stack is not one flat block
+        staticRacks.push({layer:1, x:42.4, y:ocy+0.06, z:ocz+0.1, w:0.16, d:2.5, h:1.7,
+                          c: PALETTES.plinth});
+      if (ocz === 0) floorDecals.push({x:35.6, y:ocy-0.3, w:7.3, d:0.14, c:'rgba(226,176,20,0.45)'});
     }
     staticRacks.push({layer:1, x:44, y:20.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
 
     // Front apron: marked trailer bays across the bottom of the site.
     for (var fa = 0; fa < 3; fa++){
       var fax = 17 + fa * 5.2;
-      floorDecals.push({x:fax, y:30.4, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
-      floorDecals.push({x:fax, y:33.6, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
+      floorDecals.push({x:fax, y:30.4, w:4.4, d:0.16, c:'rgba(226,176,20,0.45)'});
+      floorDecals.push({x:fax, y:33.6, w:4.4, d:0.16, c:'rgba(226,176,20,0.45)'});
       if (fa < 1 + Math.round(fill * 2)){
         staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0.5, w:3.7, d:2.4, h:2.2,
                           c: TRAILER_LIVERY[(fa + 2) % TRAILER_LIVERY.length]});
@@ -2170,12 +2218,24 @@
     // Staff parking across the front of the site.
     for (var pk = 0; pk < Math.max(2, Math.round(6 * QUALITY.detail)); pk++){
       var pkx = 16 + pk * 2.1;
-      floorDecals.push({x:pkx, y:37, w:0.14, d:3.4, c:'rgba(255,255,255,0.06)'});
+      floorDecals.push({x:pkx, y:37, w:0.14, d:3.4, c:'rgba(255,255,255,0.30)'});
       if (pk < 5){
         var car = CAR_COLOURS[pk % CAR_COLOURS.length];
         staticRacks.push({layer:0, x:pkx+0.35, y:37.6, z:0,    w:1.4, d:2.3, h:0.5, c: car});
         staticRacks.push({layer:0, x:pkx+0.55, y:38.0, z:0.5,  w:0.9, d:1.5, h:0.45, c: PALETTES.plinth});
       }
+    }
+
+    // Gatehouse and barrier on the approach, bollards protecting the dock corners.
+    if (QUALITY.detail >= 0.6){
+      staticRacks.push({layer:1, x:-8.5, y:34.5, z:0,   w:3.2, d:2.6, h:2.2, c:PALETTES.cladding});
+      staticRacks.push({layer:1, x:-8.7, y:34.3, z:2.2, w:3.6, d:3.0, h:0.3, c:PALETTES.band});
+      staticRacks.push({layer:1, x:-4.9, y:35.4, z:0,   w:0.3, d:0.3, h:1.3, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-4.8, y:35.5, z:1.05,w:5.0, d:0.18,h:0.18,c:PALETTES.hivis});
+      for (var bo = 0; bo < 6; bo++)
+        staticRacks.push({layer:1, x:0.4, y:1.2 + bo*4.6, z:0, w:0.28, d:0.28, h:0.85, c:PALETTES.hivis});
+      staticRacks.push({layer:1, x:-6.4, y:31.2, z:0,   w:0.22, d:0.22, h:2.0, c:PALETTES.gantry});
+      staticRacks.push({layer:1, x:-7.2, y:31.1, z:2.0, w:2.0, d:0.2,  h:1.1, c:PALETTES.band});
     }
 
     // Sodium light pools -- what actually lifts the dark apron.
@@ -2329,28 +2389,29 @@
 
   function drawHorizon(){
     var base = CH * 0.235;
-    ctx.fillStyle = '#1b2233';
+    ctx.fillStyle = '#a8bccd';
     for (var i = 0; i < SKYLINE.length; i++){
       var b = SKYLINE[i], bw = b.w * CW, bh = b.h * CH;
       ctx.fillRect(b.x * CW, base - bh, bw, bh);
     }
-    // A few lit windows and a warm haze band along the skyline.
-    ctx.fillStyle = 'rgba(255,180,90,0.30)';
+    // Window glints and a haze band along the skyline.
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
     for (var j = 0; j < SKYLINE.length; j++){
       var q = SKYLINE[j];
       if (!q.lit) continue;
       ctx.fillRect(q.x * CW + q.w * CW * 0.35, base - q.h * CH * 0.62, 1.6, 1.6);
     }
-    ctx.fillStyle = 'rgba(255,150,70,0.055)';
-    ctx.fillRect(0, base - 3, CW, 10);
+    ctx.fillStyle = 'rgba(207,224,236,0.55)';
+    ctx.fillRect(0, base - 2, CW, 12);
   }
 
   function flushShadows(){
     if (shadowsDone) return;
     shadowsDone = true;
 
-    // Lamp light on the ground, added before the paint so markings read through it.
-    if (QUALITY.depth && lightPools.length){
+    // Lamp pools are a dusk effect; in daylight the sun does the lighting, so this
+    // stays disabled but the machinery is kept for a possible night cycle.
+    if (false && QUALITY.depth && lightPools.length){
       ctx.globalCompositeOperation = 'lighter';
       for (var lp = 0; lp < lightPools.length; lp++){
         var L = lightPools[lp], c0 = pt(L.x, L.y, 0), rpx = L.r * TW;
@@ -2368,7 +2429,7 @@
 
     for (var fd = 0; fd < floorDecals.length; fd++) drawDecal(floorDecals[fd]);
     if (!QUALITY.shadows) return;
-    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.fillStyle = 'rgba(46,66,92,0.30)';
     for (var sh = 0; sh < shadowsThisFrame.length; sh++){
       var s0 = shadowsThisFrame[sh], sp = pt(s0.x, s0.y, 0);
       ctx.beginPath();
@@ -2389,9 +2450,9 @@
 
     if (!skyGrad || skyGradH !== CH){
       skyGrad = ctx.createLinearGradient(0, 0, 0, CH);
-      skyGrad.addColorStop(0,    '#141a2a');     // deep dusk overhead
-      skyGrad.addColorStop(0.45, '#1d2130');
-      skyGrad.addColorStop(1,    '#2a2318');     // warm sodium haze at the horizon
+      skyGrad.addColorStop(0,    '#6ba3d8');     // clear sky overhead
+      skyGrad.addColorStop(0.5,  '#9cc4e4');
+      skyGrad.addColorStop(1,    '#cfe0ec');     // pale haze at the horizon
       skyGradH = CH;
     }
     ctx.fillStyle = skyGrad;
@@ -2407,7 +2468,7 @@
 
     // Slabs & Roads
     entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
-    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:{top:'#1c1e22', left:'#141619', right:'#0f1013'}});
+    entities.push({layer: 0, type:'prism', x:-25, y:-5, z:-0.6, w:25, d:35, h:0.5, c:PALETTES.asphalt});
 
     // Elevated Conveyor Belt -- length and box density scale with how many lines you run.
     var convN = state.owned.conveyor || 0;
@@ -2444,6 +2505,9 @@
       }
       entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0,    w:0.5, d:0.5, h:0.55, c:PALETTES.truck});
       entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0.55, w:0.6, d:0.6, h:0.6,  c:PALETTES.vest});
+      if (QUALITY.detail >= 0.95)
+        entities.push({layer: 2, type:'prism', x:wx+0.09, y:wy+0.09, z:1.15, w:0.42, d:0.42, h:0.3,
+                       c: (iw % 4 === 0) ? PALETTES.doorSkinB : PALETTES.hivis});   // hard hat
       shadowsThisFrame.push({x:wx, y:wy, r:0.5});
     }
 
@@ -2454,10 +2518,15 @@
       var flane = AISLES[ifk % AISLES.length];
       var fdir = (ifk % 2) ? 1 : -1;
       var fy = 13.5 + Math.sin(animT * 0.5 * speed + ifk * 2.1) * fdir * 10.0;
-      entities.push({layer: 2, type:'prism', x:flane-0.6, y:fy,     z:0,   w:1.5, d:1.1, h:0.95, c:PALETTES.hivis});
-      entities.push({layer: 2, type:'prism', x:flane+0.7, y:fy+0.1, z:0,   w:0.25,d:0.9, h:2.4,  c:PALETTES.gantry});
-      entities.push({layer: 2, type:'prism', x:flane+0.5, y:fy+0.1, z:0.5, w:1.0, d:0.9, h:0.8,
+      entities.push({layer: 2, type:'prism', x:flane-0.6, y:fy,     z:0.18, w:1.5, d:1.1, h:0.8, c:PALETTES.hivis});
+      entities.push({layer: 2, type:'prism', x:flane+0.7, y:fy+0.1, z:0,    w:0.25,d:0.9, h:2.4, c:PALETTES.gantry});
+      entities.push({layer: 2, type:'prism', x:flane+0.5, y:fy+0.1, z:0.5,  w:1.0, d:0.9, h:0.8,
                      c:BOX_SHADES[ifk % BOX_SHADES.length]});
+      if (QUALITY.detail >= 0.6){
+        entities.push({layer: 2, type:'prism', x:flane-0.55, y:fy-0.06, z:0, w:1.1, d:1.2, h:0.32, c:PALETTES.plinth});
+        entities.push({layer: 2, type:'prism', x:flane-0.85, y:fy+0.08, z:0.18, w:0.4, d:0.9, h:1.1, c:PALETTES.hivis});
+        entities.push({layer: 2, type:'prism', x:flane-0.28, y:fy+0.2,  z:0.98, w:0.42,d:0.5, h:0.5, c:PALETTES.vest});
+      }
       shadowsThisFrame.push({x:flane, y:fy+0.5, r:1.1});
     }
 
@@ -2540,9 +2609,9 @@
     if (QUALITY.depth){
       if (!depthGrad || depthGradH !== CH){
         depthGrad = ctx.createLinearGradient(0, 0, 0, CH);
-        depthGrad.addColorStop(0,    'rgba(24,26,31,0.55)');
-        depthGrad.addColorStop(0.45, 'rgba(24,26,31,0.10)');
-        depthGrad.addColorStop(1,    'rgba(24,26,31,0.00)');
+        depthGrad.addColorStop(0,    'rgba(196,216,232,0.38)');   // distance washes out
+        depthGrad.addColorStop(0.45, 'rgba(196,216,232,0.09)');
+        depthGrad.addColorStop(1,    'rgba(196,216,232,0.00)');
         depthGradH = CH;
       }
       ctx.fillStyle = depthGrad;
