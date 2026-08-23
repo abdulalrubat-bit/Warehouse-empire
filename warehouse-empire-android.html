@@ -1763,11 +1763,19 @@
     // Ground: warm concrete inside, cooler asphalt in the yard, green verges.
     slabWarm: { top: '#3a3833', left: '#302e2a', right: '#242220' },
     asphalt:  { top: '#26292f', left: '#1f2227', right: '#171a1e' },
-    grass:    { top: '#35462f', left: '#2a3826', right: '#1c261a' }
+    grass:    { top: '#35462f', left: '#2a3826', right: '#1c261a' },
+
+    // Building skin: pale profiled cladding over a dark plinth, with a company
+    // colour band near the eaves.
+    cladding: { top: '#7d8a99', left: '#66727f', right: '#454e58' },
+    plinth:   { top: '#333a42', left: '#2a3038', right: '#1c2127' },
+    band:     { top: '#f2872c', left: '#cf6d1d', right: '#8f4a11' },
+    doorSkin: { top: '#4f7ca8', left: '#3d6183', right: '#274156' },
+    doorSkinB:{ top: '#8a9aa8', left: '#6e7d8a', right: '#48545e' }
   };
 
   // A little colour variety across pallets so a full rack does not read as one flat mass.
-  var CONTAINER_SHADES = [];   // filled once PALETTES exists
+  var CONTAINER_SHADES = [], TRAILER_LIVERY = [], CAR_COLOURS = [], DOOR_SKINS = [];
   var BOX_SHADES = [
     { top:'#e0b088', left:'#c08a4e', right:'#8a6437' },
     { top:'#d5a071', left:'#b07c42', right:'#7d5931' },
@@ -1776,6 +1784,23 @@
   ];
 
   CONTAINER_SHADES.push(PALETTES.container, PALETTES.containerB, PALETTES.containerC, PALETTES.containerD);
+
+  // Carrier liveries -- a yard full of identical grey boxes reads as clutter; a yard
+  // full of different carriers reads as a working site.
+  TRAILER_LIVERY.push(
+    { top:'#d8dde2', left:'#b3bac1', right:'#7c848c' },   // plain white curtainsider
+    { top:'#3f79b5', left:'#2f5e8f', right:'#1e3d5e' },   // blue
+    { top:'#b8524a', left:'#93403a', right:'#5f2926' },   // red
+    { top:'#58916a', left:'#437252', right:'#2b4936' }    // green
+  );
+  CAR_COLOURS.push(
+    { top:'#c9d0d6', left:'#a3abb2', right:'#6f767c' },
+    { top:'#a8433d', left:'#853430', right:'#57211e' },
+    { top:'#3b6fa0', left:'#2d567c', right:'#1d3750' },
+    { top:'#4b5259', left:'#3c4248', right:'#272c31' },
+    { top:'#b08a3e', left:'#8b6d31', right:'#59461f' }
+  );
+  DOOR_SKINS.push(PALETTES.doorSkin, PALETTES.doorSkinB);
 
   // Graphics quality. Auto-picked from measured draw time on the first few seconds,
   // overridable from the Office tab. Scales the things that actually cost frames.
@@ -1979,8 +2004,18 @@
 
   function buildWarehouse(fill, levels){
     staticRacks.length = 0;
-    staticRacks.push({layer:1, x:-2, y:-2, z:0, w:34,  d:0.5, h:10, c:PALETTES.wall});
-    staticRacks.push({layer:1, x:-2, y:-2, z:0, w:0.5, d:30,  h:10, c:PALETTES.wall});
+    // Two flat grey slabs became a clad building: dark plinth, profiled cladding,
+    // and a company colour band at the eaves.
+    var WALLS = [ {x:-2, y:-2, w:34,  d:0.5}, {x:-2, y:-2, w:0.5, d:30} ];
+    for (var wi = 0; wi < WALLS.length; wi++){
+      var W0 = WALLS[wi];
+      staticRacks.push({layer:1, x:W0.x, y:W0.y, z:0,   w:W0.w, d:W0.d, h:1.6, c:PALETTES.plinth});
+      staticRacks.push({layer:1, x:W0.x, y:W0.y, z:1.6, w:W0.w, d:W0.d, h:6.6, c:PALETTES.cladding});
+      staticRacks.push({layer:1, x:W0.x - 0.06, y:W0.y - 0.06, z:8.2,
+                        w:W0.w + 0.12, d:W0.d + 0.12, h:1.0, c:PALETTES.band});
+      staticRacks.push({layer:1, x:W0.x - 0.12, y:W0.y - 0.12, z:9.2,
+                        w:W0.w + 0.24, d:W0.d + 0.24, h:0.35, c:PALETTES.plinth});
+    }
 
     var rows = Math.min(RACK_ROWS, QUALITY.rackRows);
     var upright = 0.9 + levels * 1.35;          // racking itself grows taller
@@ -2068,13 +2103,15 @@
     for (var cg = 0; cg < cages; cg++){
       var cgx = 10 + cg * 3.4;
       staticRacks.push({layer:2, x:cgx, y:28.6, z:0,   w:1.3, d:1.1, h:0.15, c:PALETTES.gantry});
-      staticRacks.push({layer:2, x:cgx, y:28.6, z:0.15,w:1.3, d:1.1, h:1.3,  c:PALETTES.truck});
+      staticRacks.push({layer:2, x:cgx, y:28.6, z:0.15,w:1.3, d:1.1, h:1.3,
+                        c: cg % 2 ? PALETTES.rackPost : PALETTES.containerC});
     }
 
     // --- dock doors down the loading wall ---
     for (var dd = 0; dd < Math.max(2, Math.round(6 * QUALITY.detail)); dd++){
       var ddy = 1.5 + dd * 4.3;
-      staticRacks.push({layer:1, x:-2.05, y:ddy, z:0,   w:0.6, d:2.6, h:2.9, c:PALETTES.dock});
+      staticRacks.push({layer:1, x:-2.05, y:ddy, z:0,   w:0.6, d:2.6, h:2.9,
+                        c: DOOR_SKINS[dd % DOOR_SKINS.length]});
       staticRacks.push({layer:1, x:-2.10, y:ddy, z:2.9, w:0.7, d:2.6, h:0.3, c:PALETTES.hivis});
       staticRacks.push({layer:1, x:-0.4,  y:ddy-0.3, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
       staticRacks.push({layer:1, x:-0.4,  y:ddy+2.6, z:0, w:0.25, d:0.25, h:0.7, c:PALETTES.hivis});
@@ -2086,9 +2123,9 @@
     // of it was ever on screen.
 
     // Inbound: trailers on the dock and a container stack behind them.
-    staticRacks.push({layer:1, x:-9, y:2.2,  z:0.55, w:6.5, d:2.5, h:2.3, c:PALETTES.truck});
+    staticRacks.push({layer:1, x:-9, y:2.2,  z:0.55, w:6.5, d:2.5, h:2.3, c:TRAILER_LIVERY[1]});
     staticRacks.push({layer:1, x:-9, y:2.2,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
-    staticRacks.push({layer:1, x:-9, y:7.6,  z:0.55, w:6.5, d:2.5, h:2.3, c:PALETTES.truck});
+    staticRacks.push({layer:1, x:-9, y:7.6,  z:0.55, w:6.5, d:2.5, h:2.3, c:TRAILER_LIVERY[0]});
     staticRacks.push({layer:1, x:-9, y:7.6,  z:0,    w:1.5, d:2.5, h:0.55, c:PALETTES.gantry});
     staticRacks.push({layer:1, x:-10, y:0.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
 
@@ -2108,7 +2145,8 @@
       floorDecals.push({x:fax, y:30.4, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
       floorDecals.push({x:fax, y:33.6, w:4.4, d:0.16, c:'rgba(240,192,0,0.18)'});
       if (fa < 1 + Math.round(fill * 2)){
-        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0.5, w:3.7, d:2.4, h:2.2, c:PALETTES.truck});
+        staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0.5, w:3.7, d:2.4, h:2.2,
+                          c: TRAILER_LIVERY[(fa + 2) % TRAILER_LIVERY.length]});
         staticRacks.push({layer:1, x:fax+0.3, y:30.9, z:0,   w:1.2, d:2.4, h:0.5, c:PALETTES.gantry});
       }
     }
@@ -2134,9 +2172,9 @@
       var pkx = 16 + pk * 2.1;
       floorDecals.push({x:pkx, y:37, w:0.14, d:3.4, c:'rgba(255,255,255,0.06)'});
       if (pk < 5){
-        staticRacks.push({layer:0, x:pkx+0.35, y:37.6, z:0,    w:1.4, d:2.3, h:0.5, c:PALETTES.dock});
-        staticRacks.push({layer:0, x:pkx+0.55, y:38.0, z:0.5,  w:0.9, d:1.5, h:0.45,
-                          c: pk % 2 ? PALETTES.truck : PALETTES.container});
+        var car = CAR_COLOURS[pk % CAR_COLOURS.length];
+        staticRacks.push({layer:0, x:pkx+0.35, y:37.6, z:0,    w:1.4, d:2.3, h:0.5, c: car});
+        staticRacks.push({layer:0, x:pkx+0.55, y:38.0, z:0.5,  w:0.9, d:1.5, h:0.45, c: PALETTES.plinth});
       }
     }
 
@@ -2454,7 +2492,8 @@
     var hubN = state.owned.hub || 0;
     for (var ih = 0; ih < Math.min(4, hubN); ih++) {
       var hy = 3 + ih * 6.5;
-      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:0, w:7, d:4.5, h:3.2, c:PALETTES.wall});
+      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:0,   w:7, d:4.5, h:2.4, c:PALETTES.cladding});
+      entities.push({layer: 1, type:'prism', x:-10, y:hy, z:2.4, w:7, d:4.5, h:0.8, c:PALETTES.band});
       entities.push({layer: 1, type:'prism', x:-3.2, y:hy+0.6, z:0.6, w:0.6, d:3.3, h:2.2, c:PALETTES.hivis});
     }
 
