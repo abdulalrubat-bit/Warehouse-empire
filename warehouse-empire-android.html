@@ -1740,7 +1740,7 @@
     spill:  { top: '#ff5a5a', left: '#e05252', right: '#a32929' },
     audit:  { top: '#7ce3ff', left: '#38bdf8', right: '#0284c7' },
     hazard: { top: '#fcd34d', left: '#f59e0b', right: '#b45309' },
-    slab:   { top: '#2a2d34', left: '#24272d', right: '#1a1c20' },
+    slab:   { top: '#3a3833', left: '#302e2a', right: '#242220' },
     wall:   { top: '#4e545c', left: '#40454d', right: '#2f333a' },
     corp:   { top: '#c98bff', left: '#a855f7', right: '#7a2fd8' },
     corpLit:{ top: '#e6c8ff', left: '#c58bff', right: '#8f45e8' },
@@ -1751,16 +1751,31 @@
     gantry: { top: '#9aa3ad', left: '#79818b', right: '#4a5057' },
     dock:   { top: '#3d434b', left: '#31363d', right: '#23272c' },
     container:  { top: '#4f7f9e', left: '#3d6580', right: '#26414f' },
-    containerB: { top: '#8a5f4e', left: '#6e4a3c', right: '#452e25' }
+    containerB: { top: '#8a5f4e', left: '#6e4a3c', right: '#452e25' },
+    containerC: { top: '#5c8f63', left: '#456b4b', right: '#2b442f' },
+    containerD: { top: '#b09048', left: '#8a7038', right: '#564722' },
+
+    // Real racking is painted: blue uprights, orange beams. This is the largest
+    // mass on screen, so it carries most of the colour.
+    rackPost: { top: '#3d6d9b', left: '#2d5275', right: '#1b3550' },
+    rackBeam: { top: '#cf7433', left: '#ad5b26', right: '#7a3d16' },
+
+    // Ground: warm concrete inside, cooler asphalt in the yard, green verges.
+    slabWarm: { top: '#3a3833', left: '#302e2a', right: '#242220' },
+    asphalt:  { top: '#26292f', left: '#1f2227', right: '#171a1e' },
+    grass:    { top: '#35462f', left: '#2a3826', right: '#1c261a' }
   };
 
   // A little colour variety across pallets so a full rack does not read as one flat mass.
+  var CONTAINER_SHADES = [];   // filled once PALETTES exists
   var BOX_SHADES = [
     { top:'#e0b088', left:'#c08a4e', right:'#8a6437' },
     { top:'#d5a071', left:'#b07c42', right:'#7d5931' },
     { top:'#e8c39c', left:'#cb9760', right:'#946c3c' },
     { top:'#cf9a80', left:'#ab7752', right:'#79553a' }
   ];
+
+  CONTAINER_SHADES.push(PALETTES.container, PALETTES.containerB, PALETTES.containerC, PALETTES.containerD);
 
   // Graphics quality. Auto-picked from measured draw time on the first few seconds,
   // overridable from the Office tab. Scales the things that actually cost frames.
@@ -1813,13 +1828,13 @@
   function update3DPalette() {
     if (state.theme === "nightshift") {
       PALETTES.hivis = { top: '#63aaff', left: '#3f8fd8', right: '#1d5285' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     } else if (state.theme === "safety") {
       PALETTES.hivis = { top: '#a7e058', left: '#8dc63f', right: '#4e7a1e' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     } else {
       PALETTES.hivis = { top: '#ff7b00', left: '#f2620f', right: '#c94e08' };
-      PALETTES.slab  = { top: '#2a2d34', left: '#24272d', right: '#1a1c20' };
+      PALETTES.slab  = { top: '#3a3833', left: '#302e2a', right: '#242220' };
     }
   }
 
@@ -1860,10 +1875,30 @@
       var plot = CORP_PLOTS[cb.id];
       var lvl = state.corp[cb.id] || 0;
 
-      // Empty land plot marker, always visible so the tap zone reads as buildable land
-      out.push({layer: 1, type:'prism', x: plot.gx, y: plot.gy, z: -0.4, w: plot.gw, d: plot.gd, h: 0.15, c: PALETTES.slab});
+      // Empty land plot. Dressed as a prepared building site -- hardstand, hoarding and
+      // a signboard -- so the tap zone reads as "you can build here" instead of a blank
+      // grey pad, and so the ground around the warehouse is not dead space.
+      out.push({layer: 1, type:'prism', x: plot.gx, y: plot.gy, z: -0.4,
+                w: plot.gw, d: plot.gd, h: 0.15, c: PALETTES.slabWarm});
 
-      if (lvl <= 0) return;
+      if (lvl <= 0) {
+        var hoard = Math.max(2, Math.round(4 * QUALITY.detail));
+        for (var hh = 0; hh <= hoard; hh++){
+          var t = hh / hoard;
+          out.push({layer:1, type:'prism', x: plot.gx + t*(plot.gw-0.4), y: plot.gy - 0.3,
+                    z:-0.25, w:0.3, d:0.3, h:0.8, c:PALETTES.hivis});
+          out.push({layer:1, type:'prism', x: plot.gx - 0.3, y: plot.gy + t*(plot.gd-0.4),
+                    z:-0.25, w:0.3, d:0.3, h:0.8, c:PALETTES.hivis});
+        }
+        // Landscaping and a site board, so an unbuilt plot still has something in it.
+        out.push({layer:1, type:'prism', x: plot.gx + 1.2, y: plot.gy + 1.2, z:-0.25,
+                  w: plot.gw - 2.4, d: plot.gd - 2.4, h: 0.2, c: PALETTES.grass});
+        out.push({layer:1, type:'prism', x: plot.gx + plot.gw*0.42, y: plot.gy - 0.6, z:-0.25,
+                  w: 2.6, d: 0.25, h: 1.9, c: PALETTES.corp});
+        out.push({layer:1, type:'prism', x: plot.gx + plot.gw*0.44, y: plot.gy - 0.7, z:0.35,
+                  w: 0.5, d: 0.2, h: 0.5, c: PALETTES.corpLit});
+        return;
+      }
 
       var footprint = plot.gw * 0.52;
       var offset = (plot.gw - footprint) / 2;
@@ -1952,11 +1987,11 @@
     for (var col = 0; col < RACK_COLS; col++){
       for (var row = 0; row < rows; row++){
         var rx = 9 + col * RACK_PITCH, ry = 2 + row * 2.2, bay = col * RACK_ROWS + row;
-        staticRacks.push({layer:2, x:rx,             y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.steel});
-        staticRacks.push({layer:2, x:rx+BAY_W-0.4,   y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.steel});
+        staticRacks.push({layer:2, x:rx,             y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
+        staticRacks.push({layer:2, x:rx+BAY_W-0.4,   y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
         for (var L = 0; L < levels; L++){
           var bz = 0.25 + L * 1.35;
-          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:0.6, h:0.12, c:PALETTES.steel});
+          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:0.6, h:0.12, c:PALETTES.rackBeam});
           // Kept as two discrete pallets per level. Merging them into one prism saved
           // ~200 prisms but turned a full rack into a solid brown wall -- the gap is
           // what makes it read as shelving.
@@ -1980,9 +2015,15 @@
   // floor markings. Volume scales with fill, so a new site starts nearly bare.
   function buildFitOut(fill){
     floorDecals.length = 0;
-    var LINE  = 'rgba(240,192,0,0.20)';
-    var HATCH = 'rgba(240,192,0,0.13)';
-    var BAY   = 'rgba(255,255,255,0.045)';
+    lightPools.length = 0;
+    // Colour-coded zones, the way a real site marks up its floor.
+    var LINE  = 'rgba(240,192,0,0.26)';      // hazard yellow
+    var HATCH = 'rgba(240,192,0,0.16)';
+    var BAY   = 'rgba(255,255,255,0.05)';
+    var WALK  = 'rgba(64,170,96,0.20)';      // safety-green pedestrian walkway
+    var INB   = 'rgba(58,132,196,0.17)';     // blue inbound
+    var OUTB  = 'rgba(196,120,52,0.17)';     // amber outbound
+    var FIRE  = 'rgba(200,66,58,0.20)';      // red fire lane
 
     // Aisle guide lines down each rack aisle.
     for (var a = 0; a < AISLES.length; a++)
@@ -1993,9 +2034,19 @@
       floorDecals.push({x: 1.2, y: hy, w: 0.9, d: 1.2, c: HATCH});
     floorDecals.push({x: 3, y: 27.2, w: 28, d: 0.16, c: LINE});
 
-    // Marked-out staging bays on the dock strip.
+    // Marked-out staging bays on the dock strip, on a blue inbound apron.
+    floorDecals.push({x: 3.0, y: 1.5, w: 5.2, d: 25, c: INB});
     for (var by = 2; by < 26; by += 4.2)
       floorDecals.push({x: 3.2, y: by, w: 4.6, d: 3.2, c: BAY});
+
+    // Green pedestrian walkway running the length of the dock, and a red fire lane
+    // along the back wall.
+    floorDecals.push({x: 8.4, y: 1.5, w: 0.75, d: 25, c: WALK});
+    floorDecals.push({x: 1.0, y: 0.2, w: 0.55, d: 26, c: FIRE});
+    floorDecals.push({x: 9,   y: 27.9, w: 24, d: 0.55, c: FIRE});
+
+    // Amber outbound apron across the cross-aisle.
+    floorDecals.push({x: 9, y: 29.2, w: 24, d: 3.0, c: OUTB});
 
     // --- staged freight in the marked bays, filling as the operation grows ---
     var staged = Math.round(fill * 12 * QUALITY.detail);
@@ -2046,7 +2097,7 @@
     for (var oc = 0; oc < court; oc++){
       var ocy = 21 + (oc % 3) * 3.6, ocz = Math.floor(oc / 3) * 2.0;
       staticRacks.push({layer:1, x:36, y:ocy, z:ocz, w:6.5, d:2.6, h:1.9,
-                        c: oc % 2 ? PALETTES.container : PALETTES.containerB});
+                        c: CONTAINER_SHADES[oc % CONTAINER_SHADES.length]});
       if (ocz === 0) floorDecals.push({x:35.6, y:ocy-0.3, w:7.3, d:0.14, c:'rgba(240,192,0,0.18)'});
     }
     staticRacks.push({layer:1, x:44, y:20.5, z:0, w:0.35, d:0.35, h:6.5, c:PALETTES.gantry});
@@ -2064,8 +2115,11 @@
 
     // Site apron. The visible world region works out to roughly x -23..60, y -29..54,
     // so one big slab under everything replaces the void the camera used to show.
-    staticRacks.push({layer:0, x:-14, y:-8, z:-0.75, w:64, d:52, h:0.5,
-                      c:{top:'#212429', left:'#191b1f', right:'#131518'}});
+    staticRacks.push({layer:0, x:-14, y:-8, z:-0.75, w:64, d:52, h:0.5, c:PALETTES.asphalt});
+
+    // Grass verges outside the fence line.
+    staticRacks.push({layer:0, x:-14, y:41.5, z:-0.7, w:64, d:8,  h:0.42, c:PALETTES.grass});
+    staticRacks.push({layer:0, x:47,  y:-8,   z:-0.7, w:8,  d:52, h:0.42, c:PALETTES.grass});
 
     // Perimeter fence along the two open sides.
     staticRacks.push({layer:0, x:-12, y:40.5, z:0, w:58, d:0.18, h:1.5, c:PALETTES.dock});
@@ -2086,13 +2140,21 @@
       }
     }
 
+    // Sodium light pools -- what actually lifts the dark apron.
+    lightPools.push({x:-10,  y:0.5,  r:10, a:0.30});
+    lightPools.push({x:44,   y:20.5, r:10, a:0.30});
+    for (var dl = 0; dl < Math.max(2, Math.round(6 * QUALITY.detail)); dl++)
+      lightPools.push({x:-1, y:1.5 + dl * 4.3 + 1.3, r:5.0, a:0.20});
+    lightPools.push({x:20, y:33, r:9, a:0.18});
+    lightPools.push({x:6,  y:14, r:8, a:0.16});
+
     // Plant strip along the right-hand side.
     staticRacks.push({layer:1, x:34, y:1.5, z:0, w:5, d:4.5, h:1.6, c:PALETTES.dock});
     staticRacks.push({layer:1, x:35, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
     staticRacks.push({layer:1, x:37.2, y:2.5, z:1.6, w:1.4, d:1.4, h:1.1, c:PALETTES.gantry});
     for (var bin = 0; bin < 3; bin++)
       staticRacks.push({layer:1, x:34.5 + bin*1.7, y:6.4, z:0, w:1.4, d:1.8, h:1.2,
-                        c: bin === 1 ? PALETTES.containerB : PALETTES.container});
+                        c: CONTAINER_SHADES[(bin + 1) % CONTAINER_SHADES.length]});
   }
 
   var warehouseTier = -1;
@@ -2194,13 +2256,78 @@
 
   var animT = 0, lastFrame = 0, nextHotspot = 12;
   var shadowsThisFrame = [], levelsThisFrame = 1, shadowsDone = true;
-  var depthGrad = null, depthGradH = 0;
+  var depthGrad = null, depthGradH = 0, skyGrad = null, skyGradH = 0;
+  var lightPools = [];
 
   // Ground pass: painted markings, then contact shadows. Both belong after the slab
   // and before anything standing on it.
+  // Radial gradients are expensive to build, so cache one per integer radius and
+  // reuse it translated -- the pools never change size within a quality level.
+  var poolCache = {};
+  function poolGradient(rpx){
+    var key = Math.round(rpx);
+    if (!poolCache[key]){
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(1, key));
+      g.addColorStop(0,   'rgba(255,186,92,0.85)');
+      g.addColorStop(0.5, 'rgba(255,160,70,0.30)');
+      g.addColorStop(1,   'rgba(255,150,60,0)');
+      poolCache[key] = g;
+    }
+    return poolCache[key];
+  }
+
+  // A distant industrial skyline behind the site. Drawn in screen space rather than
+  // world space -- it is backdrop, it should not swing around as the camera pulls back.
+  var SKYLINE = [];
+  (function(){
+    var x = -0.04;
+    while (x < 1.08){
+      var w = 0.045 + ((SKYLINE.length * 37) % 11) / 160;
+      var h = 0.020 + ((SKYLINE.length * 53) % 13) / 190;
+      SKYLINE.push({ x: x, w: w, h: h, lit: (SKYLINE.length % 3) === 0 });
+      x += w + 0.006;
+    }
+  })();
+
+  function drawHorizon(){
+    var base = CH * 0.235;
+    ctx.fillStyle = '#1b2233';
+    for (var i = 0; i < SKYLINE.length; i++){
+      var b = SKYLINE[i], bw = b.w * CW, bh = b.h * CH;
+      ctx.fillRect(b.x * CW, base - bh, bw, bh);
+    }
+    // A few lit windows and a warm haze band along the skyline.
+    ctx.fillStyle = 'rgba(255,180,90,0.30)';
+    for (var j = 0; j < SKYLINE.length; j++){
+      var q = SKYLINE[j];
+      if (!q.lit) continue;
+      ctx.fillRect(q.x * CW + q.w * CW * 0.35, base - q.h * CH * 0.62, 1.6, 1.6);
+    }
+    ctx.fillStyle = 'rgba(255,150,70,0.055)';
+    ctx.fillRect(0, base - 3, CW, 10);
+  }
+
   function flushShadows(){
     if (shadowsDone) return;
     shadowsDone = true;
+
+    // Lamp light on the ground, added before the paint so markings read through it.
+    if (QUALITY.depth && lightPools.length){
+      ctx.globalCompositeOperation = 'lighter';
+      for (var lp = 0; lp < lightPools.length; lp++){
+        var L = lightPools[lp], c0 = pt(L.x, L.y, 0), rpx = L.r * TW;
+        ctx.save();
+        ctx.translate(c0.x, c0.y);
+        ctx.scale(1, TH / TW);                 // circle on the ground plane, not on screen
+        ctx.globalAlpha = L.a;
+        ctx.fillStyle = poolGradient(rpx);
+        ctx.beginPath(); ctx.arc(0, 0, rpx, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+    }
+
     for (var fd = 0; fd < floorDecals.length; fd++) drawDecal(floorDecals[fd]);
     if (!QUALITY.shadows) return;
     ctx.fillStyle = 'rgba(0,0,0,0.34)';
@@ -2222,8 +2349,16 @@
     lastFrame = ts; animT += dt;
     var speed = (boostActive() || incidentActive()) ? 2.5 : 1;
 
-    ctx.fillStyle = '#181a1f';
+    if (!skyGrad || skyGradH !== CH){
+      skyGrad = ctx.createLinearGradient(0, 0, 0, CH);
+      skyGrad.addColorStop(0,    '#141a2a');     // deep dusk overhead
+      skyGrad.addColorStop(0.45, '#1d2130');
+      skyGrad.addColorStop(1,    '#2a2318');     // warm sodium haze at the horizon
+      skyGradH = CH;
+    }
+    ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, CW, CH);
+    drawHorizon();
 
     syncWarehouse();
     applyCamera();
