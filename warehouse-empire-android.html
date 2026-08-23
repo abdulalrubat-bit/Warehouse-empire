@@ -112,6 +112,21 @@
   .netbar .nsite b{display:block; font-family:var(--font-cond); font-weight:700; font-size:13px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .netbar .nsite span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
   .netbar .nnet{font-size:9.5px; color:var(--cash); text-align:right; white-space:nowrap;}
+  /* The priority card has to read as a different thing at a glance, not a second
+     contract: corp purple rather than hazard amber, and a tag on the title. */
+  .contract.priority{border-left-color:var(--corp); background:linear-gradient(180deg,var(--raise-1),var(--panel));}
+  .contract.priority .cbar i{background:var(--corp);}
+  .contract.priority .creward{color:var(--corp);}
+  .contract.priority.done{border-left-color:var(--cash); opacity:.72;}
+  /* Collect is the payoff, not another "watch an ad" prompt -- solid corp purple rather
+     than the dashed amber the reroll button uses. */
+  .contract.priority .rerollbtn{border:1px solid var(--corp); background:var(--corp); color:#fff;}
+  .contract.priority .rerollbtn small{color:rgba(255,255,255,.82);}
+  /* Title plus tag plus the market chip overflowed 412px and wrapped "PRIORITY / CLIENT".
+     Trimming both keeps the row on one line at the narrowest phone width. */
+  .contract.priority .ctitle{font-size:12.5px; letter-spacing:.5px;}
+  .ptag{font-family:var(--font-mono); font-size:7px; letter-spacing:1px; color:#fff;
+        background:var(--corp); border-radius:3px; padding:2px 4px; margin-left:5px; vertical-align:middle;}
   .crow{display:flex; align-items:baseline; justify-content:space-between; gap:8px; font-size:9.5px; color:var(--dim);}
   .ctitle{font-family:var(--font-cond); font-weight:600; font-size:14px; letter-spacing:.8px; color:var(--ink); text-transform:uppercase;}
   .ctime{color:var(--steel); white-space:nowrap;}
@@ -300,6 +315,19 @@
     <div class="adrow" id="adRow">
       <button id="rushAdBtn" class="adbtn">Overtime Shift<small id="rushAdSub">WATCH AD · RUSH ×8 FOR 90s</small></button>
       <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
+    </div>
+
+    <div class="contract priority" id="priorityCard" hidden>
+      <div class="crow">
+        <span class="ctitle">Priority Client<span class="ptag">PRIORITY</span></span>
+        <span class="ctime" id="priorityMkt"></span>
+      </div>
+      <div class="cbar"><i id="priorityBar" style="width:0%"></i></div>
+      <div class="crow">
+        <span id="priorityProg">&mdash;</span>
+        <span class="creward" id="priorityReward"></span>
+      </div>
+      <button class="rerollbtn" id="priorityClaimBtn" hidden>Collect<small id="priorityClaimSub">SIGN FOR THE LOAD</small></button>
     </div>
 
     <div class="contract" id="contractCard">
@@ -917,7 +945,9 @@
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
-    lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
+    lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
+    priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
+    corpProgress: {}
   };
 
   // Taken before any save is merged in, so load can fall back field by field.
@@ -1103,13 +1133,17 @@
       // number where a count belongs turns every later sum into NaN, and the UI then
       // paints NaN everywhere with no way back short of a wipe.
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
-       "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday"].forEach(function(k){
+       "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
+       "streakGrace","graceRefilledAt"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
       // A stale or hand-edited market entry is repaired by marketOf() on read, but the
       // container itself has to exist for an old save to survive the first tick.
       if (!state.marketState || typeof state.marketState !== "object") state.marketState = {};
+      // A client from an earlier day is simply replaced on the next tick; this only guards
+      // a shape that would throw before refreshPriorityClient() gets to run.
+      if (state.priorityClient && typeof state.priorityClient !== "object") state.priorityClient = null;
 
       if (!state.owned || typeof state.owned !== "object") state.owned = {};
       GENS.forEach(function(g){
@@ -1347,17 +1381,192 @@
     });
   }
 
+  // --- Priority Client ---------------------------------------------------------------
+  // One high-value job a day, on the same 20h boundary as the login streak. It fills from
+  // the same passive earnings as the regular contract, but it is COLLECTED by hand rather
+  // than auto-paying: that is what makes the market tie-in a decision instead of a dice
+  // roll, since the player can hold a finished load until their manifest turns Hot.
+  var PRIORITY_HOURS = 3;              // roughly this much of current output as the reward
+  var PRIORITY_GOAL_HOURS = 0.75;      // and this much of production to fill it
+  var PRIORITY_CRATES = 1;
+
+  function newPriorityClient(){
+    var r = totalRate();
+    var sku = SKUS[Math.floor(Math.random() * SKUS.length)];
+    return {
+      sku: sku.id,
+      goal: Math.max(2000, Math.floor(r * 3600 * PRIORITY_GOAL_HOURS)),
+      prog: 0,
+      base: Math.max(5000, Math.floor(r * 3600 * PRIORITY_HOURS)),
+      crates: PRIORITY_CRATES,
+      day: dailyPeriod(),
+      collected: false
+    };
+  }
+
+  function priorityActive(){
+    var p = state.priorityClient;
+    return p && p.day === dailyPeriod();
+  }
+
+  // Read at collection time, not generation: the player can see the state on the card and
+  // wait for it to improve, which is the whole point of surfacing it.
+  function priorityMult(){
+    var p = state.priorityClient;
+    if (!p) return 1;
+    return marketMult(p.sku);
+  }
+  function priorityPayout(){
+    var p = state.priorityClient;
+    return p ? Math.floor(p.base * priorityMult()) : 0;
+  }
+
+  function refreshPriorityClient(){
+    if (!priorityActive()) state.priorityClient = newPriorityClient();
+  }
+
+  function collectPriorityClient(){
+    var p = state.priorityClient;
+    if (!p || p.collected || p.prog < p.goal) return;
+    var cash = priorityPayout();
+    p.collected = true;
+    state.money += cash; state.total += cash; state.lifetime += cash;
+    state.crates += p.crates;
+    sfx("prestige");
+    renderPriority();
+    var m = MARKET[marketOf(p.sku).id];
+    showToast("Priority load signed: <b>" + money(cash) + "</b> and <b>+" + p.crates + " Crate</b>" +
+              (m.mult > 1 ? " on a <b>" + m.name + "</b> market." : "."));
+    render(); saveGame();
+  }
+
+  var priorityEls = null;
+  function renderPriority(){
+    if (!priorityEls){
+      priorityEls = {
+        card: document.getElementById("priorityCard"),
+        mkt:  document.getElementById("priorityMkt"),
+        bar:  document.getElementById("priorityBar"),
+        prog: document.getElementById("priorityProg"),
+        rew:  document.getElementById("priorityReward"),
+        btn:  document.getElementById("priorityClaimBtn"),
+        sub:  document.getElementById("priorityClaimSub")
+      };
+      priorityEls.btn.addEventListener("click", collectPriorityClient);
+    }
+    var e = priorityEls, p = state.priorityClient;
+    if (!p){ e.card.hidden = true; return; }
+    e.card.hidden = false;
+
+    var sku = null;
+    for (var i=0;i<SKUS.length;i++) if (SKUS[i].id === p.sku) sku = SKUS[i];
+    var mid = marketOf(p.sku).id;
+    e.mkt.innerHTML = (sku ? sku.name + " " : "") +
+                      '<span class="mkt ' + mid + '">' + marketLabel(p.sku) + '</span>';
+
+    var pct = Math.min(100, (p.prog / p.goal) * 100);
+    e.bar.style.width = pct + "%";
+    e.card.classList.toggle("done", p.collected);
+
+    if (p.collected){
+      e.prog.textContent = "Signed off \u2014 back tomorrow.";
+      e.rew.textContent = "";
+      e.btn.hidden = true;
+      return;
+    }
+    e.prog.textContent = money(Math.min(p.prog, p.goal)) + " / " + money(p.goal);
+    e.rew.textContent = money(priorityPayout()) + " + " + p.crates + " CR";
+    var ready = p.prog >= p.goal;
+    e.btn.hidden = !ready;
+    if (ready) e.sub.textContent = priorityMult() > 1
+      ? "MARKET IS " + MARKET[mid].name.toUpperCase() + " \u2014 WORTH " + money(priorityPayout())
+      : "OR HOLD FOR A BETTER MARKET";
+  }
+
+  // --- Streak grace -------------------------------------------------------------------
+  // One missed day a week does not cost the streak. Refills on a fixed weekly clock rather
+  // than per streak length, so it cannot be farmed by deliberately breaking a long run.
+  var GRACE_REFILL_MS = 7 * 24 * 3600 * 1000;
+
+  function refillGrace(){
+    var now = Date.now();
+    if (!state.graceRefilledAt){ state.graceRefilledAt = now; state.streakGrace = 1; return; }
+    if (now - state.graceRefilledAt >= GRACE_REFILL_MS){
+      state.graceRefilledAt = now;
+      state.streakGrace = 1;
+    }
+  }
+
+  // --- Daily site works ----------------------------------------------------------------
+  // Checking in advances construction on whichever corp plot is furthest behind, cutting
+  // that level's cost. Capped well short of free: it is a nudge, and the cash top-up is
+  // still most of the bill.
+  var CORP_PROGRESS_PER_DAY = 0.03;
+  var CORP_PROGRESS_CAP = 0.30;
+
+  // The lowest-level building that is not already maxed. Ties go to the cheaper one, so
+  // early players see the discount land somewhere they can actually afford.
+  function nextCorpBuilding(){
+    var best = null;
+    CORP_BUILDINGS.forEach(function(cb){
+      var lvl = state.corp[cb.id] || 0;
+      if (lvl >= 10) return;
+      if (!best || lvl < (state.corp[best.id] || 0)) best = cb;
+    });
+    return best;
+  }
+
+  function corpProgress(id){
+    var v = state.corpProgress && state.corpProgress[id];
+    return (typeof v === "number" && isFinite(v) && v > 0) ? Math.min(CORP_PROGRESS_CAP, v) : 0;
+  }
+
+  function corpCost(cb, lvl){
+    return Math.ceil(cb.baseCost * Math.pow(6, lvl) * (1 - corpProgress(cb.id)));
+  }
+
+  function advanceCorpProgress(){
+    var cb = nextCorpBuilding();
+    if (!cb) return null;
+    if (!state.corpProgress) state.corpProgress = {};
+    var was = corpProgress(cb.id);
+    if (was >= CORP_PROGRESS_CAP) return null;
+    state.corpProgress[cb.id] = Math.min(CORP_PROGRESS_CAP, was + CORP_PROGRESS_PER_DAY);
+    return cb;
+  }
+
+  // Runs from the ticker as well as from load. It used to run only at startup, which meant
+  // a player who left the app open across the boundary never saw their daily at all --
+  // and the reminder now tells them to come back for exactly that.
+  //
+  // Running it repeatedly needs the dailyShownFor guard: the streak advance below is not
+  // idempotent, so without it the streak would climb on every tick until the player
+  // claimed.
   function checkDailyLoginPopup(){
     var now = Date.now();
     var DAY_MS = 20 * 3600 * 1000;
-    if (now - state.lastDailyClaim >= DAY_MS){
-      state.dailyStreak = (now - state.lastDailyClaim <= DAY_MS * 2) ? (state.dailyStreak % 7) + 1 : 1;
+    refillGrace();
+    if (now - state.lastDailyClaim < DAY_MS) return;
+
+    var period = dailyPeriod();
+    if (state.dailyShownFor !== period){
+      state.dailyShownFor = period;
+      var onTime = (now - state.lastDailyClaim <= DAY_MS * 2);
+      var saved = false;
+      if (!onTime && state.dailyStreak > 0 && (state.streakGrace || 0) > 0){
+        // Missed a day, but the grace covers it -- the streak continues from where it was.
+        state.streakGrace -= 1;
+        saved = true;
+      }
+      state.dailyStreak = (onTime || saved) ? (state.dailyStreak % 7) + 1 : 1;
+      if (saved) showToast("Streak protected \u2014 grace day used. Refills weekly.");
       renderDailyCalendar();
-      // Both modals share a z-index, so showing this one under the offline modal would
-      // strand it. Wait for the offline claim to close first.
-      if (!document.getElementById("modalOffline").hidden){ dailyPending = true; return; }
-      document.getElementById("modalDaily").hidden = false;
     }
+
+    // Both modals share a z-index, so showing this one under the offline modal would
+    // strand it. Wait for the offline claim to close first.
+    if (!document.getElementById("modalOffline").hidden){ dailyPending = true; return; }
+    document.getElementById("modalDaily").hidden = false;
   }
 
   function showPendingDaily(){
@@ -1384,10 +1593,12 @@
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
     if (crate) state.crates += 1;
+    var built = advanceCorpProgress();
     document.getElementById("modalDaily").hidden = true;
     sfx("upgrade");
     showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>" +
-              (crate ? " and <b>+1 Crate</b>" : "") + ".");
+              (crate ? " and <b>+1 Crate</b>" : "") + "." +
+              (built ? " Site works advanced on the <b>" + built.name + "</b>." : ""));
     render(); saveGame();
   });
 
@@ -1526,10 +1737,11 @@
       b.addEventListener("click", function(){
         var lvl = state.corp[cb.id] || 0;
         if (lvl >= 10) return;
-        var cost = cb.baseCost * Math.pow(6, lvl);
+        var cost = corpCost(cb, lvl);
         if (state.money >= cost) {
           state.money -= cost;
           state.corp[cb.id] = lvl + 1;
+          if (state.corpProgress) delete state.corpProgress[cb.id];   // spent on this level
           invalidateUpMult();               // Training Centre changes what a manager is worth
           sfx("build");
           if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
@@ -1841,8 +2053,9 @@
       var elObj = corpBtnEls[cb.id];
       if (!elObj || !elObj.btn) return;
       var lvl = state.corp[cb.id] || 0;
-      var cost = cb.baseCost * Math.pow(6, lvl);
-      elObj.lvlEl.textContent = "LVL " + lvl;
+      var cost = corpCost(cb, lvl);
+      var disc = corpProgress(cb.id);
+      elObj.lvlEl.textContent = "LVL " + lvl + (disc > 0 ? "  \u00b7 " + Math.round(disc * 100) + "% BUILT" : "");
       if (lvl >= 10) {
         elObj.costEl.textContent = "MAX";
         elObj.btn.classList.add("owned");
@@ -2579,6 +2792,31 @@
 
   function corpHeight(lvl){ return 1.2 + lvl * 0.78; }
 
+  // Daily check-ins show up as scaffolding rising on the plot that is being worked, so a
+  // day with no spend still changes something visible on the site.
+  function pushScaffold(out, plot, id, baseHeight){
+    var prog = corpProgress(id);
+    if (prog <= 0) return;
+    var frac = prog / CORP_PROGRESS_CAP;                 // 0..1 of a full lift
+    var lift = 1.2 + frac * 3.2;
+    var fp = plot.gw * 0.52, off = (plot.gw - fp) / 2;
+    var x = plot.gx + off, y = plot.gy + off;
+    var z = 0.5 + baseHeight;
+    var poles = [[x-0.35, y-0.35], [x+fp+0.05, y-0.35], [x-0.35, y+fp+0.05], [x+fp+0.05, y+fp+0.05]];
+    poles.forEach(function(p){
+      out.push({layer: 2, type:'prism', x: p[0], y: p[1], z: z, w: 0.3, d: 0.3, h: lift, c: PALETTES.hivis});
+    });
+    // Deck boards climb with progress, so the plot reads as further along day by day.
+    var decks = Math.max(1, Math.round(frac * 3));
+    for (var i = 1; i <= decks; i++){
+      var dz = z + (lift * i) / (decks + 1);
+      out.push({layer: 2, type:'prism', x: x-0.35, y: y-0.35, z: dz,
+                w: fp+0.7, d: 0.22, h: 0.12, c: PALETTES.gantry});
+      out.push({layer: 2, type:'prism', x: x-0.35, y: y+fp+0.05, z: dz,
+                w: fp+0.7, d: 0.22, h: 0.12, c: PALETTES.gantry});
+    }
+  }
+
   function corpBuildingEntities(){
     var out = [];
     CORP_BUILDINGS.forEach(function(cb){
@@ -2607,6 +2845,7 @@
                   w: 2.6, d: 0.25, h: 1.9, c: PALETTES.corp});
         out.push({layer:1, type:'prism', x: plot.gx + plot.gw*0.44, y: plot.gy - 0.7, z:0.35,
                   w: 0.5, d: 0.2, h: 0.5, c: PALETTES.corpLit});
+        pushScaffold(out, plot, cb.id, 0);
         return;
       }
 
@@ -2631,6 +2870,8 @@
                   w: footprint - inset*2, d: footprint - inset*2, h: storey + 0.02,
                   c: lit ? (lvl >= 10 ? PALETTES.hivis : PALETTES.corpLit) : pal});
       }
+
+      pushScaffold(out, plot, cb.id, height);
 
       // Roof plant, and a beacon once the building is mastered.
       out.push({layer: 3, type:'prism', x: bx + footprint*0.28, y: by + footprint*0.28,
@@ -3020,10 +3261,11 @@
          if (lvl >= 10) {
              showToast("<b>" + cb.name + "</b> is operating at MAX CAPACITY.");
          } else {
-             var cost = cb.baseCost * Math.pow(6, lvl);
+             var cost = corpCost(cb, lvl);
              if (state.money >= cost) {
                  state.money -= cost;
                  state.corp[cb.id] = lvl + 1;
+                 if (state.corpProgress) delete state.corpProgress[cb.id];
                  invalidateUpMult();        // same as the shop path: Training changes manager maths
                  sfx("build");
                  if (lvl + 1 === 10) showToast("<b>MASTERY UNLOCKED: " + cb.name + "</b>");
@@ -3339,6 +3581,8 @@
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
+    if (priorityActive() && !state.priorityClient.collected)
+      state.priorityClient.prog += earned;
     if (state.contract){
       state.contract.prog += earned;
       if (state.contract.prog >= state.contract.goal){
@@ -3348,6 +3592,8 @@
         state.contract = newContract();
       }
     }
+    checkDailyLoginPopup();
+    refreshPriorityClient(); renderPriority();
     renderContract(); render();
   }, 100);
   setInterval(saveGame, 10000);
