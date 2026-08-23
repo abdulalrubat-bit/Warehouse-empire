@@ -794,6 +794,9 @@
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis"
   };
 
+  // Taken before any save is merged in, so load can fall back field by field.
+  var STATE_DEFAULTS = JSON.parse(JSON.stringify(state));
+
   window.state = state;
   window.render = render;
 
@@ -803,11 +806,24 @@
   var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
   var sessionEarned = 0, maxCombo = 1.0;
 
+  // The ladder used to stop at Qi (1e18), which a committed player passes in a couple of
+  // weeks -- after that the display read "1000000Qi" and then raw scientific notation
+  // spliced onto a suffix. It now runs to Vg (1e63) and switches cleanly to exponent
+  // form beyond that. Non-finite input is painted as a symbol rather than "NaN", so a
+  // single bad number can never smear across the whole UI.
+  var FMT_UNITS = ["K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc",
+                   "UDc","DDc","TDc","QaDc","QiDc","SxDc","SpDc","OcDc","NoDc","Vg"];
   function fmt(n){
+    if (typeof n !== "number" || !isFinite(n)) return (n === Infinity) ? "\u221E" : "0";
+    if (n < 0) return "-" + fmt(-n);
     if (n < 1000) return (Math.floor(n*10)/10).toString().replace(/\.0$/,"");
-    var units = ["K","M","B","T","Qa","Qi"], u = -1;
-    while (n >= 1000 && u < units.length-1){ n /= 1000; u++; }
-    return (Math.floor(n*100)/100) + units[u];
+    if (n >= 1e66) return n.toExponential(2).replace("e+", "e");
+    // Picking the unit by exponent rather than dividing in a loop: ten successive
+    // divisions accumulate enough error to render 1e33 as "999.99No" instead of "1Dc".
+    var u = Math.min(FMT_UNITS.length - 1, Math.floor(Math.log10(n) / 3) - 1);
+    var v = n / Math.pow(1000, u + 1);
+    if (v >= 1000 && u < FMT_UNITS.length - 1){ u++; v = n / Math.pow(1000, u + 1); }
+    return (Math.floor(v*100)/100) + FMT_UNITS[u];
   }
   function money(n){ return "$" + fmt(n); }
 
@@ -942,6 +958,25 @@
           showToast("Save file was unreadable — starting a fresh site.");
         }
       }
+      // A save can parse cleanly and still be nonsense: a null, a string, or a missing
+      // number where a count belongs turns every later sum into NaN, and the UI then
+      // paints NaN everywhere with no way back short of a wipe.
+      ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
+       "bestCombo","lastSeen","lastDailyClaim","dailyStreak"].forEach(function(k){
+        var v = Number(state[k]);
+        state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
+      });
+      if (!state.owned || typeof state.owned !== "object") state.owned = {};
+      GENS.forEach(function(g){
+        var v = Math.floor(Number(state.owned[g.id]));
+        state.owned[g.id] = (isFinite(v) && v >= 0) ? v : 0;
+      });
+      if (!state.corp || typeof state.corp !== "object") state.corp = {};
+      CORP_BUILDINGS.forEach(function(cb){
+        var v = Math.floor(Number(state.corp[cb.id]));
+        state.corp[cb.id] = (isFinite(v) && v >= 0) ? v : 0;
+      });
+
       if (!state.upgrades) state.upgrades = {};
       invalidateUpMult();
       if (!state.perks) state.perks = {};
