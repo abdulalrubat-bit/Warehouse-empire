@@ -10,9 +10,10 @@ meta = json.load(open(os.path.join(here, "atlas.json")))
 block = ('<script id="atlasdata">window.__ATLAS=' + json.dumps(meta, separators=(",", ":")) +
          ';window.__ATLAS_PNG="data:image/png;base64,' + png + '";</script>')
 
+src = os.path.join(here, "landscape.src.html")
 f = os.path.join(here, "landscape.html")
-s = open(f).read()
-new, n = re.subn(r'<script id="atlasdata">.*?</script>|<script src="atlas\.js"></script>',
+s = open(src).read()
+new, n = re.subn(r'<script id="atlasdata"[^>]*>.*?</script>',
                  lambda m: block, s, count=1, flags=re.S)
 assert n == 1, "atlas script tag not found"
 open(f, "w").write(new)

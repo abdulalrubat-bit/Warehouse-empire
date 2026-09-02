@@ -40,7 +40,10 @@ const MODELS = JSON.parse(fs.readFileSync(path.join(__dirname, "models.json"), "
   const manifest = {};
   let done = 0, failed = [];
   for (const m of MODELS){
-    const file = path.join(KITS, m.kit, "Models", "GLB format", m.model + ".glb");
+    // A composite is assembled in the page from kit parts rather than loaded whole.
+    const file = m.build
+      ? path.join(KITS, "kenney_carkit", "Models", "GLB format", "wheel-default.glb")
+      : path.join(KITS, m.kit, "Models", "GLB format", m.model + ".glb");
     if (!fs.existsSync(file)) { failed.push(m.name + " (missing)"); continue; }
     // Directional things (vehicles, roads, fences) need one sprite per facing; blobs
     // like tanks and crates look the same from every side and only need one.
@@ -53,11 +56,11 @@ const MODELS = JSON.parse(fs.readFileSync(path.join(__dirname, "models.json"), "
       const T = m.t !== undefined ? m.t : (KIT_TILES[m.kit] || 1);
       const upp = UPP / (2 * T);
       for (const yaw of yaws){
-        const res = await p.evaluate(async ({ url, upp, canvas, yaw }) => {
-          const obj = await window.__loadGLB(url);
+        const res = await p.evaluate(async ({ url, upp, canvas, yaw, build }) => {
+          const obj = build ? await window["__build" + build](url) : await window.__loadGLB(url);
           const info = window.__renderObject(obj, upp, canvas, canvas, yaw);
           return { info, data: document.querySelector("canvas").toDataURL("image/png") };
-        }, { url: "file://" + file, upp: upp, canvas: CANVAS, yaw });
+        }, { url: "file://" + file, upp: upp, canvas: CANVAS, yaw, build: m.build || null });
         const key = (m.rot || m.rot2) ? m.name + "-" + yaw : m.name;
         fs.writeFileSync(path.join(OUT, key + ".png"), Buffer.from(res.data.split(",")[1], "base64"));
         manifest[key] = { kit: m.kit, model: m.model, yaw, size: res.info.size, tiles: T, tags: m.tags || [] };

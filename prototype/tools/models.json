@@ -156,15 +156,6 @@
   "rot": true
  },
  {
-  "name": "forklift",
-  "kit": "kenney_carkit",
-  "model": "tractor-shovel",
-  "tags": [
-   "vehicle"
-  ],
-  "rot": true
- },
- {
   "name": "car-a",
   "kit": "kenney_carkit",
   "model": "sedan",
@@ -269,5 +260,16 @@
    "site"
   ],
   "rot": true
+ },
+ {
+  "name": "forklift",
+  "kit": "kenney_carkit",
+  "model": "wheel-default",
+  "build": "Forklift",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true,
+  "t": 0.25
  }
 ]

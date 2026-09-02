@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Warehouse Empire — landscape prototype</title>
+<style>
+  :root{
+    --bg:#11151a; --panel:rgba(20,25,31,.88); --line:#2c343d; --ink:#e9edf1;
+    --dim:#8d959e; --hivis:#f2620f; --cash:#3fb264; --corp:#a855f7; --hazard:#f5b90b;
+    --font-cond:"Arial Narrow",Roboto,system-ui,sans-serif;
+    --font-mono:"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:var(--font-mono);-webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;}
+  #scene{position:fixed;inset:0;display:block;touch-action:none;}
+
+  /* Panels float over the canvas so the site fills the whole screen, which is the
+     point of going landscape. Everything is anchored to a corner rather than in flow. */
+  .hud{position:fixed;z-index:3;pointer-events:none;}
+  .hud > *{pointer-events:auto;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+
+  #topbar{top:0;left:0;right:0;display:flex;gap:10px;align-items:stretch;padding:8px 10px;}
+  #brand{display:flex;align-items:center;gap:8px;font-family:var(--font-cond);
+    font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:8px 12px;}
+  #brand span{color:var(--hivis)}
+  #money{flex:1;display:flex;align-items:center;gap:16px;}
+  #money b{font-family:var(--font-cond);font-size:22px;letter-spacing:1px;}
+  #money .sub{font-size:10px;color:var(--dim);}
+  #money .sub i{color:var(--cash);font-style:normal;}
+
+  #left{top:62px;left:10px;width:190px;display:flex;flex-direction:column;gap:8px;}
+  .label{font-family:var(--font-cond);font-size:10px;letter-spacing:1.6px;
+    text-transform:uppercase;color:var(--dim);margin-bottom:5px;}
+  .row{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10.5px;padding:3px 0;}
+  .row b{font-family:var(--font-cond);font-size:12px;letter-spacing:.5px;}
+
+  #right{top:62px;right:10px;display:flex;flex-direction:column;gap:6px;}
+  .ctl{width:46px;height:46px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:1px;background:var(--panel);border:1px solid var(--line);
+    border-radius:6px;color:var(--ink);font-size:17px;cursor:pointer;}
+  .ctl small{font-size:6.5px;letter-spacing:.6px;color:var(--dim);text-transform:uppercase;}
+  .ctl:active{background:#232a32}
+
+  #tabs{bottom:0;left:0;right:0;display:flex;background:linear-gradient(180deg,#191e24,#12161b);
+    border-top:1px solid var(--line);}
+  #tabs button{flex:1;background:none;border:0;color:var(--dim);padding:9px 4px 10px;
+    font-family:var(--font-cond);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;
+    cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  #tabs button.on{color:var(--hivis);box-shadow:inset 0 2px 0 var(--hivis);background:#1c2229;}
+  #tabs svg{width:17px;height:17px;fill:currentColor}
+
+  #pick{position:fixed;z-index:4;bottom:56px;left:50%;transform:translateX(-50%);
+    padding:11px 40px;border:0;border-radius:7px;cursor:pointer;
+    background:linear-gradient(180deg,#ff7a24,#d24f06);color:#20130a;
+    font-family:var(--font-cond);font-weight:800;font-size:17px;letter-spacing:3px;
+    text-transform:uppercase;box-shadow:0 3px 0 #a03c02,0 5px 14px rgba(0,0,0,.45);}
+  #pick:active{transform:translateX(-50%) translateY(2px);box-shadow:0 1px 0 #a03c02;}
+
+  #stats{bottom:56px;right:10px;display:flex;gap:6px;}
+  #stats .card{padding:6px 10px;text-align:center;}
+  #stats .card b{display:block;font-family:var(--font-cond);font-size:13px;}
+  #stats .card span{font-size:7.5px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+
+  .gen{display:flex;align-items:center;gap:7px;width:100%;background:none;border:0;
+    border-top:1px solid rgba(255,255,255,.06);padding:5px 0;color:var(--ink);
+    font-family:inherit;cursor:pointer;text-align:left;}
+  .gen:first-child{border-top:0}
+  .gen .nm{flex:1;font-size:10px;letter-spacing:.3px;}
+  .gen .ct{font-family:var(--font-cond);font-size:11px;color:var(--dim);}
+  .gen .qt{font-family:var(--font-cond);font-size:12px;min-width:20px;text-align:right;}
+  .gen.can .ct{color:var(--cash)}
+  .gen.can .nm{color:#fff}
+  .gen:disabled{opacity:.42;cursor:default}
+  #hint{bottom:100px;left:10px;font-size:10px;color:var(--dim);}
+  #hint .card{padding:6px 10px}
+  #toast{position:fixed;z-index:8;left:50%;top:70px;transform:translateX(-50%) translateY(-14px);
+    opacity:0;transition:opacity .25s,transform .25s;background:var(--panel);
+    border:1px solid var(--hivis);border-left:3px solid var(--hivis);border-radius:5px;
+    padding:8px 14px;font-size:11px;pointer-events:none;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--bg);z-index:9;font-family:var(--font-cond);letter-spacing:3px;
+    text-transform:uppercase;color:var(--dim);font-size:13px;}
+
+  /* Portrait is not supported in this prototype -- say so rather than showing a
+     broken layout, since the whole point is the wide composition. */
+  #rotate{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:12px;background:var(--bg);z-index:10;text-align:center;padding:30px;}
+  #rotate b{font-family:var(--font-cond);font-size:16px;letter-spacing:2px;text-transform:uppercase;}
+  #rotate p{font-size:11px;color:var(--dim);line-height:1.7;margin:0;max-width:280px;}
+  @media (orientation:portrait){ #rotate{display:flex} }
+</style>
+</head>
+<body>
+<script id="atlasdata" src="atlas.js"></script>
+<canvas id="scene"></canvas>
+
+<div class="hud" id="topbar">
+  <div class="card" id="brand">Warehouse <span>Empire</span></div>
+  <div class="card" id="money">
+    <div>
+      <b id="cash">$0</b>
+      <div class="sub"><i id="rate">$0</i>/sec &middot; <span id="tapv">tap $0</span></div>
+    </div>
+    <div class="sub" style="margin-left:auto" id="fleetline">&mdash;</div>
+  </div>
+</div>
+
+<div class="hud" id="left">
+  <div class="card">
+    <div class="label">Fleet</div>
+    <div id="genList"></div>
+  </div>
+  <div class="card">
+    <div class="label">Prototype</div>
+    <div class="row"><span>Sprites</span><b id="sDraw">0</b></div>
+    <div class="row"><span>Frame</span><b id="sMs">0.0ms</b></div>
+  </div>
+</div>
+<div class="hud" id="hint"><div class="card">Tap a marked plot to build</div></div>
+<div id="toast"></div>
+
+<div class="hud" id="right">
+  <button class="ctl" id="zin">+<small>Zoom in</small></button>
+  <button class="ctl" id="zout">&minus;<small>Zoom out</small></button>
+  <button class="ctl" id="cen">&#8226;<small>Centre</small></button>
+</div>
+
+<div class="hud" id="stats">
+  <div class="card"><b id="stA">0</b><span>Units</span></div>
+  <div class="card"><b id="stB">0</b><span>Built</span></div>
+</div>
+
+<button id="pick">Pick Order</button>
+
+<div class="hud" id="tabs">
+  <button class="on"><svg viewBox="0 0 24 24"><path d="M2 10.6 12 4l10 6.6V21H2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>Floor</button>
+  <button><svg viewBox="0 0 24 24"><rect x="8.6" y="4" width="1.8" height="11"/><rect x="10.6" y="9" width="8" height="6" rx="1"/><circle cx="12.8" cy="17.6" r="2.2"/></svg>Fleet</button>
+  <button><svg viewBox="0 0 24 24"><circle cx="16.6" cy="7.4" r="4.6"/><rect x="3.6" y="14.4" width="12" height="3" rx="1.5" transform="rotate(-45 9.6 15.9)"/></svg>Upgrades</button>
+  <button><svg viewBox="0 0 24 24"><rect x="2" y="8.4" width="20" height="3.1"/><rect x="2" y="15" width="20" height="3.1"/></svg>Store</button>
+  <button><svg viewBox="0 0 24 24"><rect x="4" y="3.6" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2"/></svg>Office</button>
+</div>
+
+<div id="loading">Loading site&hellip;</div>
+<div id="rotate">
+  <b>Rotate your device</b>
+  <p>This prototype is landscape only — the site view is composed for a wide screen.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- projection -------------------------------------------------------------------
+  // Identical to the shipping game: x = (px-py)*TW, y = (px+py)*TW/2 - pz*TW. The sprite
+  // atlas was rendered to match this exactly, so a sprite's recorded origin lands on the
+  // same point pt() returns for its grid cell.
+  var TW_BASE = 18, TW = TW_BASE, TH = TW / 2;
+  var zoom = 1.6, cx = 0, cy = 0;
+  var ATLAS_TILE = 144;                       // px per tile the atlas was rendered at
+
+  function pt(px, py, pz){
+    return { x: cx + (px - py) * TW, y: cy + (px + py) * TH - pz * TW };
+  }
+
+  var cv = document.getElementById("scene");
+  var ctx = cv.getContext("2d", { alpha: false });
+  var CW = 0, CH = 0, DPR = 1;
+
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    CW = window.innerWidth; CH = window.innerHeight;
+    cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+    cv.style.width = CW + "px"; cv.style.height = CH + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---- atlas ------------------------------------------------------------------------
+  var atlas = new Image(), frames = null, atlasReady = false;
+
+  // Loaded as a script rather than fetched: fetch() is CORS-blocked on file://, and a
+  // script tag works identically under the Capacitor WebView.
+  function loadAtlas(){
+    return Promise.resolve(window.__ATLAS).then(function(j){
+      if (!j) throw new Error("atlas.js did not load");
+      frames = j.frames; ATLAS_TILE = j.tilePx || 144;
+      return new Promise(function(res, rej){
+        atlas.onload = res; atlas.onerror = function(){ rej(new Error("atlas image failed")); };
+        // Inlined as a data URI so the file works standalone -- opened from a phone's
+        // Downloads folder there is no sibling atlas.png to fetch.
+        atlas.src = window.__ATLAS_PNG || "atlas.png";
+      });
+    }).then(function(){
+      atlasReady = true;
+    });
+  }
+
+  // One tile spans sqrt(2) camera units in the render, which came out ATLAS_TILE px wide.
+  // Scaling by the ratio of the live tile width to that puts sprites at the right size.
+  function spriteScale(){ return (TW * 2) / ATLAS_TILE; }
+
+  var drawn = 0;
+  function drawSprite(name, px, py, pz){
+    var f = frames[name];
+    if (!f) return;
+    var s = spriteScale();
+    var o = pt(px, py, pz);
+    var w = f.w * s, h = f.h * s;
+    var x = o.x - f.ax * s, y = o.y - f.ay * s;
+    if (x > CW || y > CH || x + w < 0 || y + h < 0) return;   // cheap cull
+    ctx.drawImage(atlas, f.x, f.y, f.w, f.h, x, y, w, h);
+    drawn++;
+  }
+
+  // ---- ground -----------------------------------------------------------------------
+  // Drawn as flat diamonds rather than sprites: it tiles infinitely, costs almost
+  // nothing, and keeps the atlas for things that actually have shape.
+  function diamond(px, py, w, d, fill){
+    var a = pt(px, py, 0), b = pt(px + w, py, 0), c = pt(px + w, py + d, 0), e = pt(px, py + d, 0);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(e.x, e.y);
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  }
+
+  // ---- economy ----------------------------------------------------------------------
+  // The same shape as the shipping game: eight tiers, 1.15 cost growth, rate is the sum
+  // of owned units. The site is a view of this state -- nothing in the scene is decided
+  // by a "level" dial any more.
+  var GENS = [
+    { id:"picker",   name:"Casual Picker",    cost:15,        rate:0.1 },
+    { id:"trolley",  name:"Pallet Trolley",   cost:100,       rate:1 },
+    { id:"forklift", name:"Forklift",         cost:1100,      rate:8 },
+    { id:"reach",    name:"Reach Truck",      cost:12000,     rate:47 },
+    { id:"conveyor", name:"Conveyor Line",    cost:130000,    rate:260 },
+    { id:"sorter",   name:"Sorting Robot",    cost:1400000,   rate:1400 },
+    { id:"crane",    name:"Automated Crane",  cost:20000000,  rate:7800 },
+    { id:"hub",      name:"Distribution Hub", cost:330000000, rate:44000 }
+  ];
+  var CORP = [
+    { id:"office",  name:"Office",        base:2.5e5,  plot:{ x:2,  y:2,  w:8,  d:6  }, sprite:"office-0" },
+    { id:"shed",    name:"Main Shed",     base:1.2e6,  plot:{ x:14, y:1,  w:12, d:8  }, sprite:"shed-big-0" },
+    { id:"annex",   name:"Second Shed",   base:2.4e7,  plot:{ x:29, y:1,  w:10, d:8  }, sprite:"shed-long-90" },
+    { id:"dc",      name:"Distribution",  base:5.0e8,  plot:{ x:35, y:17, w:12, d:8  }, sprite:"dc-flat-0" },
+    { id:"plant",   name:"Process Plant", base:9.0e9,  plot:{ x:41, y:2,  w:8,  d:7  }, sprite:"plant-90" }
+  ];
+
+  var state = { money: 60, lifetime: 0, owned: {}, corp: {} };
+  GENS.forEach(function(g){ state.owned[g.id] = 0; });
+  CORP.forEach(function(c){ state.corp[c.id] = 0; });
+
+  var COST_GROWTH = 1.15;
+  function costOf(g){ return Math.ceil(g.cost * Math.pow(COST_GROWTH, state.owned[g.id] || 0)); }
+  function corpCost(c){ return Math.ceil(c.base * Math.pow(6, state.corp[c.id] || 0)); }
+  function totalRate(){
+    var r = 0;
+    GENS.forEach(function(g){ r += (state.owned[g.id] || 0) * g.rate; });
+    var lift = 1;
+    CORP.forEach(function(c){ lift += (state.corp[c.id] || 0) * 0.12; });
+    return r * lift;
+  }
+  function tapValue(){ return 1 + totalRate() * 0.05; }
+  function unitsOwned(){ var n = 0; GENS.forEach(function(g){ n += state.owned[g.id] || 0; }); return n; }
+
+  function buyGen(g){
+    var c = costOf(g);
+    if (state.money < c) return false;
+    state.money -= c; state.owned[g.id]++;
+    rebuild(); return true;
+  }
+  function buyCorp(c){
+    if ((state.corp[c.id] || 0) >= 5) return false;
+    var cost = corpCost(c);
+    if (state.money < cost) return false;
+    state.money -= cost; state.corp[c.id]++;
+    rebuild(); return true;
+  }
+
+  // ---- the site ---------------------------------------------------------------------
+  // Everything below reads state directly. Racking grows with total units, the yard
+  // fleet is the forklifts actually owned, docks follow reach trucks, and a building
+  // only stands once it has been bought.
+  var SITE = { w: 50, d: 25 };
+
+  function siteEntities(){
+    var out = [];
+    function add(name, x, y, z, f, layer){
+      out.push({ n: name, x: x, y: y, z: z || 0, f: f || 0, l: layer || 2 });
+    }
+
+    var FP = 0.4;
+    for (var i = 0; i < SITE.w; i += FP){
+      if (i < 22 || i > 27) add("fence-0", i, -0.5, 0, 0, 1);
+      add("fence-0", i, SITE.d + 0.5, 0, 0, 3);
+    }
+    for (var j = -0.5; j < SITE.d + 0.5; j += FP){
+      add("fence-90", -0.5, j, 0, 0, 1);
+      add("fence-90", SITE.w + 0.5, j, 0, 0, 3);
+    }
+
+    // Corporate structures, only where they have been built.
+    CORP.forEach(function(c){
+      var lvl = state.corp[c.id] || 0;
+      var cxp = c.plot.x + c.plot.w / 2, cyp = c.plot.y + c.plot.d / 2;
+      if (lvl <= 0){
+        // An empty plot still reads as buildable: hardstand corners and a cone.
+        add("barrier-0", c.plot.x + 0.4, c.plot.y + 0.4, 0, 0.4);
+        add("barrier-0", c.plot.x + c.plot.w - 0.4, c.plot.y + 0.4, 0, 0.4);
+        add("cone", cxp, cyp, 0, 0.2);
+        return;
+      }
+      add(c.sprite, cxp, cyp, 0, c.plot.d * 0.55);
+      if (lvl >= 3) add("lamp-0", c.plot.x + 0.6, c.plot.y + c.plot.d - 0.6, 0, 0.2);
+    });
+
+    // Receiving: one bay per reach truck, capped at the apron length.
+    var docks = Math.min(5, Math.max(1, Math.ceil((state.owned.reach || 0) / 4)));
+    for (var t = 0; t < docks; t++){
+      add("trailer-180", 13 + t * 3.2, 11.5, 0, 1.2);
+      add("truck-180",   13 + t * 3.2, 13.6, 0, 1.2);
+    }
+
+    // Outbound rank follows the distribution hubs.
+    var out2 = Math.min(4, state.owned.hub || 0);
+    for (var q = 0; q < out2; q++) add("trailer-90", 30 + q * 2.4, 14, 0, 1.2);
+
+    // Racking: pallet blocks scale with everything owned, so the yard visibly fills.
+    var bays = Math.max(1, Math.min(9, Math.floor(unitsOwned() / 6) + 1));
+    for (var b = 0; b < bays; b++)
+      for (var r = 0; r < 4; r++){
+        var gx = 4 + b * 2.2, gy = 19 + r * 1.1;
+        var hgt = 1 + ((b + r) % 3);
+        for (var k = 0; k < hgt; k++)
+          add(k === 0 ? "box-large" : (k === 1 ? "box-wide" : "box-small"), gx, gy, k * 0.18, 0.4);
+      }
+
+    // Conveyors and plant appear once the tiers that imply them are owned.
+    if ((state.owned.conveyor || 0) > 0)
+      for (var cvi = 0; cvi < Math.min(4, state.owned.conveyor); cvi++)
+        add("conveyor-90", 27, 18.5 + cvi * 0.9, 0, 0.6);
+    if ((state.owned.sorter || 0) > 0){ add("tank", 47, 12, 0, 2); add("tank", 47, 15, 0, 2); }
+    if ((state.owned.crane || 0) > 0) add("crane-0", 26, 22, 0, 1.6);
+    if ((state.corp.plant || 0) > 0) add("chimney", 46, 9, 0, 2);
+    if ((state.owned.hub || 0) > 0) add("hopper", 44, 17, 0, 1.4);
+
+    // Car park fills as the operation gets bigger.
+    var cars = Math.min(9, 1 + Math.floor(unitsOwned() / 8));
+    for (var c2 = 0; c2 < cars; c2++)
+      add(["car-a-90","car-b-90","car-c-90"][c2 % 3], 1.8, 9 + c2 * 1.5, 0, 0.9);
+
+    for (var l2 = 0; l2 < 8; l2++) add("lamp-0", 2 + l2 * 6, 16.6, 0, 0);
+    add("dumpster-0", 2.5, 22, 0, 0.6); add("dumpster-0", 3.4, 22, 0, 0.6);
+    add("pole-0", 48.5, 4, 0, 0); add("pole-0", 48.5, 14, 0, 0); add("pole-0", 48.5, 22, 0, 0);
+
+    return out;
+  }
+
+  // ---- moving plant -----------------------------------------------------------------
+  // Agents are entities with a route. Facing comes from the direction of travel: the
+  // atlas holds four yaws per vehicle, so picking the nearest one to the heading is all
+  // the "animation" a vehicle needs at this scale.
+  //
+  // Screen-space in this projection: +x runs down-right, +y runs down-left. YAW_FOR maps
+  // a heading to the yaw whose sprite faces that way.
+  var YAW_FOR = [0, 90, 180, 270];
+  function yawFor(dx, dy){
+    if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? YAW_FOR[3] : YAW_FOR[1];
+    return dy > 0 ? YAW_FOR[0] : YAW_FOR[2];
+  }
+
+  // `hold` (0..1) is how strongly the vehicle eases at each end of a leg: 0 is constant
+  // speed, 1 comes to a near stop at every corner.
+  function route(pts, speed, phase, hold){
+    return { pts: pts, speed: speed, t: phase || 0, hold: hold || 0, len: pts.length };
+  }
+
+  // Position along a closed polyline, plus the heading there. `dwell` stretches time at
+  // the ends of each leg so a vehicle pauses where it would really stop.
+  function along(r, time){
+    var total = 0, segs = [];
+    for (var i = 0; i < r.pts.length; i++){
+      var a = r.pts[i], b = r.pts[(i + 1) % r.pts.length];
+      var d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      segs.push(d); total += d;
+    }
+    var u = ((time * r.speed + r.t) % total + total) % total;
+    for (var j = 0; j < segs.length; j++){
+      if (u <= segs[j]){
+        var p = r.pts[j], q = r.pts[(j + 1) % r.pts.length];
+        var k = segs[j] < 1e-6 ? 0 : u / segs[j];
+        // Smoothstep along each leg, so a vehicle decelerates into a corner and pulls
+        // away from it. At constant speed the whole yard slides at one pace and reads
+        // as a screensaver; this is what makes it look driven.
+        var e = k * k * (3 - 2 * k);
+        var ease = 1 - (r.hold || 0);
+        var kk = ease * k + (1 - ease) * e;
+        return { x: p[0] + (q[0] - p[0]) * kk, y: p[1] + (q[1] - p[1]) * kk,
+                 dx: q[0] - p[0], dy: q[1] - p[1], seg: j, k: kk };
+      }
+      u -= segs[j];
+    }
+    return { x: r.pts[0][0], y: r.pts[0][1], dx: 1, dy: 0, seg: 0, k: 0 };
+  }
+
+  var agents = [];
+  function buildAgents(){
+    agents = [];
+    // One yard forklift per four owned, so the scene tracks the fleet you actually run
+    // rather than a dial. Each works its own aisle and pauses at both ends -- a truck
+    // that never stops reads as a screensaver, not a working site.
+    var lanes = Math.max(1, Math.min(6, Math.ceil((state.owned.forklift || 0) / 4)));
+    for (var i = 0; i < lanes; i++){
+      var y0 = 19.4 + (i % 4) * 1.1;
+      agents.push({ kind: "forklift", carry: true, dwell: 1.1,
+        r: route([[5.5, y0], [16.5, y0], [16.5, y0 + 0.45], [5.5, y0 + 0.45]],
+                 1.5 + (i % 3) * 0.15, i * 4.3, 0.85) });
+    }
+    // Road traffic scales with the reach fleet -- the vehicles feeding the docks.
+    var trucks = Math.max(1, Math.min(4, Math.ceil((state.owned.reach || 0) / 6)));
+    for (var t = 0; t < trucks; t++){
+      agents.push({ kind: t % 2 ? "van" : "truck", dwell: 1.8,
+        r: route([[24, -1.5], [24, 7.5], [41, 7.5], [45, 11.5], [45, 21], [7, 21], [7, 7.5],
+                  [24, 7.5], [24, -1.5]], 2.6 + t * 0.35, t * 11, 0.35) });
+    }
+    if ((state.owned.hub || 0) > 0)
+      agents.push({ kind: "delivery", dwell: 2.2,
+        r: route([[30, 14.6], [38, 14.6], [38, 15.9], [30, 15.9]], 1.2, 2, 0.7) });
+  }
+
+  function agentEntities(time){
+    var out = [];
+    for (var i = 0; i < agents.length; i++){
+      var a = agents[i], p = along(a.r, time);
+      // Ease into and out of each corner so vehicles do not snap between headings.
+      var yaw = yawFor(p.dx, p.dy);
+      if (a.lastYaw === undefined) a.lastYaw = yaw;
+      if (p.k > 0.12 && p.k < 0.88) a.lastYaw = yaw;
+      out.push({ n: a.kind + "-" + a.lastYaw, x: p.x, y: p.y, z: 0, f: 1.0, l: 2 });
+      if (a.carry && p.seg < 2){
+        // Lift the load as it runs, so the mast reads as doing something.
+        var lift = 0.22 + Math.min(0.3, p.k * 0.5);
+        out.push({ n: "box-large", x: p.x + 0.22, y: p.y + 0.22, z: lift, f: 1.0, l: 2 });
+      }
+    }
+    return out;
+  }
+
+  // Chimney smoke: drawn rather than sprited, so it can drift and fade without needing
+  // frames in the atlas.
+  var puffs = [];
+  function tickSmoke(time, dt){
+    if ((state.corp.plant || 0) <= 0) { puffs.length = 0; return; }
+    if (puffs.length < 14 && Math.random() < dt * 3)
+      puffs.push({ x: 46, y: 9, z: 2.1, r: 0.28, age: 0 });
+    for (var i = puffs.length - 1; i >= 0; i--){
+      var p = puffs[i];
+      p.age += dt; p.z += dt * 0.55; p.x += dt * 0.22; p.r += dt * 0.28;
+      if (p.age > 4.2) puffs.splice(i, 1);
+    }
+  }
+  function drawSmoke(){
+    for (var i = 0; i < puffs.length; i++){
+      var p = puffs[i], o = pt(p.x, p.y, p.z);
+      var a = Math.max(0, 0.34 * (1 - p.age / 4.2));
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, p.r * TW, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(226,232,238," + a.toFixed(3) + ")";
+      ctx.fill();
+    }
+  }
+
+  var entities = [];
+
+  // Painter's algorithm, same key the shipping game uses: layer, then depth, then height.
+  function sortKey(e){ return e.l * 100000 + (e.x + e.y + (e.f || 0)) * 100 + e.z; }
+  var genEls = {};
+  function buildGenList(){
+    var list = document.getElementById("genList");
+    list.innerHTML = "";
+    GENS.forEach(function(g){
+      var b = document.createElement("button");
+      b.className = "gen";
+      b.innerHTML = '<span class="qt" data-r="q">0</span>' +
+                    '<span class="nm">' + g.name + '</span>' +
+                    '<span class="ct" data-r="c">$0</span>';
+      b.addEventListener("click", function(){
+        if (!buyGen(g)) toast("Need " + money(costOf(g)) + " for a " + g.name + ".");
+      });
+      list.appendChild(b);
+      genEls[g.id] = { btn: b, q: b.querySelector('[data-r="q"]'), c: b.querySelector('[data-r="c"]') };
+    });
+  }
+
+  function renderGenList(){
+    GENS.forEach(function(g){
+      var e = genEls[g.id];
+      if (!e) return;
+      var c = costOf(g), can = state.money >= c;
+      e.q.textContent = state.owned[g.id] || 0;
+      e.c.textContent = money(c);
+      e.btn.classList.toggle("can", can);
+      // The first unaffordable tier still shows; the ones beyond it are noise until
+      // the operation is anywhere near them.
+      var idx = GENS.indexOf(g), prev = idx === 0 ? 1 : (state.owned[GENS[idx-1].id] || 0);
+      e.btn.disabled = !can;
+      e.btn.style.display = (idx === 0 || prev > 0 || (state.owned[g.id] || 0) > 0) ? "" : "none";
+    });
+  }
+
+  function rebuild(){
+    entities = siteEntities();
+    entities.sort(function(a, b){ return sortKey(a) - sortKey(b); });
+    buildAgents();
+    var built = 0;
+    CORP.forEach(function(c){ built += state.corp[c.id] || 0; });
+    document.getElementById("stA").textContent = unitsOwned();
+    document.getElementById("stB").textContent = built;
+    document.getElementById("fleetline").textContent =
+      built + " built \u00b7 " + unitsOwned() + " units";
+  }
+
+  var toastTimer = null;
+  function toast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  // ---- frame ------------------------------------------------------------------------
+  var lastMs = 0, msAvg = 0;
+
+  var now = 0, prevT = 0;
+  function draw(){
+    var t0 = performance.now();
+    var dt = prevT ? Math.min(0.1, (t0 - prevT) / 1000) : 0;
+    prevT = t0; now += dt;
+    tickSmoke(now, dt);
+    TW = TW_BASE * zoom; TH = TW / 2;
+    drawn = 0;
+
+    // sky then ground
+    var g = ctx.createLinearGradient(0, 0, 0, CH);
+    g.addColorStop(0, "#7fb0dc"); g.addColorStop(0.55, "#a8c8e4"); g.addColorStop(1, "#cbdcea");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+    diamond(-8, -8, SITE.w + 18, SITE.d + 18, "#6f8f52");        // grass surround
+    diamond(-2, -2, SITE.w + 4, SITE.d + 4, "#5b6169");          // asphalt apron
+    diamond(0, 0, SITE.w, SITE.d, "#71777f");                     // yard slab
+    diamond(11, 10.5, 20, 5, "#5f666e");                          // receiving lane
+    diamond(28, 12.5, 12, 4, "#5f666e");                          // outbound apron
+    diamond(1, 16.4, SITE.w - 2, 0.6, "#8a6f1e");                 // hazard walkway
+    diamond(22, -1, 5, 3, "#4f555c");                             // gate road
+
+    if (atlasReady){
+      // Static scenery is pre-sorted; only the handful of moving things need placing
+      // into it each frame, so this is a merge rather than a full re-sort.
+      var moving = agentEntities(now);
+      moving.sort(function(a, b){ return sortKey(a) - sortKey(b); });
+      var si = 0, mi = 0;
+      while (si < entities.length || mi < moving.length){
+        var takeStatic = mi >= moving.length ||
+          (si < entities.length && sortKey(entities[si]) <= sortKey(moving[mi]));
+        var e = takeStatic ? entities[si++] : moving[mi++];
+        drawSprite(e.n, e.x, e.y, e.z);
+      }
+      drawSmoke();
+    }
+
+    var ms = performance.now() - t0;
+    msAvg = msAvg ? msAvg * 0.9 + ms * 0.1 : ms;
+    if (t0 - lastMs > 250){
+      lastMs = t0;
+      document.getElementById("sDraw").textContent = drawn;
+      document.getElementById("sMs").textContent = msAvg.toFixed(1) + "ms";
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // ---- input ------------------------------------------------------------------------
+  // Screen back to grid: invert pt() on the ground plane. sx = cx + (px-py)*TW and
+  // sy = cy + (px+py)*TH, so the two sums separate cleanly.
+  function gridAt(sx, sy){
+    var a = (sx - cx) / TW, b = (sy - cy) / TH;
+    return { x: (a + b) / 2, y: (b - a) / 2 };
+  }
+  function plotAt(g){
+    for (var i = 0; i < CORP.length; i++){
+      var p = CORP[i].plot;
+      if (g.x >= p.x && g.x <= p.x + p.w && g.y >= p.y && g.y <= p.y + p.d) return CORP[i];
+    }
+    return null;
+  }
+
+  var drag = null, downAt = 0, moved = 0;
+  cv.addEventListener("pointerdown", function(ev){
+    drag = { x: ev.clientX, y: ev.clientY, cx: cx, cy: cy };
+    downAt = performance.now(); moved = 0;
+    cv.setPointerCapture(ev.pointerId);
+  });
+  cv.addEventListener("pointermove", function(ev){
+    if (!drag) return;
+    moved = Math.max(moved, Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y));
+    cx = drag.cx + (ev.clientX - drag.x);
+    cy = drag.cy + (ev.clientY - drag.y);
+  });
+  cv.addEventListener("pointerup", function(ev){
+    // A tap is a press that did not turn into a drag; anything else was panning.
+    if (drag && moved < 8 && performance.now() - downAt < 600){
+      var c = plotAt(gridAt(ev.clientX, ev.clientY));
+      if (c){
+        var lvl = state.corp[c.id] || 0;
+        if (lvl >= 5) toast(c.name + " is at maximum.");
+        else if (buyCorp(c)) toast("Built " + c.name + " \u2014 level " + state.corp[c.id]);
+        else toast("Need " + money(corpCost(c)) + " for the " + c.name + ".");
+      }
+    }
+    drag = null;
+  });
+  cv.addEventListener("pointercancel", function(){ drag = null; });
+  cv.addEventListener("wheel", function(ev){
+    ev.preventDefault();
+    setZoom(zoom * (ev.deltaY < 0 ? 1.12 : 1 / 1.12));
+  }, { passive: false });
+
+  function setZoom(z){ zoom = Math.max(0.5, Math.min(4, z)); }
+  // In this projection the site's screen width is (w+d)*TW and its height (w+d)*TH, so
+  // the diagonal -- not the tile count -- is what has to fit. Height is the binding
+  // constraint on a wide screen once the HUD bands are taken off.
+  function centre(){
+    var span = SITE.w + SITE.d;
+    var usableW = CW - 220, usableH = CH - 150;      // side panels, top bar, tab bar
+    var fitW = usableW / span, fitH = usableH / (span / 2);
+    zoom = Math.max(0.35, Math.min(4, Math.min(fitW, fitH) / TW_BASE));
+    TW = TW_BASE * zoom; TH = TW / 2;
+    cx = 0; cy = 0;
+    var mid = pt(SITE.w / 2, SITE.d / 2, 0);
+    cx = CW / 2 - mid.x; cy = CH / 2 - mid.y;
+  }
+
+  document.getElementById("zin").onclick  = function(){ setZoom(zoom * 1.25); };
+  document.getElementById("zout").onclick = function(){ setZoom(zoom / 1.25); };
+  document.getElementById("cen").onclick  = centre;
+
+  document.getElementById("pick").onclick = function(){
+    state.money += tapValue(); state.lifetime += tapValue();
+  };
+
+  setInterval(function(){
+    var r = totalRate();
+    state.money += r / 10; state.lifetime += r / 10;
+    document.getElementById("cash").textContent = money(state.money);
+    document.getElementById("rate").textContent = money(r);
+    document.getElementById("tapv").textContent = "tap " + money(tapValue());
+    renderGenList();
+  }, 100);
+
+  function money(n){ return "$" + fmt(n); }
+
+  function fmt(n){
+    if (!isFinite(n)) return "0";
+    if (n < 1000) return (Math.floor(n * 10) / 10).toString().replace(/\.0$/, "");
+    var u = ["K","M","B","T"], i = -1;
+    while (n >= 1000 && i < u.length - 1){ n /= 1000; i++; }
+    return (Math.floor(n * 100) / 100) + u[i];
+  }
+
+  document.querySelectorAll("#tabs button").forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll("#tabs button").forEach(function(o){ o.classList.remove("on"); });
+      b.classList.add("on");
+    };
+  });
+
+  // Prototype only: lets a test drive the economy without grinding taps.
+  window.__proto = { state: state, GENS: GENS, CORP: CORP,
+                     rebuild: function(){ rebuild(); }, costOf: costOf, corpCost: corpCost };
+
+  loadAtlas().then(function(){
+    buildGenList();
+    rebuild();
+    centre();
+    document.getElementById("loading").remove();
+    requestAnimationFrame(draw);
+  }).catch(function(err){
+    document.getElementById("loading").textContent = "Atlas failed: " + err.message;
+  });
+})();
+</script>
+</body>
+</html>

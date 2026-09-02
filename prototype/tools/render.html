@@ -79,6 +79,65 @@ window.__renderObject = function(obj, unitsPerPixel, W, H, yawDeg){
 window.__loadGLB = (url) => new Promise((res, rej) =>
   loader.load(url, g => res(g.scene), undefined, e => rej(String(e))));
 
+// ---- composite models --------------------------------------------------------------
+// No kit has a forklift -- carkit's "tractor-shovel" is a tractor. This builds one from
+// kit wheels plus boxes in the kits' own palette, sampled from their colormap texture,
+// so it sits with the rest of the set rather than looking bolted on.
+const KP = {
+  yellow:0xffc044, yellowD:0xe0a52c, orange:0xff7e44, ink:0x38383d,
+  steel:0x868ba1, steelD:0x4f5260, light:0xa0a8c9, white:0xffffff, glass:0xd0e8ff
+};
+
+function slab(w, h, d, colour){
+  return new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: colour, roughness: 0.72, metalness: 0.02 }));
+}
+function put(parent, mesh, x, y, z){ mesh.position.set(x, y, z); parent.add(mesh); return mesh; }
+
+window.__buildForklift = async function(wheelUrl){
+  const g = new THREE.Group();
+
+  // chassis and counterweight
+  put(g, slab(1.05, 0.72, 1.55, KP.yellow), 0, 0.62, -0.10);
+  put(g, slab(0.95, 0.52, 0.42, KP.yellowD), 0, 0.52, -0.92);
+
+  // operator area: seat, overhead guard on four posts
+  put(g, slab(0.46, 0.10, 0.44, KP.ink), 0, 1.00, -0.42);
+  put(g, slab(0.42, 0.40, 0.10, KP.ink), 0, 1.20, -0.62);
+  [[-0.44, 0.30], [0.44, 0.30], [-0.44, -0.78], [0.44, -0.78]].forEach(p =>
+    put(g, slab(0.07, 1.05, 0.07, KP.steelD), p[0], 1.52, p[1]));
+  put(g, slab(1.02, 0.07, 1.20, KP.steelD), 0, 2.06, -0.24);
+
+  // mast: two uprights, a crossbar, and the carriage the forks hang off
+  put(g, slab(0.10, 1.95, 0.10, KP.ink), -0.36, 1.10, 0.72);
+  put(g, slab(0.10, 1.95, 0.10, KP.ink),  0.36, 1.10, 0.72);
+  put(g, slab(0.92, 0.09, 0.09, KP.steelD), 0, 2.05, 0.72);
+  put(g, slab(0.86, 0.14, 0.09, KP.steelD), 0, 0.46, 0.78);
+  // hydraulic ram between the uprights
+  put(g, slab(0.08, 1.50, 0.08, KP.steel), 0, 0.95, 0.66);
+
+  // forks
+  put(g, slab(0.13, 0.05, 0.86, KP.steel), -0.26, 0.16, 1.22);
+  put(g, slab(0.13, 0.05, 0.86, KP.steel),  0.26, 0.16, 1.22);
+
+  // a hi-vis beacon, because every yard truck has one
+  put(g, slab(0.10, 0.12, 0.10, KP.orange), 0, 2.16, -0.24);
+
+  // real kit wheels, scaled to the chassis
+  const wheels = await window.__loadGLB(wheelUrl);
+  const box = new THREE.Box3().setFromObject(wheels);
+  const size = box.getSize(new THREE.Vector3());
+  const front = 0.58 / Math.max(size.x, size.y, size.z);
+  [[-0.56, 0.30, front], [0.56, 0.30, front],
+   [-0.46, -0.86, front * 0.78], [0.46, -0.86, front * 0.78]].forEach(p => {
+    const w = wheels.clone(true);
+    w.scale.setScalar(p[2]);
+    w.position.set(p[0], p[2] * Math.max(size.x, size.y, size.z) * 0.5, p[1]);
+    g.add(w);
+  });
+  return g;
+};
+
 window.__cube = () => {
   const g = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
                            new THREE.MeshBasicMaterial({ color: 0xffffff }));
