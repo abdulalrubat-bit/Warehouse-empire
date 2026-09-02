@@ -4,8 +4,17 @@ A separate, self-contained prototype: landscape-only, drawing the site from spri
 baked out of the Kenney CC0 model kits rather than from flat prisms. The shipping game
 in `warehouse-empire-android.html` is untouched.
 
-Open `landscape.html` in a browser at a landscape aspect. Zoom, centre and **Grow**
-(steps the site through eight build-out levels) are on the right.
+`landscape.html` is a **single self-contained file** — the atlas is inlined as a data
+URI, so it can be downloaded on its own and opened anywhere. It was originally split
+across three files, which broke the moment it was opened from a phone's Downloads
+folder: the HTML arrived without its siblings and had nothing to draw.
+
+Open it at a landscape aspect. Zoom, centre and **Grow** (steps the site through eight
+build-out levels) are on the right.
+
+Rebuild the inlined copy after regenerating the atlas:
+
+    python3 tools/inline.py
 
 ## How the sprites are made
 
@@ -46,6 +55,21 @@ The reference render this was aimed at is near-photorealistic. These kits are st
 low-poly, so the prototype reads as a clean Kenney warehouse rather than that image. The
 gap is in the art, not the pipeline.
 
+## Motion
+
+Vehicles are agents with a closed route. Facing comes from the direction of travel —
+the atlas holds four yaws per vehicle, so picking the nearest to the heading is all the
+animation a vehicle needs at this scale. Forklifts carry a pallet on the outbound leg
+and run empty on the return, which is what makes it read as work rather than drift.
+
+Chimney smoke is drawn rather than sprited, so it drifts and fades without costing atlas
+frames.
+
+Static scenery stays pre-sorted and the handful of moving things are merged into it each
+frame, rather than re-sorting five hundred entities sixty times a second.
+
+## What this is not
+
 Nothing here is wired to game state — the HUD numbers are placeholders and "Grow" is a
-manual stepper. It exists to judge the look and the performance, which measured 0.4ms a
-frame for ~490 sprites.
+manual stepper. It exists to judge the look and the cost, which measured 0.6ms a frame
+for ~500 sprites with everything moving.
