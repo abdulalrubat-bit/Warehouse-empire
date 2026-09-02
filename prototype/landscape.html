@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Warehouse Empire — landscape prototype</title>
+<style>
+  :root{
+    --bg:#11151a; --panel:rgba(20,25,31,.88); --line:#2c343d; --ink:#e9edf1;
+    --dim:#8d959e; --hivis:#f2620f; --cash:#3fb264; --corp:#a855f7; --hazard:#f5b90b;
+    --font-cond:"Arial Narrow",Roboto,system-ui,sans-serif;
+    --font-mono:"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:var(--font-mono);-webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;}
+  #scene{position:fixed;inset:0;display:block;touch-action:none;}
+
+  /* Panels float over the canvas so the site fills the whole screen, which is the
+     point of going landscape. Everything is anchored to a corner rather than in flow. */
+  .hud{position:fixed;z-index:3;pointer-events:none;}
+  .hud > *{pointer-events:auto;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:10px 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+
+  #topbar{top:0;left:0;right:0;display:flex;gap:10px;align-items:stretch;padding:8px 10px;}
+  #brand{display:flex;align-items:center;gap:8px;font-family:var(--font-cond);
+    font-weight:800;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:8px 12px;}
+  #brand span{color:var(--hivis)}
+  #money{flex:1;display:flex;align-items:center;gap:16px;}
+  #money b{font-family:var(--font-cond);font-size:22px;letter-spacing:1px;}
+  #money .sub{font-size:10px;color:var(--dim);}
+  #money .sub i{color:var(--cash);font-style:normal;}
+
+  #left{top:62px;left:10px;width:190px;display:flex;flex-direction:column;gap:8px;}
+  .label{font-family:var(--font-cond);font-size:10px;letter-spacing:1.6px;
+    text-transform:uppercase;color:var(--dim);margin-bottom:5px;}
+  .row{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:10.5px;padding:3px 0;}
+  .row b{font-family:var(--font-cond);font-size:12px;letter-spacing:.5px;}
+
+  #right{top:62px;right:10px;display:flex;flex-direction:column;gap:6px;}
+  .ctl{width:46px;height:46px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:1px;background:var(--panel);border:1px solid var(--line);
+    border-radius:6px;color:var(--ink);font-size:17px;cursor:pointer;}
+  .ctl small{font-size:6.5px;letter-spacing:.6px;color:var(--dim);text-transform:uppercase;}
+  .ctl:active{background:#232a32}
+
+  #tabs{bottom:0;left:0;right:0;display:flex;background:linear-gradient(180deg,#191e24,#12161b);
+    border-top:1px solid var(--line);}
+  #tabs button{flex:1;background:none;border:0;color:var(--dim);padding:9px 4px 10px;
+    font-family:var(--font-cond);font-size:10px;letter-spacing:1.4px;text-transform:uppercase;
+    cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  #tabs button.on{color:var(--hivis);box-shadow:inset 0 2px 0 var(--hivis);background:#1c2229;}
+  #tabs svg{width:17px;height:17px;fill:currentColor}
+
+  #pick{position:fixed;z-index:4;bottom:56px;left:50%;transform:translateX(-50%);
+    padding:11px 40px;border:0;border-radius:7px;cursor:pointer;
+    background:linear-gradient(180deg,#ff7a24,#d24f06);color:#20130a;
+    font-family:var(--font-cond);font-weight:800;font-size:17px;letter-spacing:3px;
+    text-transform:uppercase;box-shadow:0 3px 0 #a03c02,0 5px 14px rgba(0,0,0,.45);}
+  #pick:active{transform:translateX(-50%) translateY(2px);box-shadow:0 1px 0 #a03c02;}
+
+  #stats{bottom:56px;right:10px;display:flex;gap:6px;}
+  #stats .card{padding:6px 10px;text-align:center;}
+  #stats .card b{display:block;font-family:var(--font-cond);font-size:13px;}
+  #stats .card span{font-size:7.5px;letter-spacing:1px;color:var(--dim);text-transform:uppercase;}
+
+  #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--bg);z-index:9;font-family:var(--font-cond);letter-spacing:3px;
+    text-transform:uppercase;color:var(--dim);font-size:13px;}
+
+  /* Portrait is not supported in this prototype -- say so rather than showing a
+     broken layout, since the whole point is the wide composition. */
+  #rotate{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    flex-direction:column;gap:12px;background:var(--bg);z-index:10;text-align:center;padding:30px;}
+  #rotate b{font-family:var(--font-cond);font-size:16px;letter-spacing:2px;text-transform:uppercase;}
+  #rotate p{font-size:11px;color:var(--dim);line-height:1.7;margin:0;max-width:280px;}
+  @media (orientation:portrait){ #rotate{display:flex} }
+</style>
+</head>
+<body>
+<script src="atlas.js"></script>
+<canvas id="scene"></canvas>
+
+<div class="hud" id="topbar">
+  <div class="card" id="brand">Warehouse <span>Empire</span></div>
+  <div class="card" id="money">
+    <div>
+      <b id="cash">$0</b>
+      <div class="sub"><i id="rate">$0</i>/sec &middot; <span id="tapv">tap $0</span></div>
+    </div>
+    <div class="sub" style="margin-left:auto" id="fleetline">&mdash;</div>
+  </div>
+</div>
+
+<div class="hud" id="left">
+  <div class="card">
+    <div class="label">Site</div>
+    <div class="row"><span>Racking</span><b id="sRack">0</b></div>
+    <div class="row"><span>Fleet</span><b id="sFleet">0</b></div>
+    <div class="row"><span>Docks</span><b id="sDock">0</b></div>
+    <div class="row"><span>Sprites drawn</span><b id="sDraw">0</b></div>
+  </div>
+  <div class="card">
+    <div class="label">Prototype</div>
+    <div class="row"><span>Frame</span><b id="sMs">0.0ms</b></div>
+    <div class="row"><span>Atlas</span><b id="sAtlas">&mdash;</b></div>
+  </div>
+</div>
+
+<div class="hud" id="right">
+  <button class="ctl" id="zin">+<small>Zoom in</small></button>
+  <button class="ctl" id="zout">&minus;<small>Zoom out</small></button>
+  <button class="ctl" id="cen">&#8226;<small>Centre</small></button>
+  <button class="ctl" id="grow">&#9650;<small>Grow</small></button>
+</div>
+
+<div class="hud" id="stats">
+  <div class="card"><b id="stA">0</b><span>Pallets</span></div>
+  <div class="card"><b id="stB">0</b><span>Trucks</span></div>
+</div>
+
+<button id="pick">Pick Order</button>
+
+<div class="hud" id="tabs">
+  <button class="on"><svg viewBox="0 0 24 24"><path d="M2 10.6 12 4l10 6.6V21H2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>Floor</button>
+  <button><svg viewBox="0 0 24 24"><rect x="8.6" y="4" width="1.8" height="11"/><rect x="10.6" y="9" width="8" height="6" rx="1"/><circle cx="12.8" cy="17.6" r="2.2"/></svg>Fleet</button>
+  <button><svg viewBox="0 0 24 24"><circle cx="16.6" cy="7.4" r="4.6"/><rect x="3.6" y="14.4" width="12" height="3" rx="1.5" transform="rotate(-45 9.6 15.9)"/></svg>Upgrades</button>
+  <button><svg viewBox="0 0 24 24"><rect x="2" y="8.4" width="20" height="3.1"/><rect x="2" y="15" width="20" height="3.1"/></svg>Store</button>
+  <button><svg viewBox="0 0 24 24"><rect x="4" y="3.6" width="16" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="8.4" y="1.8" width="7.2" height="3.6" rx="1.2"/></svg>Office</button>
+</div>
+
+<div id="loading">Loading site&hellip;</div>
+<div id="rotate">
+  <b>Rotate your device</b>
+  <p>This prototype is landscape only — the site view is composed for a wide screen.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- projection -------------------------------------------------------------------
+  // Identical to the shipping game: x = (px-py)*TW, y = (px+py)*TW/2 - pz*TW. The sprite
+  // atlas was rendered to match this exactly, so a sprite's recorded origin lands on the
+  // same point pt() returns for its grid cell.
+  var TW_BASE = 18, TW = TW_BASE, TH = TW / 2;
+  var zoom = 1.6, cx = 0, cy = 0;
+  var ATLAS_TILE = 144;                       // px per tile the atlas was rendered at
+
+  function pt(px, py, pz){
+    return { x: cx + (px - py) * TW, y: cy + (px + py) * TH - pz * TW };
+  }
+
+  var cv = document.getElementById("scene");
+  var ctx = cv.getContext("2d", { alpha: false });
+  var CW = 0, CH = 0, DPR = 1;
+
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    CW = window.innerWidth; CH = window.innerHeight;
+    cv.width = Math.round(CW * DPR); cv.height = Math.round(CH * DPR);
+    cv.style.width = CW + "px"; cv.style.height = CH + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---- atlas ------------------------------------------------------------------------
+  var atlas = new Image(), frames = null, atlasReady = false;
+
+  // Loaded as a script rather than fetched: fetch() is CORS-blocked on file://, and a
+  // script tag works identically under the Capacitor WebView.
+  function loadAtlas(){
+    return Promise.resolve(window.__ATLAS).then(function(j){
+      if (!j) throw new Error("atlas.js did not load");
+      frames = j.frames; ATLAS_TILE = j.tilePx || 144;
+      return new Promise(function(res, rej){
+        atlas.onload = res; atlas.onerror = function(){ rej(new Error("atlas.png failed")); };
+        atlas.src = "atlas.png";
+      });
+    }).then(function(){
+      atlasReady = true;
+      document.getElementById("sAtlas").textContent =
+        atlas.width + "×" + atlas.height + " · " + Object.keys(frames).length;
+    });
+  }
+
+  // One tile spans sqrt(2) camera units in the render, which came out ATLAS_TILE px wide.
+  // Scaling by the ratio of the live tile width to that puts sprites at the right size.
+  function spriteScale(){ return (TW * 2) / ATLAS_TILE; }
+
+  var drawn = 0;
+  function drawSprite(name, px, py, pz){
+    var f = frames[name];
+    if (!f) return;
+    var s = spriteScale();
+    var o = pt(px, py, pz);
+    var w = f.w * s, h = f.h * s;
+    var x = o.x - f.ax * s, y = o.y - f.ay * s;
+    if (x > CW || y > CH || x + w < 0 || y + h < 0) return;   // cheap cull
+    ctx.drawImage(atlas, f.x, f.y, f.w, f.h, x, y, w, h);
+    drawn++;
+  }
+
+  // ---- ground -----------------------------------------------------------------------
+  // Drawn as flat diamonds rather than sprites: it tiles infinitely, costs almost
+  // nothing, and keeps the atlas for things that actually have shape.
+  function diamond(px, py, w, d, fill){
+    var a = pt(px, py, 0), b = pt(px + w, py, 0), c = pt(px + w, py + d, 0), e = pt(px, py + d, 0);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(e.x, e.y);
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+  }
+
+  // ---- the site ---------------------------------------------------------------------
+  // Grid is in tiles. The composition is fixed; what grows with "progression" is the
+  // racking, the fleet and how full the yard is.
+  var SITE = { w: 50, d: 25 };
+  var level = 3;                                // 0..8, drives how built-out the site is
+
+  function siteEntities(){
+    var out = [];
+    // `f` is the object's footprint in tiles. A big sprite drawn from its centre still
+    // has to sort by its FRONT corner, or anything standing in front of it sorts lower
+    // and gets painted over -- which is what put trucks behind the shed roof.
+    function add(name, x, y, z, f, layer){
+      out.push({ n: name, x: x, y: y, z: z || 0, f: f || 0, l: layer || 2 });
+    }
+
+    var FP = 0.4;
+    for (var i = 0; i < SITE.w; i += FP){
+      if (i < 22 || i > 27) add("fence-0", i, -0.5, 0, 0, 1);
+      add("fence-0", i, SITE.d + 0.5, 0, 0, 3);
+    }
+    for (var j = -0.5; j < SITE.d + 0.5; j += FP){
+      add("fence-90", -0.5, j, 0, 0, 1);
+      add("fence-90", SITE.w + 0.5, j, 0, 0, 3);
+    }
+
+    // Shells across the north half, so the whole south yard stays open and everything
+    // working in it sorts in front.
+    add("office-0", 5, 4, 0, 3.5);
+    add("shed-big-0", 19, 5, 0, 6.5);
+    if (level >= 2) add("shed-long-90", 33, 5, 0, 5);
+    if (level >= 6) add("plant-90", 43, 6, 0, 4.5);
+    if (level >= 5) add("dc-flat-0", 40, 20, 0, 6.5);
+
+    // Receiving along the shed's south face -- in the open yard, so they read clearly.
+    var docks = Math.min(5, 2 + Math.floor(level / 2));
+    for (var t = 0; t < docks; t++){
+      add("trailer-180", 13 + t * 3.2, 11.5, 0, 1.2);
+      add("truck-180",   13 + t * 3.2, 13.6, 0, 1.2);
+    }
+
+    // Outbound rank facing the gate.
+    for (var q = 0; q < Math.min(4, 1 + Math.floor(level / 2)); q++)
+      add("trailer-90", 30 + q * 2.4, 14, 0, 1.2);
+
+    // Pallet blocks: rows and bays rather than a scatter, like a real yard.
+    var bays = 3 + Math.floor(level / 2);
+    for (var b = 0; b < bays; b++)
+      for (var r = 0; r < 4; r++){
+        var gx = 4 + b * 2.2, gy = 19 + r * 1.1;
+        var hgt = 1 + ((b + r) % 3);
+        for (var k = 0; k < hgt; k++)
+          add(k === 0 ? "box-large" : (k === 1 ? "box-wide" : "box-small"), gx, gy, k * 0.18, 0.4);
+      }
+
+    for (var fl = 0; fl < Math.min(6, 1 + level); fl++)
+      add("forklift-" + [90,270,0,180][fl % 4], 17 + fl * 2.4, 19 + (fl % 3) * 1.8, 0, 0.8);
+
+    for (var c2 = 0; c2 < 9; c2++)
+      add(["car-a-90","car-b-90","car-c-90"][c2 % 3], 1.8, 9 + c2 * 1.5, 0, 0.9);
+
+    if (level >= 3){ add("tank", 47, 12, 0, 2); add("tank", 47, 15, 0, 2); }
+    if (level >= 4) add("chimney", 46, 3, 0, 2);
+    if (level >= 5) add("hopper", 44, 17, 0, 1.4);
+    if (level >= 7) add("crane-0", 26, 22, 0, 1.6);
+
+    for (var l2 = 0; l2 < 8; l2++) add("lamp-0", 2 + l2 * 6, 16.6, 0, 0);
+    add("dumpster-0", 2.5, 22, 0, 0.6); add("dumpster-0", 3.4, 22, 0, 0.6);
+    for (var cn = 0; cn < 6; cn++) add("cone", 22 + cn * 0.5, 16.9, 0, 0);
+    add("pole-0", 48.5, 4, 0, 0); add("pole-0", 48.5, 14, 0, 0); add("pole-0", 48.5, 22, 0, 0);
+
+    return out;
+  }
+
+  var entities = siteEntities();
+
+  // Painter's algorithm, same key the shipping game uses: layer, then depth, then height.
+  function sortKey(e){ return e.l * 100000 + (e.x + e.y + (e.f || 0)) * 100 + e.z; }
+  function rebuild(){
+    entities = siteEntities();
+    entities.sort(function(a, b){ return sortKey(a) - sortKey(b); });
+    document.getElementById("sRack").textContent = 8 + level * 5;
+    document.getElementById("sFleet").textContent = Math.min(6, 1 + level);
+    document.getElementById("sDock").textContent = Math.min(5, 2 + Math.floor(level / 2));
+    document.getElementById("stA").textContent = (8 + level * 5) * 3;
+    document.getElementById("stB").textContent = Math.min(5, 2 + Math.floor(level / 2));
+    document.getElementById("fleetline").textContent = "Site level " + level + " / 8";
+  }
+  rebuild();
+
+  // ---- frame ------------------------------------------------------------------------
+  var lastMs = 0, msAvg = 0;
+
+  function draw(){
+    var t0 = performance.now();
+    TW = TW_BASE * zoom; TH = TW / 2;
+    drawn = 0;
+
+    // sky then ground
+    var g = ctx.createLinearGradient(0, 0, 0, CH);
+    g.addColorStop(0, "#7fb0dc"); g.addColorStop(0.55, "#a8c8e4"); g.addColorStop(1, "#cbdcea");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+
+    diamond(-8, -8, SITE.w + 18, SITE.d + 18, "#6f8f52");        // grass surround
+    diamond(-2, -2, SITE.w + 4, SITE.d + 4, "#5b6169");          // asphalt apron
+    diamond(0, 0, SITE.w, SITE.d, "#71777f");                     // yard slab
+    diamond(11, 10.5, 20, 5, "#5f666e");                          // receiving lane
+    diamond(28, 12.5, 12, 4, "#5f666e");                          // outbound apron
+    diamond(1, 16.4, SITE.w - 2, 0.6, "#8a6f1e");                 // hazard walkway
+    diamond(22, -1, 5, 3, "#4f555c");                             // gate road
+
+    if (atlasReady) for (var i = 0; i < entities.length; i++){
+      var e = entities[i];
+      drawSprite(e.n, e.x, e.y, e.z);
+    }
+
+    var ms = performance.now() - t0;
+    msAvg = msAvg ? msAvg * 0.9 + ms * 0.1 : ms;
+    if (t0 - lastMs > 250){
+      lastMs = t0;
+      document.getElementById("sDraw").textContent = drawn;
+      document.getElementById("sMs").textContent = msAvg.toFixed(1) + "ms";
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // ---- input ------------------------------------------------------------------------
+  var drag = null;
+  cv.addEventListener("pointerdown", function(ev){
+    drag = { x: ev.clientX, y: ev.clientY, cx: cx, cy: cy };
+    cv.setPointerCapture(ev.pointerId);
+  });
+  cv.addEventListener("pointermove", function(ev){
+    if (!drag) return;
+    cx = drag.cx + (ev.clientX - drag.x);
+    cy = drag.cy + (ev.clientY - drag.y);
+  });
+  cv.addEventListener("pointerup", function(){ drag = null; });
+  cv.addEventListener("pointercancel", function(){ drag = null; });
+  cv.addEventListener("wheel", function(ev){
+    ev.preventDefault();
+    setZoom(zoom * (ev.deltaY < 0 ? 1.12 : 1 / 1.12));
+  }, { passive: false });
+
+  function setZoom(z){ zoom = Math.max(0.5, Math.min(4, z)); }
+  // In this projection the site's screen width is (w+d)*TW and its height (w+d)*TH, so
+  // the diagonal -- not the tile count -- is what has to fit. Height is the binding
+  // constraint on a wide screen once the HUD bands are taken off.
+  function centre(){
+    var span = SITE.w + SITE.d;
+    var usableW = CW - 220, usableH = CH - 150;      // side panels, top bar, tab bar
+    var fitW = usableW / span, fitH = usableH / (span / 2);
+    zoom = Math.max(0.35, Math.min(4, Math.min(fitW, fitH) / TW_BASE));
+    TW = TW_BASE * zoom; TH = TW / 2;
+    cx = 0; cy = 0;
+    var mid = pt(SITE.w / 2, SITE.d / 2, 0);
+    cx = CW / 2 - mid.x; cy = CH / 2 - mid.y;
+  }
+
+  document.getElementById("zin").onclick  = function(){ setZoom(zoom * 1.25); };
+  document.getElementById("zout").onclick = function(){ setZoom(zoom / 1.25); };
+  document.getElementById("cen").onclick  = centre;
+  document.getElementById("grow").onclick = function(){
+    level = (level + 1) % 9; rebuild();
+  };
+
+  var cash = 0, rate = 8650;
+  document.getElementById("pick").onclick = function(){ cash += rate * 0.05; };
+  setInterval(function(){
+    cash += rate / 10;
+    document.getElementById("cash").textContent = "$" + fmt(cash);
+    document.getElementById("rate").textContent = "$" + fmt(rate);
+    document.getElementById("tapv").textContent = "tap $" + fmt(rate * 0.05);
+  }, 100);
+
+  function fmt(n){
+    if (!isFinite(n)) return "0";
+    if (n < 1000) return (Math.floor(n * 10) / 10).toString().replace(/\.0$/, "");
+    var u = ["K","M","B","T"], i = -1;
+    while (n >= 1000 && i < u.length - 1){ n /= 1000; i++; }
+    return (Math.floor(n * 100) / 100) + u[i];
+  }
+
+  document.querySelectorAll("#tabs button").forEach(function(b){
+    b.onclick = function(){
+      document.querySelectorAll("#tabs button").forEach(function(o){ o.classList.remove("on"); });
+      b.classList.add("on");
+    };
+  });
+
+  loadAtlas().then(function(){
+    centre();
+    document.getElementById("loading").remove();
+    requestAnimationFrame(draw);
+  }).catch(function(err){
+    document.getElementById("loading").textContent = "Atlas failed: " + err.message;
+  });
+})();
+</script>
+</body>
+</html>
