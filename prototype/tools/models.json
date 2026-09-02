@@ -1,0 +1,273 @@
+[
+ {
+  "name": "shed-long",
+  "kit": "industrial",
+  "model": "building-i",
+  "tags": [
+   "shell"
+  ],
+  "t": 3.0,
+  "rot2": true
+ },
+ {
+  "name": "shed-big",
+  "kit": "industrial",
+  "model": "building-s",
+  "tags": [
+   "shell"
+  ],
+  "t": 3.4,
+  "rot2": true
+ },
+ {
+  "name": "dc-flat",
+  "kit": "industrial",
+  "model": "building-a",
+  "tags": [
+   "shell"
+  ],
+  "t": 3.2,
+  "rot2": true
+ },
+ {
+  "name": "plant",
+  "kit": "industrial",
+  "model": "building-e",
+  "tags": [
+   "shell"
+  ],
+  "t": 2.6,
+  "rot2": true
+ },
+ {
+  "name": "office",
+  "kit": "industrial",
+  "model": "building-q",
+  "tags": [
+   "shell"
+  ],
+  "t": 1.9,
+  "rot2": true
+ },
+ {
+  "name": "tank",
+  "kit": "industrial",
+  "model": "detail-tank",
+  "tags": [
+   "plant"
+  ],
+  "t": 2.0
+ },
+ {
+  "name": "chimney",
+  "kit": "industrial",
+  "model": "chimney-large",
+  "tags": [
+   "plant"
+  ],
+  "t": 2.2
+ },
+ {
+  "name": "hopper",
+  "kit": "factory",
+  "model": "hopper-square",
+  "tags": [
+   "plant"
+  ],
+  "t": 1.2
+ },
+ {
+  "name": "crane",
+  "kit": "factory",
+  "model": "crane",
+  "tags": [
+   "plant"
+  ],
+  "rot": true,
+  "t": 0.9
+ },
+ {
+  "name": "conveyor",
+  "kit": "factory",
+  "model": "conveyor-long",
+  "tags": [
+   "plant"
+  ],
+  "rot": true
+ },
+ {
+  "name": "box-large",
+  "kit": "factory",
+  "model": "box-large",
+  "tags": [
+   "freight"
+  ]
+ },
+ {
+  "name": "box-wide",
+  "kit": "factory",
+  "model": "box-wide",
+  "tags": [
+   "freight"
+  ]
+ },
+ {
+  "name": "box-small",
+  "kit": "factory",
+  "model": "box-small",
+  "tags": [
+   "freight"
+  ]
+ },
+ {
+  "name": "truck",
+  "kit": "kenney_carkit",
+  "model": "truck",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true
+ },
+ {
+  "name": "trailer",
+  "kit": "kenney_carkit",
+  "model": "truck-flat",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true
+ },
+ {
+  "name": "van",
+  "kit": "kenney_carkit",
+  "model": "van",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true
+ },
+ {
+  "name": "delivery",
+  "kit": "kenney_carkit",
+  "model": "delivery",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true
+ },
+ {
+  "name": "forklift",
+  "kit": "kenney_carkit",
+  "model": "tractor-shovel",
+  "tags": [
+   "vehicle"
+  ],
+  "rot": true
+ },
+ {
+  "name": "car-a",
+  "kit": "kenney_carkit",
+  "model": "sedan",
+  "tags": [
+   "carpark"
+  ],
+  "rot": true
+ },
+ {
+  "name": "car-b",
+  "kit": "kenney_carkit",
+  "model": "suv",
+  "tags": [
+   "carpark"
+  ],
+  "rot": true
+ },
+ {
+  "name": "car-c",
+  "kit": "kenney_carkit",
+  "model": "hatchback-sports",
+  "tags": [
+   "carpark"
+  ],
+  "rot": true
+ },
+ {
+  "name": "road",
+  "kit": "kenney_citykitroads",
+  "model": "road-straight",
+  "tags": [
+   "ground"
+  ],
+  "rot": true
+ },
+ {
+  "name": "road-bend",
+  "kit": "kenney_citykitroads",
+  "model": "road-bend",
+  "tags": [
+   "ground"
+  ],
+  "rot": true
+ },
+ {
+  "name": "road-cross",
+  "kit": "kenney_citykitroads",
+  "model": "road-crossroad",
+  "tags": [
+   "ground"
+  ]
+ },
+ {
+  "name": "fence",
+  "kit": "kenney_citykitroads",
+  "model": "construction-fence",
+  "tags": [
+   "site"
+  ],
+  "rot": true
+ },
+ {
+  "name": "lamp",
+  "kit": "kenney_citykitroads",
+  "model": "light-square",
+  "tags": [
+   "site"
+  ],
+  "rot": true
+ },
+ {
+  "name": "dumpster",
+  "kit": "kenney_citykitroads",
+  "model": "dumpster",
+  "tags": [
+   "site"
+  ],
+  "rot": true
+ },
+ {
+  "name": "cone",
+  "kit": "kenney_citykitroads",
+  "model": "construction-cone",
+  "tags": [
+   "site"
+  ]
+ },
+ {
+  "name": "barrier",
+  "kit": "kenney_citykitroads",
+  "model": "construction-barrier",
+  "tags": [
+   "site"
+  ],
+  "rot": true
+ },
+ {
+  "name": "pole",
+  "kit": "kenney_citykitroads",
+  "model": "electricity-pole",
+  "tags": [
+   "site"
+  ],
+  "rot": true
+ }
+]

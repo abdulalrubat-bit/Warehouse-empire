@@ -1,0 +1,89 @@
+<!doctype html><meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{"three":"./three.module.js","three/addons/":"./addons/"}}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "./jsm/loaders/GLTFLoader.js";
+
+// The game projects with x = (px-py)*TW, y = (px+py)*TW/2 - pz*TW. That is 2:1 dimetric,
+// which a plain orthographic camera cannot produce with uniform scale -- true isometric
+// gives 2:1.1547. So render along the true iso axis and squash Y afterwards; the factor
+// is measured from a unit cube rather than assumed.
+const ISO = new THREE.Vector3(1, 1, 1).normalize();
+
+const scene = new THREE.Scene();
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+// Daylight to match the game's own lighting model: warm key from above, cool sky fill,
+// so top faces read warm and shaded faces shift cool rather than just darker.
+scene.add(new THREE.HemisphereLight(0xbcd8f0, 0x6b6355, 2.0));
+const key = new THREE.DirectionalLight(0xfff2dc, 2.3);
+key.position.set(4, 7, 3); scene.add(key);
+const fill = new THREE.DirectionalLight(0x9fc4e8, 0.7);
+fill.position.set(-5, 2, -4); scene.add(fill);
+
+const loader = new GLTFLoader();
+let current = null;
+
+function frame(obj, camera, pad){
+  const box = new THREE.Box3().setFromObject(obj);
+  const size = box.getSize(new THREE.Vector3());
+  const centre = box.getCenter(new THREE.Vector3());
+  const dist = size.length() * 2 + 10;
+  camera.position.copy(centre).addScaledVector(ISO, dist);
+  camera.lookAt(centre);
+  camera.updateMatrixWorld();
+  // fit: project the eight corners and take the extent in camera space
+  const pts = [];
+  for (let i=0;i<8;i++) pts.push(new THREE.Vector3(
+    i&1 ? box.max.x : box.min.x, i&2 ? box.max.y : box.min.y, i&4 ? box.max.z : box.min.z));
+  const inv = camera.matrixWorldInverse;
+  let xmin=1e9,xmax=-1e9,ymin=1e9,ymax=-1e9;
+  pts.forEach(p => { const q = p.clone().applyMatrix4(inv);
+    xmin=Math.min(xmin,q.x); xmax=Math.max(xmax,q.x);
+    ymin=Math.min(ymin,q.y); ymax=Math.max(ymax,q.y); });
+  return { xmin, xmax, ymin, ymax, centre, size };
+}
+
+// Renders one object at a fixed world-units-per-pixel so every model shares one scale.
+window.__renderObject = function(obj, unitsPerPixel, W, H, yawDeg){
+  if (current) scene.remove(current);
+  // Rotating the model rather than the camera keeps one fixed projection, so every
+  // rotation of every model still shares the same grid and lighting.
+  const wrap = new THREE.Group();
+  wrap.rotation.y = (yawDeg || 0) * Math.PI / 180;
+  wrap.add(obj);
+  current = wrap; scene.add(wrap);
+  obj = wrap;
+  const camera = new THREE.OrthographicCamera(-1,1,1,-1, 0.01, 4000);
+  const f = frame(obj, camera, 0);
+  // True iso renders a unit cube 1.4142 wide by 1.6330 tall; the game's 2:1 dimetric
+  // wants a square bounding box. Packing more world height into the same pixels does the
+  // squash in-camera, so no resampling step is needed. sqrt(3)/2 measured, not assumed.
+  const SQUASH = Math.sqrt(3) / 2;
+  const halfW = (W * unitsPerPixel) / 2, halfH = (H * (unitsPerPixel / SQUASH)) / 2;
+  const cxm = (f.xmin + f.xmax) / 2, cym = (f.ymin + f.ymax) / 2;
+  camera.left = cxm - halfW; camera.right = cxm + halfW;
+  camera.top  = cym + halfH; camera.bottom = cym - halfH;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H, false);
+  renderer.render(scene, camera);
+  return { size: f.size.toArray(), extent: [f.xmax-f.xmin, f.ymax-f.ymin] };
+};
+
+window.__loadGLB = (url) => new Promise((res, rej) =>
+  loader.load(url, g => res(g.scene), undefined, e => rej(String(e))));
+
+window.__cube = () => {
+  const g = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),
+                           new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  g.position.set(0,0.5,0);
+  return new THREE.Group().add(g);
+};
+window.__ready = true;
+</script>
