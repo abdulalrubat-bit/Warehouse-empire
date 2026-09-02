@@ -77,6 +77,26 @@ forklift from real kit wheels plus geometry in the kits' own palette, sampled fr
 hydraulic ram, overhead guard on four posts, forks, and a beacon. `models.json` marks it
 `"build": "Forklift"` and the pipeline calls the builder instead of loading a GLB.
 
+## Tabs
+
+The site is the point, so content tabs slide a panel over the left rather than replacing
+the screen — the yard stays live and visible beside whatever you are buying. The panel
+starts below the top bar deliberately: covering the cash figure makes every price in the
+panel meaningless.
+
+- **Fleet** — the eight tiers, with each one's current output including upgrade
+  multipliers.
+- **Upgrades** — two multipliers and a manager per tier, gated behind owning enough of
+  that tier, exactly as the shipping game does it. Locked ones say what they need.
+- **Store** — liveries. These repaint the scene rather than the sprites: sky, ground and
+  a single flat tint pass over the finished frame. Tinting every sprite per frame would
+  cost more than the whole render does.
+- **Office** — corporate structures (buyable here as well as by tapping the plot) and
+  site totals.
+
+An open panel refreshes every sixth tick rather than every tick: rebuilding the DOM ten
+times a second is wasteful and swallows taps.
+
 ## Motion
 
 Vehicles are agents with a closed route. Facing comes from the direction of travel —

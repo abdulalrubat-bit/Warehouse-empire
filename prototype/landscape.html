@@ -84,6 +84,42 @@
     border:1px solid var(--hivis);border-left:3px solid var(--hivis);border-radius:5px;
     padding:8px 14px;font-size:11px;pointer-events:none;}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* The site is the point, so content tabs slide a panel over the left rather than
+     replacing the screen. The canvas stays live and shifts its centre to compensate. */
+  /* Starts below the top bar: the cash figure has to stay readable while shopping,
+     and covering it makes every price in the panel meaningless. */
+  #panel{position:fixed;z-index:5;left:0;top:58px;bottom:44px;width:392px;
+    background:rgba(15,19,24,.95);border-right:1px solid var(--line);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transform:translateX(-100%);transition:transform .22s cubic-bezier(.3,.7,.3,1);
+    display:flex;flex-direction:column;}
+  #panel.open{transform:none}
+  #panel.open ~ #left, body.panelopen #left, body.panelopen #hint{opacity:0;pointer-events:none}
+  #left,#hint{transition:opacity .18s}
+  .phead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;
+    border-bottom:1px solid var(--line);font-family:var(--font-cond);font-size:15px;
+    letter-spacing:2px;text-transform:uppercase;}
+  .phead button{background:none;border:0;color:var(--dim);font-size:22px;line-height:1;
+    cursor:pointer;padding:0 4px;}
+  .pbody{flex:1;overflow-y:auto;padding:10px 12px 20px;-webkit-overflow-scrolling:touch;}
+  .sect{font-family:var(--font-cond);font-size:10px;letter-spacing:1.8px;color:var(--dim);
+    text-transform:uppercase;margin:14px 0 6px;padding-left:6px;border-left:2px solid var(--hivis);}
+  .sect:first-child{margin-top:2px}
+  .item{display:flex;align-items:center;gap:9px;width:100%;background:rgba(255,255,255,.03);
+    border:1px solid var(--line);border-radius:5px;padding:8px 10px;margin-bottom:5px;
+    color:var(--ink);font-family:inherit;text-align:left;cursor:pointer;}
+  .item .t{flex:1;min-width:0}
+  .item .n{font-family:var(--font-cond);font-size:12.5px;letter-spacing:.6px;
+    text-transform:uppercase;display:block;}
+  .item .d{font-size:9px;color:var(--dim);display:block;margin-top:1px;line-height:1.5;}
+  .item .c{font-family:var(--font-cond);font-size:12px;color:var(--dim);white-space:nowrap;}
+  .item .q{font-family:var(--font-cond);font-size:13px;min-width:26px;text-align:right;}
+  .item.can{border-color:rgba(63,178,100,.5)}
+  .item.can .c{color:var(--cash)}
+  .item.own{opacity:.55;cursor:default}
+  .item.own .c{color:var(--hivis)}
+  .item:disabled{opacity:.4;cursor:default}
+  .swatch{width:22px;height:22px;border-radius:4px;flex:0 0 auto;border:1px solid rgba(0,0,0,.4)}
   #loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
     background:var(--bg);z-index:9;font-family:var(--font-cond);letter-spacing:3px;
     text-transform:uppercase;color:var(--dim);font-size:13px;}
@@ -124,6 +160,11 @@
   </div>
 </div>
 <div class="hud" id="hint"><div class="card">Tap a marked plot to build</div></div>
+
+<div id="panel">
+  <div class="phead"><span id="panelTitle">Fleet</span><button id="panelClose">&times;</button></div>
+  <div class="pbody" id="panelBody"></div>
+</div>
 <div id="toast"></div>
 
 <div class="hud" id="right">
@@ -254,16 +295,65 @@
     { id:"plant",   name:"Process Plant", base:9.0e9,  plot:{ x:41, y:2,  w:8,  d:7  }, sprite:"plant-90" }
   ];
 
-  var state = { money: 60, lifetime: 0, owned: {}, corp: {} };
+  // Upgrades mirror the shipping game's shape: two multipliers and a manager per tier,
+  // each gated behind owning enough of that tier to have earned it.
+  var U1 = { picker:"Ergonomic Gloves", trolley:"Greased Bearings", forklift:"Fresh Batteries",
+             reach:"Tilt Cameras", conveyor:"High-Speed Belts", sorter:"Firmware Patch",
+             crane:"Dual Hoists", hub:"Night Shift Crew" };
+  var U2 = { picker:"Espresso Machine", trolley:"Alloy Frames", forklift:"Attachment Kit",
+             reach:"Laser Guidance", conveyor:"Smart Diverters", sorter:"Neural Sort AI",
+             crane:"Predictive Maintenance", hub:"Regional Network" };
+  var MGR = { picker:"Deso", trolley:"Shazza", forklift:"Big Mick", reach:"Tran",
+              conveyor:"Elena", sorter:"Unit 7", crane:"Davo", hub:"The Colonel" };
+  var UPGRADES = [];
+  GENS.forEach(function(g){
+    UPGRADES.push({ id:g.id+"_u1", name:U1[g.id], target:g.id, mult:2,
+      cost:Math.ceil(g.cost*12),  req:10, desc:"Doubles output from every "+g.name });
+    UPGRADES.push({ id:"mgr_"+g.id, name:"Mgr: "+MGR[g.id], target:g.id, mult:1.5,
+      cost:Math.ceil(g.cost*45),  req:25, desc:"+50% "+g.name+" output" });
+    UPGRADES.push({ id:g.id+"_u2", name:U2[g.id], target:g.id, mult:3,
+      cost:Math.ceil(g.cost*140), req:60, desc:"Triples output from every "+g.name });
+  });
+
+  // Liveries repaint the scene rather than the sprites: sky, ground and an overall tint.
+  // Tinting every sprite per frame would cost more than the whole render does.
+  var THEMES = [
+    { id:"day",     name:"Daylight",    sky:["#7fb0dc","#a8c8e4","#cbdcea"], grass:"#6f8f52",
+      slab:"#71777f", apron:"#5b6169", road:"#5f666e", tint:null },
+    { id:"overcast",name:"Overcast",    sky:["#9aa7b4","#b4bec8","#c9d1d8"], grass:"#68805a",
+      slab:"#6d7278", apron:"#585d63", road:"#5b6067", tint:"rgba(120,132,146,0.16)" },
+    { id:"dusk",    name:"Golden Hour", sky:["#e8935a","#f2b878","#f6d9ac"], grass:"#6b7f46",
+      slab:"#7d7469", apron:"#665d54", road:"#6b6157", tint:"rgba(255,150,60,0.17)" },
+    { id:"night",   name:"Night Shift", sky:["#101a2c","#1b2740","#2b3550"], grass:"#33452f",
+      slab:"#3f4551", apron:"#2f343d", road:"#343a44", tint:"rgba(24,38,72,0.46)" }
+  ];
+  var theme = THEMES[0];
+
+  var state = { money: 60, lifetime: 0, owned: {}, corp: {}, up: {}, theme: "day" };
   GENS.forEach(function(g){ state.owned[g.id] = 0; });
   CORP.forEach(function(c){ state.corp[c.id] = 0; });
 
   var COST_GROWTH = 1.15;
   function costOf(g){ return Math.ceil(g.cost * Math.pow(COST_GROWTH, state.owned[g.id] || 0)); }
   function corpCost(c){ return Math.ceil(c.base * Math.pow(6, state.corp[c.id] || 0)); }
+  function upMult(id){
+    var m = 1;
+    for (var i = 0; i < UPGRADES.length; i++){
+      var u = UPGRADES[i];
+      if (u.target === id && state.up[u.id]) m *= u.mult;
+    }
+    return m;
+  }
+  function upgradeReady(u){ return (state.owned[u.target] || 0) >= u.req; }
+  function buyUpgrade(u){
+    if (state.up[u.id] || !upgradeReady(u) || state.money < u.cost) return false;
+    state.money -= u.cost; state.up[u.id] = true;
+    rebuild(); return true;
+  }
+
   function totalRate(){
     var r = 0;
-    GENS.forEach(function(g){ r += (state.owned[g.id] || 0) * g.rate; });
+    GENS.forEach(function(g){ r += (state.owned[g.id] || 0) * g.rate * upMult(g.id); });
     var lift = 1;
     CORP.forEach(function(c){ lift += (state.corp[c.id] || 0) * 0.12; });
     return r * lift;
@@ -528,6 +618,136 @@
       built + " built \u00b7 " + unitsOwned() + " units";
   }
 
+  // ---- tab panels -------------------------------------------------------------------
+  var panel = document.getElementById("panel");
+  var panelBody = document.getElementById("panelBody");
+  var panelTitle = document.getElementById("panelTitle");
+  var curTab = "floor";
+
+  function row(cls, left, name, desc, right){
+    var b = document.createElement("button");
+    b.className = "item " + (cls || "");
+    b.innerHTML = (left || "") +
+      '<span class="t"><span class="n"></span><span class="d"></span></span>' +
+      '<span class="c"></span>';
+    b.querySelector(".n").textContent = name;
+    b.querySelector(".d").textContent = desc;
+    b.querySelector(".c").textContent = right;
+    return b;
+  }
+  function section(t){
+    var d = document.createElement("div");
+    d.className = "sect"; d.textContent = t; return d;
+  }
+
+  var panelBuilders = {
+    fleet: function(body){
+      body.appendChild(section("Equipment"));
+      GENS.forEach(function(g){
+        var n = state.owned[g.id] || 0, c = costOf(g), can = state.money >= c;
+        var mult = upMult(g.id);
+        var b = row(can ? "can" : "", '<span class="q">' + n + '</span>', g.name,
+          fmt(g.rate * mult) + "/sec each" + (mult > 1 ? "  \u00b7 \u00d7" + fmt(mult) : ""),
+          money(c));
+        b.disabled = !can;
+        b.onclick = function(){ if (buyGen(g)) showPanel(curTab); };
+        body.appendChild(b);
+      });
+    },
+
+    upgrades: function(body){
+      var any = false;
+      GENS.forEach(function(g){
+        var mine = UPGRADES.filter(function(u){ return u.target === g.id; });
+        var vis = mine.filter(function(u){ return state.up[u.id] || upgradeReady(u) ||
+                                                  (state.owned[g.id] || 0) > 0; });
+        if (!vis.length) return;
+        any = true;
+        body.appendChild(section(g.name));
+        vis.forEach(function(u){
+          var owned = !!state.up[u.id], ready = upgradeReady(u), can = ready && state.money >= u.cost;
+          var b = row(owned ? "own" : (can ? "can" : ""), "", u.name,
+            owned ? u.desc : (ready ? u.desc : "Needs " + u.req + " \u00d7 " + g.name),
+            owned ? "INSTALLED" : money(u.cost));
+          b.disabled = owned || !can;
+          b.onclick = function(){ if (buyUpgrade(u)) showPanel(curTab); };
+          body.appendChild(b);
+        });
+      });
+      if (!any){
+        var d = document.createElement("div");
+        d.className = "sect"; d.textContent = "Buy some equipment first";
+        body.appendChild(d);
+      }
+    },
+
+    store: function(body){
+      body.appendChild(section("Site livery"));
+      THEMES.forEach(function(t){
+        var active = theme.id === t.id;
+        var sw = '<span class="swatch" style="background:linear-gradient(135deg,' +
+                 t.sky[0] + ' 0 50%,' + t.grass + ' 50% 100%)"></span>';
+        var b = row(active ? "own" : "can", sw, t.name,
+          t.id === "night" ? "Night operation" : "Daylight operation",
+          active ? "ACTIVE" : "APPLY");
+        b.onclick = function(){
+          theme = t; state.theme = t.id; showPanel(curTab);
+          toast("Livery applied: " + t.name);
+        };
+        body.appendChild(b);
+      });
+    },
+
+    office: function(body){
+      body.appendChild(section("Corporate real estate"));
+      CORP.forEach(function(c){
+        var lvl = state.corp[c.id] || 0, cost = corpCost(c);
+        var maxed = lvl >= 5, can = !maxed && state.money >= cost;
+        var b = row(maxed ? "own" : (can ? "can" : ""),
+          '<span class="q">' + lvl + '</span>', c.name,
+          maxed ? "Fully built" : "+12% site output per level",
+          maxed ? "MAX" : money(cost));
+        b.disabled = maxed || !can;
+        b.onclick = function(){ if (buyCorp(c)) showPanel(curTab); };
+        body.appendChild(b);
+      });
+      body.appendChild(section("Site"));
+      var built = 0; CORP.forEach(function(c){ built += state.corp[c.id] || 0; });
+      [["Units owned", unitsOwned()],
+       ["Structures", built + " / " + (CORP.length * 5)],
+       ["Upgrades", Object.keys(state.up).length + " / " + UPGRADES.length],
+       ["Output", money(totalRate()) + "/sec"],
+       ["Lifetime", money(state.lifetime)]].forEach(function(p){
+        var d = document.createElement("div");
+        d.className = "row";
+        d.innerHTML = "<span></span><b></b>";
+        d.querySelector("span").textContent = p[0];
+        d.querySelector("b").textContent = p[1];
+        body.appendChild(d);
+      });
+    }
+  };
+
+  function showPanel(tab){
+    curTab = tab;
+    if (tab === "floor"){
+      panel.classList.remove("open");
+      document.body.classList.remove("panelopen");
+      return;
+    }
+    panelTitle.textContent = { fleet:"Fleet", upgrades:"Upgrades", store:"Store", office:"Office" }[tab];
+    panelBody.innerHTML = "";
+    panelBuilders[tab](panelBody);
+    panel.classList.add("open");
+    document.body.classList.add("panelopen");
+  }
+
+  document.getElementById("panelClose").onclick = function(){
+    document.querySelectorAll("#tabs button").forEach(function(o){ o.classList.remove("on"); });
+    document.querySelectorAll("#tabs button")[0].classList.add("on");
+    showPanel("floor");
+  };
+
   var toastTimer = null;
   function toast(msg){
     var t = document.getElementById("toast");
@@ -550,14 +770,14 @@
 
     // sky then ground
     var g = ctx.createLinearGradient(0, 0, 0, CH);
-    g.addColorStop(0, "#7fb0dc"); g.addColorStop(0.55, "#a8c8e4"); g.addColorStop(1, "#cbdcea");
+    g.addColorStop(0, theme.sky[0]); g.addColorStop(0.55, theme.sky[1]); g.addColorStop(1, theme.sky[2]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
 
-    diamond(-8, -8, SITE.w + 18, SITE.d + 18, "#6f8f52");        // grass surround
-    diamond(-2, -2, SITE.w + 4, SITE.d + 4, "#5b6169");          // asphalt apron
-    diamond(0, 0, SITE.w, SITE.d, "#71777f");                     // yard slab
-    diamond(11, 10.5, 20, 5, "#5f666e");                          // receiving lane
-    diamond(28, 12.5, 12, 4, "#5f666e");                          // outbound apron
+    diamond(-8, -8, SITE.w + 18, SITE.d + 18, theme.grass);       // grass surround
+    diamond(-2, -2, SITE.w + 4, SITE.d + 4, theme.apron);         // asphalt apron
+    diamond(0, 0, SITE.w, SITE.d, theme.slab);                    // yard slab
+    diamond(11, 10.5, 20, 5, theme.road);                         // receiving lane
+    diamond(28, 12.5, 12, 4, theme.road);                         // outbound apron
     diamond(1, 16.4, SITE.w - 2, 0.6, "#8a6f1e");                 // hazard walkway
     diamond(22, -1, 5, 3, "#4f555c");                             // gate road
 
@@ -574,6 +794,9 @@
         drawSprite(e.n, e.x, e.y, e.z);
       }
       drawSmoke();
+      // One flat pass over the finished scene, so a livery costs a single rect rather
+      // than re-tinting every sprite.
+      if (theme.tint){ ctx.fillStyle = theme.tint; ctx.fillRect(0, 0, CW, CH); }
     }
 
     var ms = performance.now() - t0;
@@ -662,7 +885,11 @@
     document.getElementById("rate").textContent = money(r);
     document.getElementById("tapv").textContent = "tap " + money(tapValue());
     renderGenList();
+    // An open panel has live costs in it, so refresh it -- but only every few ticks,
+    // since rebuilding the DOM ten times a second is wasteful and eats taps.
+    if (curTab !== "floor" && ++panelTick % 6 === 0) showPanel(curTab);
   }, 100);
+  var panelTick = 0;
 
   function money(n){ return "$" + fmt(n); }
 
@@ -674,10 +901,12 @@
     return (Math.floor(n * 100) / 100) + u[i];
   }
 
-  document.querySelectorAll("#tabs button").forEach(function(b){
+  var TAB_IDS = ["floor", "fleet", "upgrades", "store", "office"];
+  document.querySelectorAll("#tabs button").forEach(function(b, i){
     b.onclick = function(){
       document.querySelectorAll("#tabs button").forEach(function(o){ o.classList.remove("on"); });
       b.classList.add("on");
+      showPanel(TAB_IDS[i]);
     };
   });
 
