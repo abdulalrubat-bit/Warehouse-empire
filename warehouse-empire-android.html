@@ -249,6 +249,11 @@
   .sku-card.active{border-left:3px solid var(--cash); background:linear-gradient(90deg,rgba(44,132,66,.18),var(--panel2) 40%);}
   .sku-card b{font-family:var(--font-cond); font-size:14px; letter-spacing:1px; text-transform:uppercase; display:block;}
   .sku-card span{font-size:9.5px; color:var(--dim); display:block; margin-top:2px; line-height:1.4;}
+  /* Locked entries stay readable rather than being greyed to nothing -- the whole reason
+     to show them is to advertise what the next rank buys you. */
+  .sku-card.locked{opacity:.55; border-style:dashed;}
+  .mkt.lock{color:var(--dim); border-color:var(--line); background:transparent;}
+  .sitecard.lock{opacity:.55; border-style:dashed;}
 </style>
 </head>
 <body>
@@ -358,7 +363,7 @@
       <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
       <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
       <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
-      <div><div class="sv" id="scAch">0<i>/32</i></div><div class="sl">Awards</div></div>
+      <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
     </div>
 
     <div class="sitepick" id="sitePick" hidden>
@@ -700,7 +705,7 @@
     {id: "marketing", name: "Marketing Office", ic: "building", baseCost: 5e9, desc: "Longer Hot & Peak Markets", mastery: "Level 10: Always Return to a Hot Market"},
     {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
     {id: "training", name: "Training Centre", ic: "building", baseCost: 50e9, desc: "Stronger Site Managers", mastery: "Level 10: Managers Double Their Bonus"},
-    {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Immune to Hazards"},
+    {id: "solar", name: "Solar Array", ic: "building", baseCost: 250e9, desc: "Reduces Fleet Cost Inflation", mastery: "Level 10: Yard Incidents Pay Double"},
     {id: "depot", name: "Fleet Depot", ic: "building", baseCost: 500e9, desc: "Further Cuts Fleet Cost Inflation", mastery: "Level 10: One Free Purchase per Site"},
     {id: "server", name: "Server Farm", ic: "building", baseCost: 1e12, desc: "Combo Extender & Decelerator", mastery: "Level 10: Combo Never Decays"}
   ];
@@ -710,7 +715,12 @@
     {id:"lean", br:"auto", req:null, ic:"ruler", name:"Lean Layout", cost:16, desc:"All output +10%, forever"},
     {id:"maint", br:"auto", req:"lean", ic:"cycle", name:"Preventive Maintenance", cost:42, desc:"Wage bill cut by 20%"},
     {id:"radio", br:"logi", req:null, ic:"radio", name:"Radio Dispatch", cost:26, desc:"Rush orders arrive far more often"},
-    {id:"night", br:"logi", req:"radio", ic:"moon", name:"Overnight Crew", cost:38, desc:"Offline cap 8h → 24h"}
+    {id:"night", br:"logi", req:"radio", ic:"moon", name:"Overnight Crew", cost:38, desc:"Offline cap 8h → 24h"},
+    // Tier two. The whole first tier costs 130 pallets, which a committed player clears
+    // inside a day; these are what the pallet income is for after that.
+    {id:"crew", br:"labour", req:"gloves", ic:"hat", name:"Cross-Trained Crew", cost:120, desc:"Tap value +60% on top of Gloves"},
+    {id:"kaizen", br:"auto", req:"maint", ic:"cycle", name:"Kaizen Program", cost:200, desc:"All output +15%, forever"},
+    {id:"telemetry", br:"logi", req:"night", ic:"radio", name:"Yard Telemetry", cost:320, desc:"Yard incidents appear twice as often"}
   ];
 
   var SUPPLIES = [
@@ -810,17 +820,29 @@
   }
   function triple(a){ return { top:a[0], left:a[1], right:a[2] }; }
 
+  // req is lifetime capital. The first three are open from the start; the Port Terminal
+  // is the first site you have to earn, which is what makes the prestige screen a choice
+  // again once you have seen the other three.
   var SITES = [
-    { id:"general", name:"General Distribution", blurb:"Steady balanced operations.", cost:0.96, out:1.02, tap:1.05, wage:1.00, cap:0, conMult:1.0 },
-    { id:"cold", name:"Cold Storage", blurb:"High energy wages, premium contracts.", cost:1.04, out:1.02, tap:0.75, wage:1.30, cap:0, conMult:2.2 },
-    { id:"hazmat", name:"Dangerous Goods", blurb:"Strict unit limits, heavy payout.", cost:1.02, out:1.02, tap:1.00, wage:1.95, cap:38, conMult:1.5 }
+    { id:"general", name:"General Distribution", blurb:"Steady balanced operations.", cost:0.96, out:1.02, tap:1.05, wage:1.00, conMult:1.0, req:0 },
+    { id:"cold", name:"Cold Storage", blurb:"High energy wages, premium contracts.", cost:1.04, out:1.02, tap:0.75, wage:1.30, conMult:2.2, req:0 },
+    { id:"hazmat", name:"Dangerous Goods", blurb:"Strict unit limits, heavy payout.", cost:1.02, out:1.02, tap:1.00, wage:1.95, conMult:1.5, req:0 },
+    { id:"port", name:"Port Terminal", blurb:"Automated quay. Dear to run, but contracts pay like nowhere else.", cost:1.10, out:1.02, tap:0.60, wage:2.30, conMult:3.2, req:5e10 }
   ];
+  function siteUnlocked(st){ return state.lifetime >= (st.req || 0); }
 
+  // rank is an index into RANKS. The two late manifests carry the trade-off further in
+  // the direction the first three establish -- more output and far better contracts, paid
+  // for in wages and in hand-pick value.
   var SKUS = [
-    { id:"fmcg", name:"FMCG Groceries", desc:"Standard consumer freight. Balanced output.", outMult:1.0, tapMult:1.0, wageMult:1.0, conMult:1.0 },
-    { id:"pharma", name:"Cold Pharma", desc:"Temperature critical. High value (+35%), strict wages.", outMult:1.35, tapMult:0.8, wageMult:1.25, conMult:1.5 },
-    { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2 }
+    { id:"fmcg", name:"FMCG Groceries", desc:"Standard consumer freight. Balanced output.", outMult:1.0, tapMult:1.0, wageMult:1.0, conMult:1.0, rank:0 },
+    { id:"pharma", name:"Cold Pharma", desc:"Temperature critical. High value (+35%), strict wages.", outMult:1.35, tapMult:0.8, wageMult:1.25, conMult:1.5, rank:0 },
+    { id:"industrial", name:"Heavy Industrial", desc:"Bulky industrial freight. Massive contract rewards.", outMult:1.1, tapMult:0.5, wageMult:1.1, conMult:2.2, rank:0 },
+    { id:"bonded", name:"Bonded Spirits", desc:"Excise-bonded stock. Strong output, security wages, rich contracts.", outMult:1.6, tapMult:0.55, wageMult:1.45, conMult:1.9, rank:6 },
+    { id:"semis", name:"Semiconductors", desc:"Cleanroom freight. Huge output and contracts, hand picking is near worthless.", outMult:2.1, tapMult:0.3, wageMult:2.0, conMult:3.4, rank:8 }
   ];
+  function skuUnlocked(sk){ return rankIndex() >= (sk.rank || 0); }
+  function unlockedSkus(){ return SKUS.filter(skuUnlocked); }
 
   // --- Crates ------------------------------------------------------------------------
   // A second, ad-gated currency, kept deliberately narrow: it buys liveries and nothing
@@ -914,6 +936,83 @@
     renderMarket();
   }
 
+  // --- Yard incidents ------------------------------------------------------------------
+  // What used to be two hotspots that sat on the slab forever. Each type now pays in a
+  // different currency -- cash, speed, tap value, pallets, a rush -- so the thing that
+  // appears in the yard is worth reading before you tap it, and each one now has a life,
+  // so clearing the yard is a small live task rather than a chore you do eventually.
+  // secs is how many seconds of current production the incident is worth. The numbers are
+  // small on purpose: a player who clears every incident for a solid hour should earn a
+  // useful bonus, not a second income stream. The two hotspots this replaces paid a
+  // Hazard Pay of 45 seconds against a 30-second spawn gap, which came to roughly 90% of
+  // an idle hour -- clearing the yard quietly outclassed running the warehouse.
+  var INCIDENTS = [
+    { id:"spill",    name:"Chemical Spill",  weight:28, ttl:60, kind:"cash",  secs:6,  blurb:"Hazard Pay" },
+    { id:"audit",    name:"Data Cube",       weight:20, ttl:60, kind:"speed", ms:15000 },
+    { id:"surge",    name:"Power Surge",     weight:18, ttl:60, kind:"tap",   ms:20000 },
+    { id:"pallet",   name:"Lost Pallet",     weight:14, ttl:45, kind:"pallet", n:1 },
+    { id:"overtime", name:"Overtime Call",   weight:12, ttl:40, kind:"rush",  ms:15000 },
+    // Short fuse, big purse. The one incident you drop what you are doing for.
+    { id:"express",  name:"Express Courier", weight:8,  ttl:9,  kind:"cash",  secs:24, blurb:"Express Fee" }
+  ];
+  // Pallets are the daily calendar's currency and the perk tree's price, so the yard is
+  // not allowed to print them. Uncapped, Lost Pallet alone paid ~480 a day against a
+  // calendar that pays 2-15 and a perk tree that costs a few hundred.
+  var INCIDENT_PALLETS_PER_DAY = 5;
+  function incidentPalletsLeft(){
+    if (!sameDailyPeriod(state.incidentPalletDay)) return INCIDENT_PALLETS_PER_DAY;
+    return Math.max(0, INCIDENT_PALLETS_PER_DAY - (state.incidentPalletsToday || 0));
+  }
+  var INCIDENT_BY_ID = {};
+  INCIDENTS.forEach(function(h){ INCIDENT_BY_ID[h.id] = h; });
+  var INCIDENT_WEIGHT_TOTAL = INCIDENTS.reduce(function(a,h){ return a + h.weight; }, 0);
+
+  function rollIncident(){
+    var r = Math.random() * INCIDENT_WEIGHT_TOTAL;
+    for (var i=0;i<INCIDENTS.length;i++){ r -= INCIDENTS[i].weight; if (r <= 0) return INCIDENTS[i]; }
+    return INCIDENTS[0];
+  }
+
+  // The Solar Array's mastery used to switch incidents off entirely, which read as
+  // "immune to hazards" but in practice deleted an income stream from anyone who
+  // finished the building. It doubles the payout instead.
+  function incidentPayMult(){ return (state.corp.solar || 0) >= 10 ? 2 : 1; }
+
+  // Payout lives with the table rather than in the tap handler, so a test can clear an
+  // incident without having to synthesise a canvas hit.
+  function clearIncident(def){
+    state.incidentsCleared = (state.incidentsCleared || 0) + 1;
+    var mult = incidentPayMult();
+    if (def.kind === "cash"){
+      var reward = Math.max(50, totalRate() * def.secs) * mult;
+      state.money += reward; state.total += reward; state.lifetime += reward;
+      showToast(def.name + " cleared! <b>+" + money(reward) + "</b> " + def.blurb + ".");
+    } else if (def.kind === "speed"){
+      incidentSpeedUntil = Math.max(incidentSpeedUntil, Date.now()) + def.ms * mult;
+      showToast(def.name + " secured! <b>+50% Speed</b> for " + Math.round(def.ms * mult / 1000) + "s.");
+    } else if (def.kind === "tap"){
+      tapBoostUntil = Math.max(tapBoostUntil, Date.now()) + def.ms * mult;
+      showToast(def.name + " tapped! <b>\u00d74 hand picks</b> for " + Math.round(def.ms * mult / 1000) + "s.");
+    } else if (def.kind === "rush"){
+      boostUntil = Math.max(boostUntil, Date.now()) + def.ms * mult;
+      showToast(def.name + " answered! <b>\u00d78 rush</b> for " + Math.round(def.ms * mult / 1000) + "s.");
+    } else if (def.kind === "pallet"){
+      var n = Math.min(def.n * mult, incidentPalletsLeft());
+      if (n > 0){
+        if (!sameDailyPeriod(state.incidentPalletDay)){ state.incidentPalletDay = dailyPeriod(); state.incidentPalletsToday = 0; }
+        state.incidentPalletsToday = (state.incidentPalletsToday || 0) + n;
+        state.pallets += n;
+        showToast(def.name + " recovered! <b>+" + n + " Pallet" + (n > 1 ? "s" : "") + "</b>.");
+      } else {
+        // Past the daily cap the pallet becomes salvage, so the drop is never a dud.
+        var salvage = Math.max(50, totalRate() * 6) * mult;
+        state.money += salvage; state.total += salvage; state.lifetime += salvage;
+        showToast(def.name + " recovered! Pallet quota met \u2014 sold as salvage for <b>+" + money(salvage) + "</b>.");
+      }
+    }
+    checkAch();
+  }
+
   var DAILY_REWARDS = [
     { day:1, pallets:2, desc:"Stipend" }, { day:2, pallets:3, desc:"Overtime" }, { day:3, pallets:4, desc:"Bulk Inbound" },
     { day:4, pallets:5, desc:"Express" }, { day:5, pallets:6, desc:"Grant" }, { day:6, pallets:8, desc:"Priority" }, { day:7, pallets:15, desc:"Mastery" }
@@ -926,9 +1025,16 @@
     { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to build your Network.", done: function(){ return state.prestiges >= 1; } }
   ];
 
+  // The ladder used to stop at Site Manager -- $250B -- which is roughly where the
+  // cheapest Corporate building comes into range, so the whole corporate game ran with
+  // the rank bonus frozen. The six added ranks widen as they climb (x48 up to x125),
+  // because output growth accelerates late: an evenly spaced tail put the top rung four
+  // days from the start of a run, barely past the ceiling it was meant to replace.
   var RANKS = [
     {name:"Casual Hand", at:0}, {name:"Storeman", at:5e4}, {name:"Leading Hand", at:2e6},
-    {name:"Shift Supervisor", at:1e8}, {name:"Inventory Controller", at:5e9}, {name:"Site Manager", at:2.5e11}
+    {name:"Shift Supervisor", at:1e8}, {name:"Inventory Controller", at:5e9}, {name:"Site Manager", at:2.5e11},
+    {name:"Operations Manager", at:1.2e13}, {name:"Regional Director", at:5e14}, {name:"State Manager", at:2.5e16},
+    {name:"National Director", at:1.5e18}, {name:"Chief Logistics Officer", at:1.2e20}, {name:"Empire Magnate", at:1.5e22}
   ];
   function rankIndex(){
     var i = 0; for (var k = 0; k < RANKS.length; k++) if (state.lifetime >= RANKS[k].at) i = k;
@@ -947,6 +1053,7 @@
     marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
+    incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
     corpProgress: {}
   };
 
@@ -955,6 +1062,9 @@
 
   window.state = state;
   window.render = render;
+  // Same reason as the two above: a yard incident is resolved from a tap at a projected
+  // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
+  window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
 
   GENS.forEach(function(g){ state.owned[g.id] = 0; });
 
@@ -1066,7 +1176,7 @@
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -1094,7 +1204,7 @@
 
   function tapValue(){
       var basePassiveVal = (totalRate() * 0.05) / Math.sqrt(Math.max(1, comboMult()));
-      return (1 + basePassiveVal) * upMult("tap") * (state.perks.gloves ? 1.25 : 1) * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
+      return (1 + basePassiveVal) * upMult("tap") * (state.perks.gloves ? 1.25 : 1) * (state.perks.crew ? 1.60 : 1) * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
   }
 
   function costOf(g, qty){
@@ -1134,7 +1244,8 @@
       // paints NaN everywhere with no way back short of a wipe.
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
-       "streakGrace","graceRefilledAt"].forEach(function(k){
+       "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
+       "incidentPalletsToday"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -1392,7 +1503,10 @@
 
   function newPriorityClient(){
     var r = totalRate();
-    var sku = SKUS[Math.floor(Math.random() * SKUS.length)];
+    // Only manifests the player can actually switch to: the whole point of showing the
+    // market on the card is that waiting for a better one is a decision.
+    var open = unlockedSkus();
+    var sku = open[Math.floor(Math.random() * open.length)];
     return {
       sku: sku.id,
       goal: Math.max(2000, Math.floor(r * 3600 * PRIORITY_GOAL_HOURS)),
@@ -1430,6 +1544,7 @@
     if (!p || p.collected || p.prog < p.goal) return;
     var cash = priorityPayout();
     p.collected = true;
+    state.priorityDone = (state.priorityDone || 0) + 1;
     state.money += cash; state.total += cash; state.lifetime += cash;
     state.crates += p.crates;
     sfx("prestige");
@@ -1662,11 +1777,19 @@
     var container = document.getElementById("skuList"); container.innerHTML = "";
     skuCardEls = {};
     SKUS.forEach(function(skuItem){
+      var open = skuUnlocked(skuItem);
       var c = document.createElement("div");
-      c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "");
+      c.className = "sku-card" + (skuItem.id === state.sku ? " active" : "") + (open ? "" : " locked");
+      // A locked card shows the rank it wants instead of a market badge -- the market is
+      // information you can act on, and you cannot act on this one yet.
       c.innerHTML = "<b>" + skuItem.name + "</b><span>" + skuItem.desc + "</span>" +
-                    '<span class="mkt" data-r="mkt"></span>';
+                    (open ? '<span class="mkt" data-r="mkt"></span>'
+                          : '<span class="mkt lock">' + RANKS[skuItem.rank].name.toUpperCase() + '</span>');
       c.addEventListener("click", function(){
+        if (!skuUnlocked(skuItem)){
+          showToast("<b>" + skuItem.name + "</b> needs the rank of <b>" + RANKS[skuItem.rank].name + "</b>.");
+          return;
+        }
         var switched = state.sku !== skuItem.id;
         state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
         sfx("upgrade");
@@ -1681,7 +1804,7 @@
         renderSkuUI(); render(); saveGame();
       });
       container.appendChild(c);
-      skuCardEls[skuItem.id] = c.querySelector('[data-r="mkt"]');
+      if (open) skuCardEls[skuItem.id] = c.querySelector('[data-r="mkt"]');
     });
     renderMarket();
   }
@@ -1870,7 +1993,28 @@
     {id:"pal3", ic:"box", name:"Warehouse Full", test:function(){return state.pallets>=150;}},
     {id:"combo1", ic:"flame", name:"Hot Streak", test:function(){return maxCombo>=2.0;}},
     {id:"combo2", ic:"flame", name:"Unstoppable", test:function(){return maxCombo>=3.5;}},
-    {id:"combo3", ic:"flame", name:"Godlike", test:function(){return maxCombo>=4.6;}}
+    {id:"combo3", ic:"flame", name:"Godlike", test:function(){return maxCombo>=4.6;}},
+    // The grid used to stop paying out at $10B lifetime -- roughly a fortieth of the way
+    // to the cheapest Corporate building -- so the entire late game earned no awards.
+    {id:"cash7", ic:"cash", name:"Trillionaire", test:function(){return state.lifetime>=1e12;}},
+    {id:"cash8", ic:"cash", name:"Quadrillion Club", test:function(){return state.lifetime>=1e15;}},
+    {id:"cash9", ic:"cash", name:"The Long Haul", test:function(){return state.lifetime>=1e18;}},
+    {id:"rank1", ic:"hat", name:"Regional Director", test:function(){return rankIndex()>=7;}},
+    {id:"rank2", ic:"hat", name:"Board Level", test:function(){return rankIndex()>=10;}},
+    {id:"inc1", ic:"flame", name:"First Responder", test:function(){return (state.incidentsCleared||0)>=25;}},
+    {id:"inc2", ic:"flame", name:"Yard Marshal", test:function(){return (state.incidentsCleared||0)>=200;}},
+    {id:"pri1", ic:"clip", name:"Priority Carrier", test:function(){return (state.priorityDone||0)>=10;}},
+    {id:"pri2", ic:"clip", name:"Preferred Supplier", test:function(){return (state.priorityDone||0)>=50;}},
+    {id:"corp1", ic:"building", name:"Property Portfolio", test:function(){
+      var n=0; CORP_BUILDINGS.forEach(function(cb){ if((state.corp[cb.id]||0)>0) n++; }); return n>=4;
+    }},
+    {id:"corp2", ic:"building", name:"Head Office", test:function(){
+      for (var i=0;i<CORP_BUILDINGS.length;i++) if ((state.corp[CORP_BUILDINGS[i].id]||0)>=10) return true;
+      return false;
+    }},
+    {id:"livery1", ic:"crate", name:"Livery Collector", test:function(){
+      var n=0; THEMES.forEach(function(t){ if(themeOwned(t)) n++; }); return n>=4;
+    }}
   ];
 
   var badgeEls = {};
@@ -1900,14 +2044,22 @@
   function buildSiteList(){
     var list = document.getElementById("siteList"); if(!list) return; list.innerHTML = "";
     SITES.forEach(function(st){
-      var b = document.createElement("button"); b.className = "sitecard";
-      b.innerHTML = "<b>" + st.name + "</b><div class=\"sblurb\">" + st.blurb + "</div>";
+      var open = siteUnlocked(st);
+      var b = document.createElement("button"); b.className = "sitecard" + (open ? "" : " lock");
+      b.innerHTML = "<b>" + st.name + "</b><div class=\"sblurb\">" +
+                    (open ? st.blurb : "Unlocks at " + money(st.req) + " lifetime capital.") + "</div>";
       b.addEventListener("click", function(){ chooseSite(st.id); });
       list.appendChild(b);
     });
   }
 
   function chooseSite(id){
+    for (var i = 0; i < SITES.length; i++){
+      if (SITES[i].id === id && !siteUnlocked(SITES[i])){
+        showToast("<b>" + SITES[i].name + "</b> unlocks at <b>" + money(SITES[i].req) + "</b> lifetime capital.");
+        return;
+      }
+    }
     state.site = id;
     var sp = document.getElementById("sitePick"); if(sp) sp.hidden = true;
     sfx("upgrade"); showToast("New Site Commissioned: <b>" + currentSite().name + "</b>.");
@@ -2084,7 +2236,7 @@
     else if (curTab === "pallets")  renderPalletsTab();
     else if (curTab === "office")   renderOfficeTab();
 
-    // 32 predicates plus 32 classList writes; once a second is plenty.
+    // 44 predicates plus 44 classList writes; once a second is plenty.
     var now = Date.now();
     if (now - achCheckAt >= 1000){ achCheckAt = now; checkAch(); checkMilestone(); }
   }
@@ -2605,8 +2757,12 @@
     dark:   { top: '#7a828b', left: '#626a73', right: '#464e58' },
     box:    { top: '#e8bf90', left: '#cb9a63', right: '#94703f' },
     hivis:  { top: '#ff9424', left: '#f2620f', right: '#b8480c' },
-    spill:  { top: '#ff7070', left: '#e05252', right: '#9e3232' },
-    audit:  { top: '#9fe9ff', left: '#38bdf8', right: '#0d6f9e' },
+    spill:    { top: '#ff7070', left: '#e05252', right: '#9e3232' },
+    audit:    { top: '#9fe9ff', left: '#38bdf8', right: '#0d6f9e' },
+    surge:    { top: '#ffe98a', left: '#f5c518', right: '#a8830a' },
+    pallet:   { top: '#d9a86a', left: '#b4813f', right: '#775227' },
+    overtime: { top: '#ffb066', left: '#f2740f', right: '#a1490a' },
+    express:  { top: '#b7ffca', left: '#4fd97b', right: '#1f8f45' },
     hazard: { top: '#ffe173', left: '#f5b90b', right: '#b07a09' },
     slab:   { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
     wall:   { top: '#b9c0c8', left: '#98a0a9', right: '#6d7680' },
@@ -3205,11 +3361,11 @@
       var dy = y - p.y;
 
       if (Math.sqrt(dx*dx + dy*dy) < 40){
-        var evType = h.type;
         interactiveEvents.splice(i, 1);
         sfx("shatter");
 
-        var color = evType === "spill" ? PALETTES.spill.left : PALETTES.audit.left;
+        var def = INCIDENT_BY_ID[h.type] || INCIDENTS[0];
+        var color = (PALETTES[h.type] || PALETTES.spill).left;
         for(var jp=0; jp<16; jp++){
             isoParticles.push({
                 x: h.gx + 0.5, y: h.gy + 0.5, z: (h.z || 0) + 0.5,
@@ -3217,15 +3373,7 @@
                 color: color, life: 1.0
             });
         }
-
-        if (evType === "spill"){
-          var reward = Math.max(50, totalRate() * 45);
-          state.money += reward; state.total += reward; state.lifetime += reward;
-          showToast("Hazard Cleared! <b>+" + money(reward) + "</b> Hazard Pay.");
-        } else {
-          incidentSpeedUntil = Date.now() + 15000;
-          showToast("Data Cube Secured! <b>+50% Speed for 15s</b>.");
-        }
+        clearIncident(def);
         render();
         return;
       }
@@ -3501,24 +3649,40 @@
       entities.push({layer: 1, type:'prism', x:-3.2, y:hy+0.6, z:0.6, w:0.6, d:3.3, h:2.2, c:PALETTES.hivis});
     }
 
-    // Interactive Spills/Audits
-    if ((state.corp.solar || 0) < 10) {
-        nextHotspot -= dt;
-        if (nextHotspot <= 0 && interactiveEvents.length < 2){
-          interactiveEvents.push({
-            gx: 3 + Math.random() * 21, gy: 3 + Math.random() * 21,
-            type: Math.random() < 0.6 ? "spill" : "audit", t: 0, z: 1.0
-          });
-          nextHotspot = 20 + Math.random() * 20;
-        }
+    // Yard incidents. Where they land matters as much as what they pay: the old uniform
+    // pick over a 3..24 box put most of them inside the rack block, which fills x 8..36,
+    // y 0..29, so an 0.8-unit marker sat behind a forest of uprights and was never found.
+    // These two bands were measured against the projection rather than guessed -- both
+    // are clear ground and both stay well inside the canvas at every fleet size.
+    nextHotspot -= dt;
+    if (nextHotspot <= 0 && interactiveEvents.length < 3){
+      var pick = rollIncident();
+      var west = Math.random() < 0.65;
+      interactiveEvents.push({
+        // The dock approach down the western side, or the apron at the front gate.
+        gx: west ? -2 + Math.random() * 8  : 22 + Math.random() * 6,
+        gy: west ?  2 + Math.random() * 10 : 35 + Math.random() * 2,
+        type: pick.id, t: 0, ttl: pick.ttl, z: 1.0
+      });
+      nextHotspot = (16 + Math.random() * 18) * (state.perks.telemetry ? 0.5 : 1);
     }
 
-    interactiveEvents.forEach(function(h) {
-        h.t += dt;
-        var pCol = h.type === "spill" ? PALETTES.spill : PALETTES.audit;
-        var pulse = 1.0 + Math.sin(h.t * 6) * 0.15;
-        entities.push({layer: 3, type:'prism', x:h.gx, y:h.gy, z:1.0, w:0.8 * pulse, d:0.8 * pulse, h:0.8, c:pCol});
-    });
+    for (var ie = interactiveEvents.length - 1; ie >= 0; ie--){
+      var h = interactiveEvents[ie];
+      h.t += dt;
+      if (h.t >= h.ttl){ interactiveEvents.splice(ie, 1); continue; }
+      var pCol = PALETTES[h.type] || PALETTES.spill;
+      // Beats faster as it runs out, so a short-fuse Express reads as urgent without
+      // needing a timer drawn over the yard.
+      var left = 1 - h.t / h.ttl;
+      var pulse = 1.0 + Math.sin(h.t * (6 + (1 - left) * 14)) * 0.15;
+      var lift = 1.1 + Math.sin(h.t * 3) * 0.14;
+      // A painted square on the ground under the marker. At 0.8 units the marker alone
+      // was a speck against a yard of several hundred prisms -- findable only if you
+      // already knew where to look.
+      entities.push({layer: 1, type:'prism', x:h.gx - 0.7, y:h.gy - 0.7, z:0.02, w:2.4, d:2.4, h:0.06, c:pCol});
+      entities.push({layer: 3, type:'prism', x:h.gx - 0.2, y:h.gy - 0.2, z:lift, w:1.2 * pulse, d:1.2 * pulse, h:1.2, c:pCol});
+    }
 
     // Only the ~40 moving entities need keying and sorting; merge them into the
     // pre-sorted static geometry rather than re-sorting all ~300 every frame.
