@@ -254,6 +254,88 @@
   .sku-card.locked{opacity:.55; border-style:dashed;}
   .mkt.lock{color:var(--dim); border-color:var(--line); background:transparent;}
   .sitecard.lock{opacity:.55; border-style:dashed;}
+
+  /* ---- LANDSCAPE ---------------------------------------------------------------------
+     Same markup, re-slotted. Portrait is a scrolling column with the site view as a band
+     inside the Floor tab; landscape makes the site the backdrop and slides the active tab
+     over the left of it, so the yard stays live beside whatever you are buying.
+
+     Nothing here moves an element in the DOM -- every id and every handler is where it
+     was, which is what lets the whole test suite carry over. */
+  @media (orientation: landscape){
+    :root{ --panel-w:min(46vw, 430px); --rail-w:60px; }
+
+    /* The canvas covers the viewport, so the page's own paper backdrop would only ever be
+       visible through the panel -- which paints its own. */
+    html,body{ height:100%; overflow:hidden; }
+    body{ max-width:none; margin:0; background-image:none;
+          display:flex; flex-direction:column; }
+
+    /* The site view is the backdrop. placeFloorView() moves the element to be a child of
+       <body> for this: left inside #tab-floor it could never paint behind that section,
+       because a positioned section with a z-index is a stacking context of its own and
+       nothing inside it can escape underneath. */
+    body > .floorview{ position:fixed; inset:0; z-index:0; margin:0;
+                       border:0; border-radius:0; box-shadow:none; }
+    body > .floorview canvas{ width:100vw; height:100vh; }
+
+    /* The panel: top bar, then the active section scrolling under it. */
+    .topbar{ position:relative; z-index:4; flex:0 0 auto;
+             width:calc(var(--panel-w) + env(safe-area-inset-left, 0px));
+             padding-left:env(safe-area-inset-left, 0px);
+             border-right:1px solid var(--line); }
+    header{ padding:5px 12px 2px; }
+    header h1{ font-size:15px; letter-spacing:1.4px; }
+    #headMark svg{ width:17px; height:17px; }
+    .terminal{ margin:0 12px; padding:6px 10px; }
+    .money{ font-size:25px; }
+    .rate{ font-size:9.5px; margin-top:2px; }
+    .logistics-flow{ margin-top:5px; }
+
+    section{ position:relative; z-index:3; flex:1 1 auto; min-height:0;
+             width:calc(var(--panel-w) + env(safe-area-inset-left, 0px));
+             padding-left:env(safe-area-inset-left, 0px);
+             overflow-y:auto; -webkit-overflow-scrolling:touch;
+             background:var(--bg); border-right:1px solid var(--line);
+             box-shadow:6px 0 16px var(--shadow);
+             padding-bottom:18px; }
+    /* The Floor tab keeps room for the pick button, which is pinned to the panel's foot. */
+    #tab-floor{ padding-bottom:calc(112px + env(safe-area-inset-bottom, 0px)); }
+
+    /* Two ad buttons side by side need about 400px of panel; flex items also refuse to
+       shrink below their content by default, so the second one was simply clipped. */
+    .adrow{ flex-direction:column; }
+    .adbtn{ min-width:0; }
+
+    .pickwrap{ left:env(safe-area-inset-left, 0px); transform:none; bottom:0;
+               width:var(--panel-w); max-width:none; z-index:5;
+               padding:8px 12px calc(9px + env(safe-area-inset-bottom, 0px));
+               border-right:1px solid var(--line); }
+    #pickBtn{ padding:11px; font-size:18px; }
+
+    /* The tab bar becomes a rail down the right edge, clear of the panel. */
+    .tabs{ left:auto; right:0; top:0; bottom:0; transform:none;
+           width:calc(var(--rail-w) + env(safe-area-inset-right, 0px));
+           max-width:none; padding-right:env(safe-area-inset-right, 0px);
+           padding-bottom:0; flex-direction:column; justify-content:center;
+           border-top:0; border-left:1px solid var(--line);
+           box-shadow:-3px 0 10px var(--shadow); }
+    .tabs button{ flex:0 0 auto; padding:11px 0; }
+    .tabs button.on{ box-shadow:inset 3px 0 0 var(--hivis); }
+
+    /* Overlays keep the whole screen -- they are not part of the panel. */
+    .modal{ z-index:20; }
+  }
+
+  /* A short landscape window -- a phone held sideways -- cannot spare a 46% panel and
+     still show a site worth looking at. */
+  @media (orientation: landscape) and (max-height: 460px){
+    :root{ --panel-w:min(52vw, 340px); --rail-w:54px; }
+    .money{ font-size:21px; }
+    header{ display:none; }
+    .tabs button span{ font-size:7.5px; }
+    .tabs button svg{ width:18px; height:18px; }
+  }
 </style>
 </head>
 <body>
@@ -2743,9 +2825,30 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
     tabBtns.forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-tab") === name); });
     ["floor","equip","upgrades","pallets","office"].forEach(function(t){ document.getElementById("tab-"+t).hidden = (t !== name); });
     document.querySelector(".pickwrap").style.display = (name === "floor") ? "" : "none";
-    renderActive = (name === "floor");
+    syncRenderActive();
     if (renderActive) setTimeout(sizeCanvas, 20);
     render();
+  }
+
+  // In portrait the site view is a band inside the Floor tab, so there is nothing to draw
+  // once that tab is hidden. In landscape it is the backdrop behind every tab, and
+  // stopping the loop would freeze the yard the moment you opened the shop.
+  function landscape(){ return window.innerWidth > window.innerHeight; }
+  function syncRenderActive(){ renderActive = (curTab === "floor") || landscape(); }
+
+  // The two layouts do not just style the site view differently, they need it in two
+  // different places in the stacking order: a band in the flow of the Floor tab, or a
+  // fixed backdrop behind every panel. CSS alone cannot do the second from inside the
+  // section, because a positioned section with a z-index is a stacking context and
+  // nothing within it can paint underneath. So the element moves.
+  var floorView = document.querySelector(".floorview");
+  var floorHome = document.getElementById("tab-floor");
+  function placeFloorView(){
+    if (landscape()){
+      if (floorView.parentNode !== document.body) document.body.insertBefore(floorView, document.body.firstChild);
+    } else if (floorView.parentNode !== floorHome){
+      floorHome.insertBefore(floorView, floorHome.firstChild);
+    }
   }
 
   var tabBtns = document.querySelectorAll(".tabs button");
@@ -2760,6 +2863,19 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   var CW = 0, CH = 0, cx = 150, cy = 40, TW = 18, TH = 9, TW_BASE = 18;
 
+  // In landscape the canvas is the whole viewport, but its left sits under the tab panel
+  // and its right under the rail. Both halves of the camera -- how far to zoom in, and
+  // where to centre -- follow from the strip that is actually visible.
+  function visibleStrip(){
+    if (!landscape()) return { left: 0, right: CW };
+    var panel = document.querySelector("section:not([hidden])");
+    var rail = document.querySelector("nav.tabs");
+    return {
+      left:  panel ? panel.getBoundingClientRect().right : CW * 0.42,
+      right: rail  ? rail.getBoundingClientRect().left   : CW - 60
+    };
+  }
+
   function sizeCanvas(){
     var w = cv.clientWidth, h = cv.clientHeight;
     if (!w || !h || w === 0 || h === 0) return;
@@ -2768,7 +2884,16 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
     CW = w; CH = h;
     cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    TW_BASE = Math.max(5, Math.min(8.5, CW / 55));
+    if (landscape()){
+      // Fit the site to the strip rather than to a fixed ceiling. The old cap was tuned
+      // for a 382px portrait band; on a landscape canvas, and especially on a tablet, it
+      // left the site as a stamp in the middle of an empty apron. The site spans roughly
+      // 46 tiles across the screen and 34 down it.
+      var strip = visibleStrip(), sw = Math.max(140, strip.right - strip.left);
+      TW_BASE = Math.max(5, Math.min(15, Math.min(sw / 46, CH / 34)));
+    } else {
+      TW_BASE = Math.max(5, Math.min(8.5, CW / 55));
+    }
     applyCamera();
   }
 
@@ -2781,10 +2906,17 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
     var zoom = 1 / (1 + tallest * 0.032);
     TW = TW_BASE * zoom;
     TH = TW / 2;
-    cx = CW * 0.40;
+    var strip = visibleStrip();
+    cx = strip.left + (strip.right - strip.left) * 0.40;
     cy = CH * (0.16 + Math.min(0.10, tallest * 0.010));
   }
-  window.addEventListener("resize", sizeCanvas);
+  // Rotating the device changes both which layout applies and how much canvas there is,
+  // and the canvas is only measured when its box changes.
+  window.addEventListener("resize", function(){ placeFloorView(); syncRenderActive(); sizeCanvas(); });
+  window.addEventListener("orientationchange", function(){
+    placeFloorView(); syncRenderActive();
+    setTimeout(sizeCanvas, 120);      // the viewport settles a frame or two after the event
+  });
 
   // Daylight lighting model. Top faces catch warm sun, left faces sit in half-light,
   // right faces are in shade and lit only by the sky, so they shift cool rather than
@@ -3654,6 +3786,18 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
     ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
   }
 
+  // A world rect paints as a diamond, and a diamond covers a CWxCH rectangle only when
+  // its span satisfies span >= CW/TW + CH/TH. The canvas is a very different shape in the
+  // two orientations -- a 915x412 landscape viewport needs roughly three times the world
+  // area a 382x320 portrait band does -- so the ground is sized from the viewport rather
+  // than from a patch that happened to suit portrait.
+  function groundBox(mult){
+    var span = (CW / TW + CH / TH) * mult;
+    var cu = (CW / 2 - cx) / TW, cv = (CH / 2 - cy) / TH;   // what the camera looks at
+    var h = span / 2;
+    return { x: (cu + cv - h) / 2, y: (cv - h - cu) / 2, w: h, d: h };
+  }
+
   // Painter's algorithm, the same key the prism renderer uses: layer, then depth along
   // the screen diagonal, then height. f is the entity's footprint -- a large sprite sorted
   // from its centre paints over things standing in front of it, which is what used to put
@@ -3954,16 +4098,25 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
     ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, CW, CH);
     drawHorizon();
 
-    // Ground, in the livery's own colours. The apron is a diamond and the canvas is a
-    // rectangle, so a tight apron leaves bare corners; this one runs well past the frame.
-    diamond(-40, -34, 120, 108, th.grass[0]);
-    diamond(-20, -14,  76,  64, th.asphalt[1]);
+    // Ground, in the livery's own colours. Grass covers the canvas outright; the estate
+    // hardstanding stops a little short of it, so a verge shows in the corners rather
+    // than the site running off the edge of the world.
+    //
+    // Clipped to below the horizon drawHorizon() just painted. Ground large enough to
+    // cover a landscape canvas is also large enough to cover the sky, and a warehouse
+    // with no sky above it reads as a floor plan rather than a place.
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, CH * 0.235, CW, CH); ctx.clip();
+    var gr = groundBox(1.06), ap = groundBox(0.86);
+    diamond(gr.x, gr.y, gr.w, gr.d, th.grass[0]);
+    diamond(ap.x, ap.y, ap.w, ap.d, th.asphalt[1]);
     diamond(-2,   -2,  38,  34, th.slab[0]);
     diamond(9,    -5,  26, 4.5, th.asphalt[2]);      // receiving lane
     diamond(-4,   30,  44,   6, th.asphalt[2]);      // front apron
     diamond(-6,   -6,  48,   3, th.asphalt[2]);      // perimeter road, northern run
     diamond(30,   -6,   3,  44, th.asphalt[2]);      // and its eastern run
     diamond(-2,  16.4, 38, 0.7, "rgba(226,176,20,0.42)");   // hazard walkway
+    ctx.restore();
 
     var moving = spriteAgentEntities(animT * speed);
     var si = 0, mi = 0;
@@ -4225,6 +4378,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRnQlBABXRUJQVlA4WAoAAAAQAAAA/wcAV
 
   function startGame() {
     loadAtlas(); renderRenderer();
+    placeFloorView(); syncRenderActive();
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
     renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
     bindNotificationLifecycle();

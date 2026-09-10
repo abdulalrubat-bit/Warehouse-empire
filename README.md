@@ -31,6 +31,35 @@ one generates a fresh Capacitor project around the HTML file, so there is no
 early if the substitution did not apply, rather than building an AAB that Play
 would reject.
 
+## Layout
+
+Two layouts, one set of markup — nothing moves in the DOM between them except the site
+view itself, which is why the whole test suite carries over.
+
+- **Portrait** is the shipped layout, untouched: a scrolling column with the site view as
+  a band inside the Floor tab.
+- **Landscape** makes the site the backdrop and slides the active tab over the left of
+  it, so the yard stays live beside whatever you are buying. The tab bar becomes a rail
+  down the right edge.
+
+The site view is the one element that has to move. Left inside `#tab-floor` it could
+never paint behind that section — a positioned section with a `z-index` is a stacking
+context of its own, and nothing inside it can escape underneath — so `placeFloorView()`
+reparents it to `<body>` in landscape and back again in portrait, on load and on every
+rotation.
+
+Two things follow from the canvas being the whole viewport in landscape rather than a
+382px band:
+
+- The camera zooms to, and centres on, the **strip between the panel and the rail**, not
+  the canvas. A fixed zoom ceiling tuned for portrait left the site as a stamp in the
+  middle of an empty apron on a tablet.
+- The ground is sized from the viewport. A world rect paints as a diamond, and a diamond
+  covers a `CW×CH` rectangle only when its span is at least `CW/TW + CH/TH` — so ground
+  that suited portrait leaves paddock in the corners of a landscape frame. It is clipped
+  to below the horizon, because ground large enough to cover a landscape canvas is also
+  large enough to cover the sky.
+
 ## Rendering
 
 The site view has two renderers, and the player chooses between them under
