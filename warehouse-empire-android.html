@@ -650,6 +650,20 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     general: "Distribution Centre", cold: "Cold Store",
     hazmat: "Dangerous Goods Yard",  port: "Port Terminal"
   };
+  // One colour language for a specialisation, used by the sheds on the horizon and by
+  // the rows in the Office panel, so the two are recognisably the same thing.
+  // Distance-specific cladding, separated by value as much as by hue. Borrowing the
+  // saturated in-yard palettes did not survive the haze: a cyan cold store blended toward
+  // a blue haze lands on top of a grey distribution centre and the belt stops meaning
+  // anything. A white insulated panel, an ochre yard and a steel-blue terminal stay apart
+  // even once they are pushed back, and are closer to the real buildings besides.
+  var NET_SHED = {
+    general: ['#c2c8ce','#9aa2aa','#6b747e'],
+    cold:    ['#eef4fa','#cfe0ee','#9fb4c8'],
+    hazmat:  ['#e0c37a','#bda05a','#8a7340'],
+    port:    ['#5f9bbe','#457e9f','#2d576f']
+  };
+  var NET_INK  = { general: "#9aa2aa", cold: "#8fb6d8", hazmat: "#bda05a", port: "#457e9f" };
   var NET_INVEST_MAX = 5;
 
   function netCap(){ return hasNode("wide") ? 40 : NETWORK_CAP; }
@@ -2594,11 +2608,15 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     order.forEach(function(o){
       var e = o.e, row = document.createElement("div");
       row.className = "netrow";
+      // Same colour the shed on the horizon is clad in, so a row and a building match.
+      row.style.borderLeftColor = NET_INK[e.id] || NET_INK.general;
       var maxed = (e.inv || 0) >= NET_INVEST_MAX, cost = netInvestCost(e);
       var can = !maxed && state.money >= cost;
       row.innerHTML =
         '<div class="nname"><b>' + netLabel(e) + '</b><span>' +
-          (e.inv ? "Tier " + e.inv + " \u00b7 " : "") + (NET_SUFFIX[e.id] || "Depot") + '</span></div>' +
+          (e.inv ? "Tier " + e.inv + " \u00b7 " : "") +
+          '<b style="color:' + (NET_INK[e.id] || NET_INK.general) + '; font-weight:600;">' +
+          (NET_SUFFIX[e.id] || "Depot") + '</b></span></div>' +
         '<div class="nrate">' + money(netSiteRate(e, counts)) + '/s</div>' +
         '<button' + (can ? ' class="can"' : '') + (can ? '' : ' disabled') + '>' +
           (maxed ? "MAX" : "INVEST " + money(cost)) + '</button>';
@@ -3299,6 +3317,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
     themeSky = t.sky; themeHaze = t.haze; themeShadow = t.shadow; themePools = t.pools;
     skyGrad = null; depthGrad = null;      // rebuilt next frame at the new colours
+    clearShedTint();                       // haze changed, so the belt retints
     warehouseTier = -1;                    // ground colours are baked into the geometry
   }
 
@@ -3882,21 +3901,86 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
   // Kept low on purpose: a block here is lifted up the screen by z*TW, and if it rises
   // above the ground's own far edge you see sky through the gap.
+  // The Network, standing on the horizon. Every site you retire is a shed out there:
+  // its specialisation picks the cladding, the tiers you have invested make it taller and
+  // wider, and a hi-vis eaves band marks it as yours rather than as scenery. A forty-site
+  // empire reads as an industrial belt around the yard instead of as a list in a panel.
+  function netShedPalette(id){
+    var base = NET_SHED[id] || NET_SHED.general;
+    // Aerial perspective. The depth wash alone is not enough for saturated cladding this
+    // far out -- a row of untreated cold stores and DG yards reads as a bright quilt and
+    // pulls the eye off the racking, which is the thing the panel is actually about.
+    var hz = themeHaze.split(",").map(function(v){ return Math.round(Number(v)); });
+    var hex = "#" + hz.map(function(v){ return (256 + v).toString(16).slice(1); }).join("");
+    var key = id + "|" + hex;
+    if (!shedTint[key])
+      shedTint[key] = { top:   blend(base[0], hex, 0.40),
+                        left:  blend(base[1], hex, 0.40),
+                        right: blend(base[2], hex, 0.40) };
+    return shedTint[key];
+  }
+  var shedTint = {};
+  function clearShedTint(){ shedTint = {}; }
   function distantEstate(out){
     // The frame's top edge is the line v = viewUV.v0, so the band is laid out in (u,v)
     // and converted back with x = (u+v)/2, y = (v-u)/2. Set in world x,y instead it runs
     // off the visible diamond, because the camera's bounding rect is not the frame.
     var vBand = viewUV.v0 + 12;          // far enough down that a block's top is not cut
     var uSpan = viewUV.u1 - viewUV.u0;
-    for (var i = 0; i < SKYLINE.length; i++){
-      var b = SKYLINE[i];
-      var h = 1.5 + b.h * 55;
-      var u = viewUV.u0 - 4 + b.x * (uSpan + 8);
-      var v = vBand + ((i % 3) - 1) * 2.5;          // a little depth so it is not a wall
-      var span = 3 + b.w * 26;
-      out.push({layer:1, type:'prism', x: (u + v) / 2, y: (v - u) / 2, z: -0.6,
-                w: span, d: span * 0.8, h: h,
-                c: b.lit ? PALETTES.cladding : PALETTES.plinth});
+    var u0 = viewUV.u0 - 4, uWide = uSpan + 8;
+
+    var sites = (state.network || []).slice();
+    if (sites.length){
+      // Strongest first, so what you have built up takes the most readable slots.
+      var counts = netTypeCounts();
+      sites.sort(function(a, b){ return netSiteRate(b, counts) - netSiteRate(a, counts); });
+    }
+
+    // One slot grid, always filled. Your sites are the coloured sheds among the grey ones,
+    // which is what makes six of them read as a foothold and forty as a belt; letting the
+    // filler thin out around them instead left the horizon looking merely unfinished.
+    var perRow = Math.max(5, Math.floor(uWide / 6.8));
+    var rows = sites.length > perRow * 2 ? 3 : 2;
+    // Owned sites go in the nearest row first -- within the belt, nearest paints last --
+    // and spread evenly across it rather than packed round the middle, because the middle
+    // of this band is exactly where the corporate towers rise through it.
+    var ownedAt = {}, taken = 0;
+    for (var r0 = rows - 1; r0 >= 0 && taken < sites.length; r0--){
+      var take = Math.min(perRow, sites.length - taken);
+      for (var k = 0; k < take; k++){
+        var col = (take >= perRow) ? k
+                : Math.min(perRow - 1, Math.floor((k + 0.5) * perRow / take));
+        ownedAt[r0 + "," + col] = sites[taken++];
+      }
+    }
+
+    var slots = [];
+    for (var r = 0; r < rows; r++)
+      for (var c = 0; c < perRow; c++) slots.push({ r: r, c: c });
+
+    for (var i = 0; i < slots.length; i++){
+      var sl = slots[i], e = ownedAt[sl.r + "," + sl.c];
+      var n1 = slotNoise(sl.c + 1, sl.r + 1, 3), n2 = slotNoise(sl.c + 5, sl.r + 2, 9);
+      var u = u0 + (sl.c + 0.5 + (sl.r % 2) * 0.5) * (uWide / perRow);
+      var v = vBand + sl.r * 3.4 + (n2 - 0.5) * 1.2;
+      var h, span, pal, roof;
+      if (e){
+        var inv = e.inv || 0;
+        h = 1.9 + inv * 0.58 + n1 * 0.7;
+        span = 2.7 + inv * 0.3 + n1 * 0.45;
+        pal = netShedPalette(e.id); roof = PALETTES.plinth;
+      } else {
+        // Somebody else's estate: lower and unroofed, so your own sites stay the thing
+        // the eye picks out.
+        h = 1.3 + n1 * 1.5;
+        span = 2.4 + n2 * 1.4;
+        pal = n2 > 0.55 ? PALETTES.cladding : PALETTES.plinth; roof = null;
+      }
+      var qx = (u + v) / 2, qy = (v - u) / 2;
+      out.push({layer:1, type:'prism', x: qx, y: qy, z: -0.6, w: span, d: span * 0.8, h: h, c: pal});
+      if (roof && QUALITY.detail >= 0.6)
+        out.push({layer:1, type:'prism', x: qx - 0.1, y: qy - 0.1, z: -0.6 + h,
+                  w: span + 0.2, d: span * 0.8 + 0.2, h: 0.16, c: roof});
     }
   }
 
