@@ -6,23 +6,24 @@
 <title>Warehouse Empire v3.2.0</title>
 <style>
   :root{
-    /* Light industrial: the same concrete, cladding and steel tones the site view
-       uses, so the chrome and the canvas read as one place. Accent hues are darkened
-       from their dark-theme values because they now sit on light surfaces. */
-    --bg:#d6d2c7; --panel:#efece5; --panel2:#dedad0; --line:#b2ac9f;
-    --ink:#22262b; --dim:#6b7076; --steel:#7c828a;
-    --hivis:#e0560a; --hivis-d:#a03c02; --hazard:#b3860a;
-    --cash:#2c8442; --bad:#bf3b30; --corp:#7238d6;
+    /* The console. These are first-paint values, replaced by the active livery as soon
+       as update3DPalette runs; they match UI_BASE.console so the app never flashes a
+       light frame before the theme lands. The site view is a top-down plan on charcoal
+       in every livery, so the chrome is dark in every livery too. */
+    --bg:#141719; --panel:#20252a; --panel2:#2a3037; --line:#3a424a;
+    --ink:#e9edf1; --dim:#8d959e; --steel:#79818b;
+    --hivis:#f2740f; --hivis-d:#b8500a; --hazard:#e8c22a;
+    --cash:#4fd97b; --bad:#e05a4e; --corp:#a98cf0;
     /* The money readout stays a dark instrument panel -- it is the one thing that
        should look like a screen rather than a printed card. */
-    --screen:#1e2226; --screen-2:#171a1d; --screen-ink:#eef1f3; --screen-dim:#8f979f;
+    --screen:#0d1013; --screen-2:#080a0c; --screen-ink:#eef1f3; --screen-dim:#8f979f;
     /* Raised and recessed surfaces, kept as properties so a theme can drive the whole
        app rather than just the accent colour. */
-    --raise-1:#f6f4ef; --raise-2:#ddd8cd;
-    --tab-1:#f4f1ea;   --tab-2:#e2ded4;
-    --can-1:#e2f1e4;   --can-2:#cfe6d3;
-    --scrim:rgba(30,34,38,.62); --sky-mid:#9cc4e4;
-    --shadow:rgba(60,55,45,.16);
+    --raise-1:#2f363d; --raise-2:#232830;
+    --tab-1:#242a30;   --tab-2:#1a1e23;
+    --can-1:#22331f;   --can-2:#182619;
+    --scrim:rgba(4,6,8,.80); --sky-mid:#2a3138;
+    --shadow:rgba(0,0,0,.45);
     --font-cond:'Roboto Condensed','Noto Sans Condensed','Liberation Sans Narrow','Arial Narrow',sans-serif;
     --font-mono:'Roboto Mono','Noto Sans Mono','Droid Sans Mono','DejaVu Sans Mono',monospace;
   }
@@ -828,19 +829,18 @@
 
   // Two UI bases. A theme picks one and layers its accents on top, so a night livery
   // flips the whole app rather than just recolouring the canvas.
+  // One console palette for every livery. The site view is a top-down plan on charcoal
+  // hardstand in all seven, so a cream UI left the canvas sitting in the page like a hole
+  // cut in it. Dark chrome behind a dark plan reads as one instrument; what still tells
+  // the liveries apart is the accent, the hazard yellow and the cash green, which is what
+  // was doing the work anyway. The theme's `ui` flag now means only what it says -- is
+  // this site worked in daylight or under floods -- and drives the canvas alone.
   var UI_BASE = {
-    day: {
-      bg:'#d6d2c7', panel:'#efece5', panel2:'#dedad0', line:'#b2ac9f',
-      ink:'#22262b', dim:'#6b7076', steel:'#7c828a',
-      raise1:'#f6f4ef', raise2:'#ddd8cd', tab1:'#f4f1ea', tab2:'#e2ded4',
-      screen:'#1e2226', screen2:'#171a1d', screenInk:'#eef1f3', screenDim:'#8f979f',
-      scrim:'rgba(30,34,38,.62)', shadow:'rgba(60,55,45,.16)'
-    },
-    night: {
-      bg:'#191c20', panel:'#242930', panel2:'#2e343b', line:'#3d444d',
+    console: {
+      bg:'#141719', panel:'#20252a', panel2:'#2a3037', line:'#3a424a',
       ink:'#e9edf1', dim:'#8d959e', steel:'#79818b',
-      raise1:'#333a42', raise2:'#262b31', tab1:'#272c32', tab2:'#1e2227',
-      screen:'#0f1215', screen2:'#0a0c0e', screenInk:'#eef1f3', screenDim:'#8f979f',
+      raise1:'#2f363d', raise2:'#232830', tab1:'#242a30', tab2:'#1a1e23',
+      screen:'#0d1013', screen2:'#080a0c', screenInk:'#eef1f3', screenDim:'#8f979f',
       scrim:'rgba(4,6,8,.80)', shadow:'rgba(0,0,0,.45)'
     }
   };
@@ -3157,7 +3157,7 @@
     return o;
   }
   function update3DPalette(){
-    var t = currentTheme(), base = UI_BASE[t.ui] || UI_BASE.day;
+    var t = currentTheme(), base = UI_BASE.console;
     var css = document.documentElement.style;
     var vars = {
       '--bg':base.bg, '--panel':base.panel, '--panel2':base.panel2, '--line':base.line,
@@ -3171,8 +3171,8 @@
       '--sky-mid':t.sky[1]
     };
     for (var k in vars) css.setProperty(k, vars[k]);
-    css.setProperty('--can-1', t.ui === 'night' ? '#2b3f2e' : '#e2f1e4');
-    css.setProperty('--can-2', t.ui === 'night' ? '#1e2d20' : '#cfe6d3');
+    css.setProperty('--can-1', '#22331f');
+    css.setProperty('--can-2', '#182619');
 
     var night = t.ui === 'night';
     var d = night ? 0.62 : 0.82;                 // plan view sits darker than the old view
