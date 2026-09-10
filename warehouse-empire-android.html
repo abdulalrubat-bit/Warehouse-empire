@@ -3187,9 +3187,15 @@
     // Seen from above a rack is mostly upright and beam, so it wants to read as dark
     // structure. Passing the livery's rack blue through undiluted turned the entire
     // storage hall blue and the stock stopped being the thing you look at.
-    C.steel    = hx(mix(t.rackPost[1], t.asphalt[2], 0.62), d * 0.88);
-    C.line     = t.hazard;
-    C.lineSoft = "rgba(" + hexRGB(t.hazard) + ",0.45)";
+    // Empty racking is most of what an early site shows, so this colour carries the whole
+    // opening view. At 0.62 the livery's rack blue still dominated and a bare warehouse
+    // read as a navy field rather than as steel waiting to be filled.
+    C.steel    = hx(mix(t.rackPost[1], t.asphalt[2], 0.82), d * 0.92);
+    // The UI's hazard colour is a muted ochre, chosen to sit quietly behind text. Floor
+    // marking is the opposite job: it is the brightest thing on a real yard and it is
+    // what gives the plan its edges, so it gets lifted toward actual safety yellow.
+    C.line     = mix(hx(t.hazard, 1.30), "#e8c22a", 0.55);
+    C.lineSoft = "rgba(" + hexRGB(C.line) + ",0.42)";
     C.white    = "#e9edf1";
     C.whiteSoft= "rgba(233,237,241,0.50)";
     C.fork     = t.accent;
@@ -3201,9 +3207,9 @@
     var wash = night ? 0.34 : 0.06;
     var haze = "#" + t.haze.split(",").map(function(v){
       return (256 + Math.round(Number(v))).toString(16).slice(1); }).join("");
-    C.box      = mix("#c39a63", haze, wash);
+    C.box      = mix("#d2a468", haze, wash);
     C.boxLo    = mix("#a67f4c", haze, wash);
-    C.boxAlt   = mix("#3d7ea6", haze, wash);
+    C.boxAlt   = mix("#4189b4", haze, wash);
     C.boxAltLo = mix("#2f6384", haze, wash);
     C.pageBg   = hx(t.sky[2], night ? 0.32 : 0.52);
     warehouseTier = -1;                    // occupancy is baked, so force a rebuild
@@ -3307,12 +3313,44 @@
 
   /* ---- drawing helpers ----------------------------------------------------- */
   function r(x,y,w,h,c){ ctx.fillStyle = c; ctx.fillRect(x,y,w,h); }
+  // Offset dark rects rather than ctx.shadowBlur: a blurred shadow per object costs more
+  // than the entire rest of the plan, and at this scale two stepped rects read the same.
+  function shadow(x,y,w,h,d){
+    d = d || 5;
+    ctx.fillStyle = "rgba(8,10,14,0.30)"; ctx.fillRect(x + d*0.5, y + d*0.5, w, h);
+    ctx.fillStyle = "rgba(8,10,14,0.22)"; ctx.fillRect(x + d, y + d, w, h);
+  }
+  // Pedestrian crossings, which the reference paints wherever a walkway meets a lane.
+  function crossing(x, y, w, h, across){
+    ctx.fillStyle = "rgba(233,237,241,0.42)";
+    if (across){ for (var i = 0; i < w; i += 13) ctx.fillRect(x+i, y, 7, h); }
+    else       { for (var j = 0; j < h; j += 13) ctx.fillRect(x, y+j, w, 7); }
+  }
   function ro(x,y,w,h,c,lw){ ctx.strokeStyle = c; ctx.lineWidth = lw||1.5; ctx.strokeRect(x,y,w,h); }
-  function label(txt,x,y,size,col,align){
-    ctx.fillStyle = col || C.ink;
-    ctx.font = "600 " + (size||13) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.textAlign = align || "left"; ctx.textBaseline = "middle";
-    ctx.fillText(txt, x, y); ctx.textAlign = "left";
+  // Labels are queued and flushed after everything else. Drawn inline they were painted
+  // in zone order, so a forklift working the sorting aisle parked on top of the word
+  // SORTING. A plan is only as good as its labels, so they go last and they go on a
+  // plate -- which also means they stay readable over stock, tarmac or a trailer.
+  var labelQueue = [];
+  function label(txt,x,y,size,col,align,plate){
+    labelQueue.push({ t:txt, x:x, y:y, s:size||13, c:col||C.ink, a:align||"left", p:plate !== false });
+  }
+  function flushLabels(){
+    for (var i = 0; i < labelQueue.length; i++){
+      var L = labelQueue[i];
+      ctx.font = "600 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = L.a; ctx.textBaseline = "middle";
+      if (L.p){
+        var w = ctx.measureText(L.t).width, padx = 5, h = L.s + 6;
+        var bx = L.a === "center" ? L.x - w/2 : L.x;
+        ctx.fillStyle = "rgba(12,15,19,0.62)";
+        ctx.fillRect(bx - padx, L.y - h/2, w + padx*2, h);
+      }
+      ctx.fillStyle = L.c;
+      ctx.fillText(L.t, L.x, L.y);
+    }
+    ctx.textAlign = "left";
+    labelQueue.length = 0;
   }
   function hatch(x,y,w,h,col,step){
     ctx.save(); ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
@@ -3351,6 +3389,15 @@
     r(SITE.x-300, SITE.y-300, SITE.w+600, SITE.h+600, C.grass);
     r(SITE.x-160, SITE.y-160, SITE.w+320, SITE.h+320, C.road);
     r(SITE.x, SITE.y, SITE.w, SITE.h, C.ground);
+    // Concrete is poured in bays and they never match. Without this the hardstand is a
+    // flat field and the whole plan reads as a diagram rather than a place.
+    if (QUALITY.decals){
+      for (var tx = 0; tx < SITE.w; tx += 120) for (var ty = 0; ty < SITE.h; ty += 120){
+        var n = slotNoise(tx, ty, 5);
+        if (n > 0.62) r(SITE.x+tx, SITE.y+ty, 120, 120, "rgba(255,255,255,0.018)");
+        else if (n < 0.3) r(SITE.x+tx, SITE.y+ty, 120, 120, "rgba(0,0,0,0.05)");
+      }
+    }
     if (QUALITY.decals){
       ctx.strokeStyle = "rgba(0,0,0,0.16)"; ctx.lineWidth = 1;
       for (var x = SITE.x; x <= SITE.x+SITE.w; x += 120){
@@ -3390,6 +3437,12 @@
     r(px, py, pw, ph, alt ? C.boxAlt : C.box);
     ro(px, py, pw, ph, alt ? C.boxAltLo : C.boxLo, 1.5);
     if (!QUALITY.decals) return;
+    // A lit top edge and a dark bottom one. Flat-filled squares read as a spreadsheet;
+    // two one-pixel lines are what make a pallet look like it has a height.
+    if (pw > 8 && ph > 8){
+      r(px + 1, py + 1, pw - 2, 1.4, "rgba(255,255,255,0.22)");
+      r(px + 1, py + ph - 2, pw - 2, 1.4, "rgba(0,0,0,0.24)");
+    }
     ctx.strokeStyle = "rgba(0,0,0,0.17)"; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(px + pw/2, py); ctx.lineTo(px + pw/2, py + ph); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(px, py + ph/2); ctx.lineTo(px + pw, py + ph/2); ctx.stroke();
@@ -3403,7 +3456,7 @@
       ro(bx+8, z.y+8, bw-16, z.h-16, C.line, 2);
       if (QUALITY.decals)
         hatch(bx+14, atTop ? z.y+14 : z.y+z.h-64, bw-28, 50, "rgba(" + hexRGB(C.line) + ",0.20)", 14);
-      label(prefix + "0" + (i+1), bx + bw/2, atTop ? z.y+z.h-18 : z.y+20, 11, C.ink, "center");
+      label(prefix + "0" + (i+1), bx + bw/2, atTop ? z.y+z.h-16 : z.y+18, 11, C.ink, "center");
       if (slotNoise(i+1, atTop ? 3 : 7, 1) < 0.45 + warehouseFillCached*0.5)
         drawTrailer(bx+8, z.y+8, bw-16, z.h-16, atTop, i);
     }
@@ -3418,6 +3471,7 @@
     var ty = atTop ? by + cabH + gap : by;
     var cy2 = atTop ? by : by + th + gap;
     var body = LIVERY[i % LIVERY.length];
+    shadow(cx2 - tw/2, ty, tw, th + cabH + gap, 5);
     r(cx2 - tw/2, ty, tw, th, body);
     ro(cx2 - tw/2, ty, tw, th, "rgba(0,0,0,0.38)", 2);
     if (QUALITY.decals){
@@ -3436,10 +3490,14 @@
     var z = ZONE.racks, f = warehouseFillCached, pitch = AISLE_W + AISLE_GAP;
     for (var a = 0; a < AISLES_N; a++){
       var ax = z.x + a * pitch;
+      // The travel aisle is worn tarmac between two runs; without darkening it the racks
+      // and the lanes sit at the same value and the hall reads as one grey mass.
+      r(ax - AISLE_GAP, z.y - 8, AISLE_GAP, z.h + 16, hx(C.ground, 0.86));
       if (QUALITY.decals)
         dashed(ax - AISLE_GAP/2, z.y - 26, ax - AISLE_GAP/2, z.y + z.h + 26, C.lineSoft, 2, [16,12]);
+      shadow(ax, z.y, AISLE_W, z.h, 4);
       r(ax, z.y, AISLE_W, z.h, C.steel);
-      ro(ax, z.y, AISLE_W, z.h, "rgba(0,0,0,0.35)", 2);
+      ro(ax, z.y, AISLE_W, z.h, "rgba(0,0,0,0.5)", 2.5);
       var bh = z.h / BAYS_PER_AISLE;
       for (var b = 0; b < BAYS_PER_AISLE; b++){
         var by = z.y + b*bh;
@@ -3520,8 +3578,10 @@
   }
   function drawBlock(p, lvl){
     if (lvl <= 0) return unbuiltPad(p);
+    shadow(p.gx, p.gy, p.gw, p.gd, 7);
     r(p.gx, p.gy, p.gw, p.gd, C.bldg);
-    ro(p.gx, p.gy, p.gw, p.gd, C.bldgInk, 2);
+    ro(p.gx, p.gy, p.gw, p.gd, "rgba(0,0,0,0.55)", 3);
+    ro(p.gx+2, p.gy+2, p.gw-4, p.gd-4, C.bldgInk, 1.5);
     var n = Math.min(6, (p.rooms || 2) + Math.floor(lvl / 3));
     ctx.strokeStyle = C.bldgInk; ctx.lineWidth = 1.5;
     for (var i = 1; i < n; i++){
@@ -3566,7 +3626,9 @@
   }
 
   /* ---- the Network, as neighbouring plots beyond the fence ------------------ */
-  var NET_PLOT = { general:"#7d858f", cold:"#c3d2de", hazmat:"#b09456", port:"#4a7ba0" };
+  // Muted on purpose. These are other people's yards seen past the fence line: they
+  // identify a specialisation at a glance and then get out of the way of your own site.
+  var NET_PLOT = { general:"#6e757e", cold:"#9fb0bd", hazmat:"#8d7a4e", port:"#446782" };
   var NET_BAND = { y: -168, h: 96 };
   function drawNetwork(){
     var sites = state.network || [];
@@ -3579,13 +3641,16 @@
       var e = sites[i];
       var px = SITE.x - 160 + i*gapw + 8, pw = gapw - 16;
       var py = NET_BAND.y, ph = NET_BAND.h;
-      r(px, py, pw, ph, e ? mix(NET_PLOT[e.id] || NET_PLOT.general, C.grass, 0.42)
-                          : mix("#6a727c", C.grass, 0.6));
-      ro(px, py, pw, ph, "rgba(0,0,0,0.30)", 1.5);
-      if (e && QUALITY.decals){
-        r(px + 6, py + ph - 16, pw - 12, 5, "rgba(" + hexRGB(C.line) + ",0.5)");
-        label(netLabel(e), px + pw/2, py + ph/2, 10, "rgba(255,255,255,0.55)", "center");
-      }
+      // The plot itself is estate ground; only the shed on it carries the specialisation.
+      // Colouring whole plots turned the band into a stripe of swatches above the site.
+      r(px, py, pw, ph, mix("#5f666f", C.grass, 0.72));
+      ro(px, py, pw, ph, "rgba(0,0,0,0.36)", 1.5);
+      if (!e) continue;
+      var sx = px + 5, sw = pw - 10, sh = ph * 0.52;
+      var sy = py + (ph - sh) / 2;
+      shadow(sx, sy, sw, sh, 3);
+      r(sx, sy, sw, sh, mix(NET_PLOT[e.id] || NET_PLOT.general, C.grass, 0.34));
+      ro(sx, sy, sw, sh, "rgba(0,0,0,0.4)", 1.5);
     }
   }
 
@@ -3626,6 +3691,8 @@
     ctx.beginPath(); ctx.moveTo(z.x - 40, by); ctx.lineTo(ZONE.staging.x + ZONE.staging.w, by); ctx.stroke();
     r(z.x - 66, z.y - 30, 20, z.h + 74, "rgba(70,150,95,0.28)");
     ro(z.x - 66, z.y - 30, 20, z.h + 74, "rgba(120,205,145,0.45)", 1.5);
+    crossing(z.x - 78, ty - 6, 44, 13, true);
+    crossing(z.x - 78, by - 6, 44, 13, true);
     for (var i = 0; i < 5; i++){
       var ax = z.x + 60 + i * 170;
       ctx.fillStyle = C.whiteSoft;
@@ -3755,6 +3822,22 @@
     }
   }
 
+  // Drawn in screen space after the camera pops, so it frames the panel rather than the
+  // site: it pushes the edges back and stops the plan reading as a flat swatch.
+  var vignette = null, vignetteFor = "";
+  function drawVignette(){
+    var key = CW + "x" + CH;
+    if (vignetteFor !== key){
+      var g = ctx.createRadialGradient(CW/2, CH/2, Math.min(CW,CH) * 0.34,
+                                       CW/2, CH/2, Math.max(CW,CH) * 0.78);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(1, "rgba(0,0,0,0.22)");
+      vignette = g; vignetteFor = key;
+    }
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, CW, CH);
+  }
+
   // Test seam. The previous canvas tests re-derived the projection by hand, which is
   // exactly how they ended up asserting against a camera the renderer no longer had.
   // Handing them the real mapping means a test can be wrong about intent but never
@@ -3801,8 +3884,10 @@
     drawFleet();
     drawIncidents();
     drawParticles(dt);
+    flushLabels();          // last, so nothing on the site can bury a zone name
 
     ctx.restore();
+    drawVignette();
     noteFrameTime(performance.now() - t0);
   }
 
