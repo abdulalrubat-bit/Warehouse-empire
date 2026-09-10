@@ -918,6 +918,15 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   function triple(a){ return { top:a[0], left:a[1], right:a[2] }; }
   // Mastered corporate buildings are the same material with the lights on, so the lit
   // variant is derived rather than stated twice per theme and left to drift apart.
+  function blend(a, b, t){
+    var x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16), o = "#";
+    for (var i = 16; i >= 0; i -= 8){
+      var c = Math.round(((x >> i) & 255) * (1 - t) + ((y >> i) & 255) * t);
+      o += (256 + c).toString(16).slice(1);
+    }
+    return o;
+  }
+
   function lift(hex, k){
     var v = parseInt(hex.slice(1), 16), o = "#";
     for (var i = 16; i >= 0; i -= 8){
@@ -3082,10 +3091,43 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     var tallest = 0;
     for (var k in state.corp) if ((state.corp[k] || 0) > tallest) tallest = state.corp[k] || 0;
     var zoom = 1 / (1 + tallest * 0.032);
-    TW = TW_BASE * zoom;
+    // Floor the zoom. Pulling back far enough to fit a level-20 tower shrinks the rack
+    // row pitch (ROW_PITCH * TH, so 2.05 * TW) below about 10px, at which point the
+    // racking stops reading as shelving and goes back to being moire -- which is the
+    // whole reason the grid was rebuilt. A clipped tower top costs less than that.
+    TW = Math.max(TW_BASE * zoom, 5.0);
     TH = TW / 2;
     cx = CW * 0.40;
     cy = CH * (0.16 + Math.min(0.10, tallest * 0.010));
+    computeGroundRect();
+  }
+
+  // The world rect the ground plane has to fill.
+  //
+  // Screen maps to world as sx = cx + (x-y)*TW, sy = cy + (x+y)*TH, so the visible
+  // region is exactly u = (sx-cx)/TW, v = (sy-cy)/TH over the frame -- a box in (u,v).
+  // Inverting the four frame corners back through x = (u+v)/2, y = (v-u)/2 gives four
+  // world points, and because the map is linear their bounding rect contains the whole
+  // visible region. Sizing the ground to that rect is what stops the site ending in
+  // mid-air: it used to be a hand-tuned constant that no longer matched a camera which
+  // drops as your towers grow, so the apron's north corner drifted inside the panel.
+  var groundRect = { x: -14, y: -8, w: 64, d: 52 };
+  var viewUV = { u0: -30, u1: 40, v0: -24, v1: 86 };
+  function computeGroundRect(){
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (var i = 0; i < 4; i++){
+      var sx = (i & 1) ? CW : 0, sy = (i & 2) ? CH : 0;
+      var u = (sx - cx) / TW, v = (sy - cy) / TH;
+      var wx = (u + v) / 2, wy = (v - u) / 2;
+      if (wx < x0) x0 = wx; if (wx > x1) x1 = wx;
+      if (wy < y0) y0 = wy; if (wy > y1) y1 = wy;
+    }
+    // A margin, because tall geometry near the edge is drawn lifted by -z*TW and would
+    // otherwise reveal the ground's own edge above itself.
+    var m = 8;
+    groundRect = { x: x0 - m, y: y0 - m, w: (x1 - x0) + m * 2, d: (y1 - y0) + m * 2 };
+    viewUV = { u0: (0 - cx) / TW, u1: (CW - cx) / TW,
+               v0: (0 - cy) / TH, v1: (CH - cy) / TH };
   }
   window.addEventListener("resize", sizeCanvas);
 
@@ -3128,6 +3170,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     slabWarm: { top: '#b3ae9f', left: '#9a9587', right: '#75726a' },
     asphalt:  { top: '#7c8087', left: '#696d74', right: '#4e525a' },
     grass:    { top: '#77a05a', left: '#61864a', right: '#456134' },
+    estate:   { top: '#7a8f70', left: '#667a60', right: '#4a5449' },
 
     // Building skin: pale profiled cladding over a plinth, company band at the eaves.
     cladding: { top: '#dfe5ea', left: '#c1c9d1', right: '#98a2ac' },
@@ -3240,6 +3283,12 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     PALETTES.slabWarm = triple(t.slab);
     PALETTES.asphalt  = triple(t.asphalt);
     PALETTES.grass    = triple(t.grass);
+    // The land the estate sits on, not the verge inside the fence. Reusing the verge
+    // green here made the surround read as lawn; blended toward asphalt it reads as the
+    // scrubby industrial ground an estate like this actually sits on.
+    PALETTES.estate   = triple([blend(t.grass[0], t.asphalt[0], 0.52),
+                                blend(t.grass[1], t.asphalt[1], 0.52),
+                                blend(t.grass[2], t.asphalt[2], 0.52)]);
     PALETTES.rackPost = triple(t.rackPost);
     PALETTES.rackBeam = triple(t.rackBeam);
     PALETTES.cladding = triple(t.cladding);
@@ -3399,7 +3448,15 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   // Rebuilt only when the fill tier changes, so it stays pre-sorted and the frame
   // loop keeps merging it against the small dynamic list instead of re-sorting ~700.
   var staticRacks = [], interactiveEvents = [], isoParticles = [];
-  var RACK_COLS = 4, RACK_ROWS = 12, RACK_PITCH = 6.5, BAY_W = 4;
+  // Rack geometry. The grid used to be 4x12 on a 2.2 row pitch with 0.4 uprights,
+  // which at this zoom is a 2px post every 6px -- finer than the panel can resolve,
+  // so a full warehouse rendered as moire rather than as shelving. Fewer, larger bays
+  // read as racking; scale now comes from height and fullness instead of from count.
+  var RACK_COLS = 3, RACK_ROWS = 6, RACK_PITCH = 7.8, BAY_W = 5.6;
+  var ROW_PITCH = 4.1, RACK_D = 1.2, LEVEL_H = 1.55, POST_W = 0.62;
+  var RACK_X0 = 9, RACK_X1 = RACK_X0 + (RACK_COLS - 1) * RACK_PITCH + BAY_W;
+  var RACK_Y0 = 2, RACK_Y1 = RACK_Y0 + (RACK_ROWS - 1) * ROW_PITCH + RACK_D;
+  var LANE_MID = (RACK_Y0 + RACK_Y1) / 2, LANE_SWING = (RACK_Y1 - RACK_Y0) / 2 - 1;
   // NB: `e.layer || 2` was wrong -- layer 0 is falsy, so every ground-plane entity
   // (slabs, roads, the apron) sorted as if it were layer 2 and painted over things
   // that should sit on top of it.
@@ -3450,22 +3507,22 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     }
 
     var rows = Math.min(RACK_ROWS, QUALITY.rackRows);
-    var upright = 0.9 + levels * 1.35;          // racking itself grows taller
+    var upright = 0.9 + levels * LEVEL_H;       // racking itself grows taller
     for (var col = 0; col < RACK_COLS; col++){
       for (var row = 0; row < rows; row++){
-        var rx = 9 + col * RACK_PITCH, ry = 2 + row * 2.2, bay = col * RACK_ROWS + row;
-        staticRacks.push({layer:2, x:rx,             y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
-        staticRacks.push({layer:2, x:rx+BAY_W-0.4,   y:ry, z:0, w:0.4, d:0.6, h:upright, c:PALETTES.rackPost});
+        var rx = 9 + col * RACK_PITCH, ry = 2 + row * ROW_PITCH, bay = col * RACK_ROWS + row;
+        staticRacks.push({layer:2, x:rx,               y:ry, z:0, w:POST_W, d:RACK_D, h:upright, c:PALETTES.rackPost});
+        staticRacks.push({layer:2, x:rx+BAY_W-POST_W,  y:ry, z:0, w:POST_W, d:RACK_D, h:upright, c:PALETTES.rackPost});
         for (var L = 0; L < levels; L++){
-          var bz = 0.25 + L * 1.35;
-          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:0.6, h:0.12, c:PALETTES.rackBeam});
+          var bz = 0.25 + L * LEVEL_H;
+          staticRacks.push({layer:2, x:rx, y:ry, z:bz, w:BAY_W, d:RACK_D, h:0.16, c:PALETTES.rackBeam});
           // Kept as two discrete pallets per level. Merging them into one prism saved
           // ~200 prisms but turned a full rack into a solid brown wall -- the gap is
           // what makes it read as shelving.
           for (var slot = 0; slot < 2; slot++){
             if (slotNoise(bay, L, slot) >= fill) continue;
-            staticRacks.push({layer:2, x:rx + 0.45 + slot*1.75, y:ry + 0.1, z:bz + 0.12,
-                              w:1.25, d:0.4, h:0.85 + slotNoise(bay, L, slot+7) * 0.3,
+            staticRacks.push({layer:2, x:rx + 0.55 + slot*2.4, y:ry + 0.15, z:bz + 0.16,
+                              w:1.9, d:RACK_D - 0.3, h:0.85 + slotNoise(bay, L, slot+7) * 0.3,
                               c: BOX_SHADES[(bay + L + slot) % BOX_SHADES.length]});
           }
         }
@@ -3476,14 +3533,14 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     for (var ec = 0; ec < RACK_COLS; ec++){
       var ex = 9 + ec * RACK_PITCH;
       for (var side = 0; side < 2; side++){
-        var ey = side ? 2 + (rows - 1) * 2.2 : 2;
+        var ey = side ? 2 + (rows - 1) * ROW_PITCH : 2;
         for (var br = 0; br < levels; br++){
-          var brz = 0.55 + br * 1.35;
-          staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
-                            z:brz, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+          var brz = 0.55 + br * LEVEL_H;
+          staticRacks.push({layer:2, x:ex + 0.45, y:ey + (side ? RACK_D : -0.02),
+                            z:brz, w:BAY_W - 1.4, d:0.18, h:0.18, c:PALETTES.rackPost});
         }
-        staticRacks.push({layer:2, x:ex + 0.35, y:ey + (side ? 0.6 : -0.02),
-                          z:0.15, w:BAY_W - 1.1, d:0.14, h:0.14, c:PALETTES.rackPost});
+        staticRacks.push({layer:2, x:ex + 0.45, y:ey + (side ? RACK_D : -0.02),
+                          z:0.15, w:BAY_W - 1.4, d:0.18, h:0.18, c:PALETTES.rackPost});
       }
     }
 
@@ -3510,12 +3567,12 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
     // Aisle guide lines down each rack aisle.
     for (var a = 0; a < AISLES.length; a++)
-      floorDecals.push({x: AISLES[a] - 0.08, y: 1.5, w: 0.16, d: 25, c: LINE});
+      floorDecals.push({x: AISLES[a] - 0.10, y: 1.5, w: 0.20, d: RACK_ROWS * ROW_PITCH - 2, c: LINE});
 
     // Hatched keep-clear strip along the dock, and the outbound cross-aisle.
     for (var hy = 0; hy < 26; hy += 2.2)
       floorDecals.push({x: 1.2, y: hy, w: 0.9, d: 1.2, c: HATCH});
-    floorDecals.push({x: 3, y: 27.2, w: 28, d: 0.16, c: LINE});
+    floorDecals.push({x: 3, y: 2 + RACK_ROWS * ROW_PITCH - 0.9, w: 26, d: 0.18, c: LINE});
 
     // Marked-out staging bays on the dock strip, on a blue inbound apron.
     floorDecals.push({x: 3.0, y: 1.5, w: 5.2, d: 25, c: INB});
@@ -3808,8 +3865,10 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     return poolCache[key];
   }
 
-  // A distant industrial skyline behind the site. Drawn in screen space rather than
-  // world space -- it is backdrop, it should not swing around as the camera pulls back.
+  // The rest of the industrial estate, standing on the ground along its two far edges.
+  // This used to be a screen-space band pinned at CH*0.235; once the ground was sized to
+  // cover the frame it sat behind the ground and never showed. On the ground it also gets
+  // the depth haze for free, so distance reads as distance instead of as a painted strip.
   var SKYLINE = [];
   (function(){
     var x = -0.04;
@@ -3821,22 +3880,24 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     }
   })();
 
-  function drawHorizon(){
-    var base = CH * 0.235;
-    ctx.fillStyle = themeSky[2];
+  // Kept low on purpose: a block here is lifted up the screen by z*TW, and if it rises
+  // above the ground's own far edge you see sky through the gap.
+  function distantEstate(out){
+    // The frame's top edge is the line v = viewUV.v0, so the band is laid out in (u,v)
+    // and converted back with x = (u+v)/2, y = (v-u)/2. Set in world x,y instead it runs
+    // off the visible diamond, because the camera's bounding rect is not the frame.
+    var vBand = viewUV.v0 + 12;          // far enough down that a block's top is not cut
+    var uSpan = viewUV.u1 - viewUV.u0;
     for (var i = 0; i < SKYLINE.length; i++){
-      var b = SKYLINE[i], bw = b.w * CW, bh = b.h * CH;
-      ctx.fillRect(b.x * CW, base - bh, bw, bh);
+      var b = SKYLINE[i];
+      var h = 1.5 + b.h * 55;
+      var u = viewUV.u0 - 4 + b.x * (uSpan + 8);
+      var v = vBand + ((i % 3) - 1) * 2.5;          // a little depth so it is not a wall
+      var span = 3 + b.w * 26;
+      out.push({layer:1, type:'prism', x: (u + v) / 2, y: (v - u) / 2, z: -0.6,
+                w: span, d: span * 0.8, h: h,
+                c: b.lit ? PALETTES.cladding : PALETTES.plinth});
     }
-    // Window glints and a haze band along the skyline.
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    for (var j = 0; j < SKYLINE.length; j++){
-      var q = SKYLINE[j];
-      if (!q.lit) continue;
-      ctx.fillRect(q.x * CW + q.w * CW * 0.35, base - q.h * CH * 0.62, 1.6, 1.6);
-    }
-    ctx.fillStyle = 'rgba(' + themeHaze + ',0.55)';
-    ctx.fillRect(0, base - 2, CW, 12);
   }
 
   function flushShadows(){
@@ -4027,7 +4088,6 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, CW, CH);
-    drawHorizon();
 
     syncWarehouse();
     applyCamera();
@@ -4035,6 +4095,13 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     levelsThisFrame = Math.max(1, Math.min(QUALITY.rackLevels, 1 + Math.round(warehouseFill() * 3)));
 
     var entities = corpBuildingEntities();
+
+    // The estate the site sits in. Sized to the camera, so whatever the zoom or the
+    // skyline height, the panel never shows the edge of the world.
+    entities.push({layer: 0, type:'prism', x:groundRect.x, y:groundRect.y, z:-1.15,
+                   w:groundRect.w, d:groundRect.d, h:0.5, c:PALETTES.estate});
+
+    distantEstate(entities);
 
     // Slabs & Roads
     entities.push({layer: 0, type:'prism', x:-2, y:-2, z:-0.5, w:34, d:30, h:0.5, c:PALETTES.slab});
@@ -4067,10 +4134,10 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
         // Every third hand works the open dock strip between the trucks and the racking,
         // where tall racks cannot hide them.
         wx = 3.5 + ((iw * 5) % 5);
-        wy = 13.5 + Math.sin(phase) * 11.5;
+        wy = LANE_MID + Math.sin(phase) * (LANE_SWING + 0.8);
       } else {
         var lane = AISLES[iw % AISLES.length];
-        wy = 13.5 + Math.sin(phase) * 10.5;
+        wy = LANE_MID + Math.sin(phase) * LANE_SWING;
         wx = lane + Math.sin(phase * 0.5 + iw) * 0.7;
       }
       entities.push({layer: 2, type:'prism', x:wx, y:wy, z:0,    w:0.5, d:0.5, h:0.55, c:PALETTES.truck});
@@ -4091,7 +4158,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     for(var ifk=0; ifk<maxF; ifk++) {
       var flane = AISLES[ifk % lanes];
       var fdir = (ifk % 2) ? 1 : -1;
-      var fy = 13.5 + Math.sin(animT * 0.5 * speed + ifk * 2.1) * fdir * 10.0;
+      var fy = LANE_MID + Math.sin(animT * 0.5 * speed + ifk * 2.1) * fdir * (LANE_SWING - 0.4);
       if (spriteMode()){
         // Heading is the sign of the lane's travel, and the sine's derivative gives it.
         var fdy = Math.cos(animT * 0.5 * speed + ifk * 2.1) * fdir;
@@ -4131,12 +4198,13 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     // Automated Crane -- a gantry that actually travels the length of the racking.
     var craneN = state.owned.crane || 0;
     if (craneN > 0) {
-      var gy = 13.5 + Math.sin(animT * 0.22 * speed) * 11.0;
-      var gh = 1.0 + levelsThisFrame * 1.35 + 1.2;
-      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:gh,  w:27,  d:0.7, h:0.5, c:PALETTES.gantry});
-      entities.push({layer: 3, type:'prism', x:7,  y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
-      entities.push({layer: 3, type:'prism', x:33, y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
-      var hoistX = 12 + (Math.sin(animT * 0.5 * speed) * 0.5 + 0.5) * 16;
+      var gy = LANE_MID + Math.sin(animT * 0.22 * speed) * (LANE_SWING + 0.3);
+      var gh = 1.0 + levelsThisFrame * LEVEL_H + 1.2;
+      var gL = RACK_X0 - 2, gR = RACK_X1 + 1;
+      entities.push({layer: 3, type:'prism', x:gL, y:gy, z:gh,  w:gR-gL+0.5, d:0.7, h:0.5, c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:gL, y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      entities.push({layer: 3, type:'prism', x:gR, y:gy, z:0,   w:0.5, d:0.7, h:gh,  c:PALETTES.gantry});
+      var hoistX = RACK_X0 + 2 + (Math.sin(animT * 0.5 * speed) * 0.5 + 0.5) * (RACK_X1 - RACK_X0 - 5);
       entities.push({layer: 3, type:'prism', x:hoistX, y:gy, z:gh-1.4, w:1.4, d:0.7, h:1.4, c:PALETTES.hivis});
     }
 
