@@ -7,10 +7,9 @@ Idle logistics game for Android. Published on Google Play as
 single self-contained file `warehouse-empire-android.html` — no dependencies and
 no external assets at runtime. Edit that file and the next build picks it up.
 
-The one generated part of that file is the sprite atlas, inlined as a data URI
-in a `<script id="atlas">` block ahead of the game. Regenerate it with
-`python3 tools/inline-atlas.py` after changing `art/atlas.png`; nothing else in
-the file is generated.
+The one generated part of that file is the model sheet, inlined as a data URI in a
+`<script id="atlas">` block ahead of the game. Regenerate it with
+`python3 tools/inline-atlas.py`; nothing else in the file is generated.
 
 `abdulalrubat-bit.github.io` is the studio site and hosts `app-ads.txt` at the
 domain root (AdMob requires it there). It does not carry a copy of the game.
@@ -31,69 +30,49 @@ one generates a fresh Capacitor project around the HTML file, so there is no
 early if the substitution did not apply, rather than building an AAB that Play
 would reject.
 
-## Layout
+## The site view
 
-Two layouts, one set of markup — nothing moves in the DOM between them except the site
-view itself, which is why the whole test suite carries over.
+The yard is drawn in blocks: racking, cladding, hazard markings, corporate towers. That
+is what the seven liveries recolour, and it is what makes the site read as this game
+rather than as a generic industrial estate.
 
-- **Portrait** is the shipped layout, untouched: a scrolling column with the site view as
-  a band inside the Floor tab.
-- **Landscape** makes the site the backdrop and slides the active tab over the left of
-  it, so the yard stays live beside whatever you are buying. The tab bar becomes a rail
-  down the right edge.
+Models are used for one thing — the forklifts, where a stack of blocks genuinely cannot
+describe the shape. They are baked out of the [Kenney](https://kenney.nl) CC0 kits along
+this exact projection, so a frame's recorded origin lands on the point `pt()` returns for
+its grid cell with no per-model fudging, and they go into the same sorted stream as
+everything else through `emit()` — a forklift occludes the racking correctly and the
+racking occludes it.
 
-The site view is the one element that has to move. Left inside `#tab-floor` it could
-never paint behind that section — a positioned section with a `z-index` is a stacking
-context of its own, and nothing inside it can escape underneath — so `placeFloorView()`
-reparents it to `<body>` in landscape and back again in portrait, on load and on every
-rotation.
+A short history worth keeping, because both dead ends look like good ideas:
 
-Two things follow from the canvas being the whole viewport in landscape rather than a
-382px band:
+- **The whole site was drawn from models once.** It came out as a grey office park: the
+  racking is the game's subject and models put it inside a shed where you cannot see it,
+  the sheet's own colours ignore the liveries, and the busiest thing on screen was a car
+  park. The blocks were simply better.
+- **Sorting prisms by their near corner** is the textbook fix for a tall model painting
+  over a container. It visibly flattens the racking and reorders the cladding, because
+  the whole scene was composed against the far-corner convention. Sprites carry a
+  footprint instead, and the model forklifts stay out of the aisle beside the container
+  court.
 
-- The camera zooms to, and centres on, the **strip between the panel and the rail**, not
-  the canvas. A fixed zoom ceiling tuned for portrait left the site as a stamp in the
-  middle of an empty apron on a tablet.
-- The ground is sized from the viewport. A world rect paints as a diamond, and a diamond
-  covers a `CW×CH` rectangle only when its span is at least `CW/TW + CH/TH` — so ground
-  that suited portrait leaves paddock in the corners of a landscape frame. It is clipped
-  to below the horizon, because ground large enough to cover a landscape canvas is also
-  large enough to cover the sky.
+Models are baked in daylight, so on a night livery the sheet is multiplied through that
+livery's own haze colour — once, into an offscreen canvas cached per livery. If the sheet
+will not decode, the forklifts fall back to blocks and nothing says so, because there is
+nothing to say: the yard reads the same either way.
 
-## Rendering
+### The sheet
 
-The site view has two renderers, and the player chooses between them under
-**Graphics** in the Office tab.
+`art/atlas.png` is the full 86-model sheet the pipeline produces.
+`tools/inline-atlas.py` repacks the frames named in its `KEEP` list into a small WebP and
+writes it into the game as a data URI — currently five frames, 214×48, under 5KB. Adding
+a model later means naming it in `KEEP` and re-running the tool.
 
-- **Modelled** (default) blits sprites baked out of the [Kenney](https://kenney.nl)
-  CC0 model kits. Roughly 150 `drawImage` calls a frame.
-- **Blocks** draws the original flat prisms. Roughly 3,500 path fills a frame.
+It goes in as a data URI because the workflow copies one HTML file into `www/` and
+nothing else, so a sibling asset would simply not be in the AAB.
 
-Both paint the same world through the same projection and the same camera, so
-the corporate plot tap zones, the yard incident spawn bands and the frame budget
-are shared and neither renderer knows which one ran. `test-renderers.js` asserts
-that by mapping the whole tappable region of a plot under each and comparing.
-
-Sprites cannot be recoloured per frame, so a livery repaints the sky, the ground
-and one flat wash over the finished frame rather than tinting each model. That
-makes the daylight liveries read closer together in Modelled than in Blocks —
-which is part of why Blocks stays.
-
-If the atlas fails to load, the game falls back to Blocks on its own and the
-Modelled option is disabled.
-
-### The atlas
-
-`art/atlas.png` is the source sheet, 2048x2048, 86 frames at 48px per tile.
-`tools/inline-atlas.py` crops it to the used extent, encodes it as WebP at
-quality 95 and writes it into the game. WebP rather than PNG: 265KB against
-575KB, with a mean channel error under 1/255 over opaque pixels — no banding and
-no ringing on the alpha edges, and every WebView this ships to is Chromium.
-
-The pipeline that renders the models into that sheet lives in `prototype/tools/`.
-It renders along the true isometric axis and squashes by `sqrt(3)/2`, because the
-game projects 2:1 dimetric and an orthographic camera cannot produce that at
-uniform scale.
+The pipeline that renders the models into `art/atlas.png` lives in `prototype/tools/`. It
+renders along the true isometric axis and squashes by `sqrt(3)/2`, because the game
+projects 2:1 dimetric and an orthographic camera cannot produce that at uniform scale.
 
 ## Ads
 
