@@ -201,6 +201,22 @@
   .cratebar .adbtn{flex:0 0 auto; margin:0; min-width:150px;}
   .palletnote{margin:8px 14px 0; font-size:9.5px; color:var(--dim); line-height:1.6;}
   .swatch{width:20px; height:20px; border-radius:3px; display:block;}
+  .repbank{margin-left:auto; font-family:var(--font-mono); font-size:10px; letter-spacing:1px; color:var(--dim); text-transform:uppercase;}
+  .repbank b{color:var(--ink); font-family:var(--font-cond); font-size:14px; letter-spacing:1px;}
+  .branch{font-family:var(--font-cond); font-weight:700; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--dim); margin:12px 0 5px; padding-left:3px; border-left:3px solid var(--line);}
+  .branch:first-child{margin-top:0;}
+  /* A Directorship is the one run-defining pick, so it gets a rule of its own rather than
+     looking like the node above it. */
+  .up.dir{border-style:double; border-width:3px;}
+  .up.dir .uname::after{content:" \00b7 DIRECTORSHIP"; font-size:8px; letter-spacing:1.4px; color:var(--dim);}
+  .netrow{display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cash); border-radius:4px; padding:8px 10px; margin-bottom:6px;}
+  .netrow .nname{flex:1; min-width:0;}
+  .netrow .nname b{display:block; font-family:var(--font-cond); font-weight:700; font-size:12.5px; letter-spacing:.8px; text-transform:uppercase; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .netrow .nname span{font-size:8.5px; color:var(--steel); letter-spacing:.4px;}
+  .netrow .nrate{font-size:10px; color:var(--cash); white-space:nowrap; text-align:right;}
+  .netrow button{flex:0 0 auto; background:transparent; border:1px solid var(--line); color:var(--dim); font-family:var(--font-mono); font-size:9px; letter-spacing:.8px; padding:6px 8px; border-radius:3px; cursor:pointer; text-transform:uppercase;}
+  .netrow button.can{border-color:var(--cash); color:var(--cash);}
+  .netrow button:disabled{opacity:.4; cursor:default;}
 
   .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,var(--tab-1),var(--tab-2)); border-top:1px solid var(--line); box-shadow:0 -3px 10px var(--shadow);}
   .tabs button{flex:1; background:none; border:none; color:var(--dim); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
@@ -450,6 +466,19 @@
       <button class="rerollbtn" id="repAdBtn" style="margin-top:10px;" hidden>Call in a favour<small id="repAdSub">WATCH AD · +25% REP &amp; +10 PALLETS</small></button>
     </div>
     
+    <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--hivis);">The Directorship</div><div class="repbank" id="repBank"></div></div>
+    <div class="office-block" style="border-left-color: var(--hivis); margin-top:0;">
+      <div class="office-text" style="margin-top:0;">Reputation is spent here, and spending it never costs you anything &mdash; your multiplier is built on every point you have <b>earned</b>, not on what is left. Each branch ends in a <b>Directorship</b>, and you may hold one.</div>
+    </div>
+    <div id="treeList" style="margin-top:8px; padding:0 14px;"></div>
+
+    <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--cash);">The Network</div><div class="repbank" id="netBank"></div></div>
+    <div class="office-block" style="border-left-color: var(--cash); margin-top:0;">
+      <div class="office-text" style="margin-top:0;" id="netBlurb"></div>
+    </div>
+    <div id="netList" style="margin-top:8px; padding:0 14px;"></div>
+
+
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
@@ -605,6 +634,68 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
   var COST_GROWTH = 1.15;
   var NETWORK_CAP = 25;
+  // Retired sites used to be a number: a list of peaks that summed into an income floor
+  // you never saw or touched. They are now the second half of the game -- each one keeps
+  // the specialisation it was run as, so the site you choose before selling decides the
+  // Network you end up with, and each can be invested in afterwards.
+  var NET_SUBURBS = [
+    "Dandenong","Altona","Laverton","Truganina","Derrimut","Braeside","Keysborough",
+    "Somerton","Campbellfield","Ravenhall","Epping","Clayton","Hallam","Sunshine",
+    "Tullamarine","Rowville","Knoxfield","Broadmeadows","Cheltenham","Thomastown",
+    "Port Melbourne","Brooklyn","Yarraville","Coolaroo","Craigieburn","Officer",
+    "Pakenham","Werribee","Wollert","Kilsyth","Bayswater","Scoresby","Notting Hill",
+    "Mulgrave","Springvale","Carrum Downs","Seaford","Lyndhurst","Cranbourne","Tottenham"
+  ];
+  var NET_SUFFIX = {
+    general: "Distribution Centre", cold: "Cold Store",
+    hazmat: "Dangerous Goods Yard",  port: "Port Terminal"
+  };
+  var NET_INVEST_MAX = 5;
+
+  function netCap(){ return hasNode("wide") ? 40 : NETWORK_CAP; }
+
+  // A name is picked from whatever is not already in use, so a Network of forty sites
+  // does not read as forty copies of Dandenong.
+  function netName(siteId){
+    var used = {};
+    (state.network || []).forEach(function(e){ if (e.suburb) used[e.suburb] = true; });
+    var free = NET_SUBURBS.filter(function(x){ return !used[x]; });
+    var pool = free.length ? free : NET_SUBURBS;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  function netLabel(e){ return e.suburb || "Site"; }
+
+  // Running three of a kind is worth something, and six is worth more. This is the whole
+  // reason the site you pick before selling matters beyond that one run.
+  function netTypeCounts(){
+    var c = {};
+    (state.network || []).forEach(function(e){ c[e.id] = (c[e.id] || 0) + 1; });
+    return c;
+  }
+  function netSetBonus(id, counts){
+    var n = (counts || netTypeCounts())[id] || 0;
+    return n >= 6 ? 1.25 : (n >= 3 ? 1.10 : 1);
+  }
+  function netSiteRate(e, counts){
+    return (e.peak || 0) * 0.15 * (1 + (e.inv || 0) * 0.35) * netSetBonus(e.id, counts)
+           * (hasNode("tycoon") ? 2 : 1);
+  }
+  // A tier adds peak * 0.0525/s, so a price of peak * 400 pays back in about two hours
+  // and each tier after that in four times as long. At peak * 40 it paid back in twelve
+  // minutes, which is not an investment, it is a formality.
+  function netInvestCost(e){
+    return Math.ceil(Math.max(5000, (e.peak || 0) * 400) * Math.pow(4, e.inv || 0));
+  }
+  function netInvest(i){
+    var e = (state.network || [])[i];
+    if (!e || (e.inv || 0) >= NET_INVEST_MAX) return false;
+    var cost = netInvestCost(e);
+    if (state.money < cost) return false;
+    state.money -= cost;
+    e.inv = (e.inv || 0) + 1;
+    return true;
+  }
+
   var OFFLINE_CAP_HOURS = 8;
   var renderActive = true;
   var wiping = false;
@@ -905,7 +996,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
   function marketWindow(stateId){
     var r = MARKET[stateId].ms, span = r[1] - r[0];
-    var extend = 1 + Math.min(1.0, (state.corp.marketing || 0) * 0.12);
+    var extend = (1 + Math.min(1.0, (state.corp.marketing || 0) * 0.12)) * (hasNode("read") ? 1.5 : 1);
     var base = r[0] + Math.random() * span;
     return (stateId === "hot" || stateId === "peak") ? base * extend : base;
   }
@@ -940,6 +1031,89 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     // Unconditional: repainting only on a transition left the badge stale whenever the
     // state was set from anywhere else -- a load, a manifest switch, a restored save.
     renderMarket();
+  }
+
+  // --- The Directorship: what REP is for ------------------------------------------------
+  // Until now REP was a number that sat there: selling up converted it straight into a
+  // flat multiplier and you never chose anything with it. It is now spendable -- but
+  // state.rep still means total ever earned and still drives prestigeMult, and spending
+  // is tracked separately in state.repSpent. Buying a node must never cut your income, or
+  // the tree is a trap and every existing save quietly loses power the moment it opens.
+  //
+  // Each branch ends in a Directorship, and you may hold exactly one across the whole
+  // tree. Everything else is additive, so the order you buy in is the early decision and
+  // the Directorship is the run-defining one.
+  var TREE = [
+    { br:"throughput", id:"bulk",    name:"Bulk Handling",     cost:10,    desc:"All output +12%" },
+    { br:"throughput", id:"deep",    name:"Deep Racking",      cost:60,   desc:"Fleet output +18%",             req:"bulk" },
+    { br:"throughput", id:"flow",    name:"Flow Control",      cost:240,   desc:"Throughput never dips below 100%", req:"deep" },
+    { br:"throughput", id:"shift",   name:"Double Shift",      cost:900,  desc:"All output +30%",               req:"flow" },
+    { br:"throughput", id:"magnate", name:"Freight Magnate",   cost:6000, sales:10, desc:"All output doubled",            req:"shift", dir:true },
+
+    { br:"logistics",  id:"broker",  name:"Broker Desk",       cost:10,    desc:"Contracts pay +25%" },
+    { br:"logistics",  id:"wide",    name:"Wide Network",      cost:60,   desc:"Network holds 40 sites, not 25", req:"broker" },
+    { br:"logistics",  id:"read",    name:"Market Read",       cost:240,   desc:"Hot and Peak markets last 50% longer", req:"wide" },
+    { br:"logistics",  id:"pref",    name:"Preferred Client",  cost:900,  desc:"Priority loads pay +60% and a second crate", req:"read" },
+    { br:"logistics",  id:"tycoon",  name:"Logistics Tycoon",  cost:6000, sales:10, desc:"Retired sites pay double, and the Network is uncapped", req:"pref", dir:true },
+
+    { br:"capital",    id:"lean",    name:"Lean Capital",      cost:10,    desc:"Fleet prices inflate more slowly" },
+    { br:"capital",    id:"contops", name:"Continuous Ops",    cost:60,   desc:"Offline cap +12 hours",         req:"lean" },
+    { br:"capital",    id:"interest",name:"Compound Interest", cost:240,   desc:"Offline earns full rate",       req:"contops" },
+    { br:"capital",    id:"float",   name:"Working Float",     cost:900,  desc:"Start a new site with 60s of income", req:"interest" },
+    { br:"capital",    id:"mogul",   name:"Property Mogul",    cost:6000, sales:10, desc:"Corporate buildings cost a third", req:"float", dir:true },
+
+    { br:"automation", id:"scan",    name:"Auto-Scan",         cost:10,    desc:"Hand picks worth +50%" },
+    { br:"automation", id:"memory",  name:"Combo Memory",      cost:60,   desc:"Combos decay half as fast",     req:"scan" },
+    { br:"automation", id:"yard",    name:"Yard Automation",   cost:240,   desc:"Yard incidents pay double",     req:"memory" },
+    { br:"automation", id:"exec",    name:"Executive Team",    cost:900,  desc:"Site managers +50% stronger",   req:"yard" },
+    { br:"automation", id:"singular",name:"Full Automation",   cost:6000, sales:10, desc:"The floor picks itself, twice a second", req:"exec", dir:true }
+  ];
+  var TREE_BRANCHES = [
+    { id:"throughput", name:"Throughput", accent:"var(--hivis)" },
+    { id:"logistics",  name:"Logistics",  accent:"var(--corp)" },
+    { id:"capital",    name:"Capital",    accent:"var(--cash)" },
+    { id:"automation", name:"Automation", accent:"var(--steel)" }
+  ];
+  var TREE_BY_ID = {};
+  TREE.forEach(function(n){ TREE_BY_ID[n.id] = n; });
+
+  // Every output node in one product, so the hot path picks up four booleans rather than
+  // four scattered ternaries.
+  function treeOutput(){
+    return (hasNode("bulk")  ? 1.12 : 1) * (hasNode("deep")  ? 1.18 : 1) *
+           (hasNode("shift") ? 1.30 : 1) * (hasNode("magnate") ? 2 : 1);
+  }
+
+  function repAvailable(){ return Math.max(0, (state.rep || 0) - (state.repSpent || 0)); }
+  function hasNode(id){ return !!(state.tree && state.tree[id]); }
+  function heldDirectorship(){
+    for (var i = 0; i < TREE.length; i++) if (TREE[i].dir && hasNode(TREE[i].id)) return TREE[i];
+    return null;
+  }
+  function nodeBlocked(n){
+    if (n.req && !hasNode(n.req)) return "Needs " + TREE_BY_ID[n.req].name;
+    // REP grows exponentially -- it is the square root of a lifetime that itself runs
+    // away -- so a price alone gates nothing for long. A Directorship is gated on sales,
+    // which is the thing that actually takes time.
+    if (n.sales && (state.prestiges || 0) < n.sales)
+      return "Needs " + n.sales + " sales, you have " + (state.prestiges || 0);
+    return null;
+  }
+  // Taking a different Directorship refunds the one you hold. The rule is one at a time,
+  // not one forever: with REP this plentiful a permanent lock would only punish a player
+  // for choosing before they understood the choice.
+  function buyNode(n){
+    if (hasNode(n.id)) return false;
+    if (nodeBlocked(n)) return false;
+    var held = n.dir ? heldDirectorship() : null;
+    var refund = held ? held.cost : 0;
+    if (repAvailable() + refund < n.cost) return false;
+    if (held){ delete state.tree[held.id]; state.repSpent -= refund; }
+    state.repSpent = (state.repSpent || 0) + n.cost;
+    if (!state.tree) state.tree = {};
+    state.tree[n.id] = true;
+    invalidateUpMult();
+    return held || true;
   }
 
   // --- Yard incidents ------------------------------------------------------------------
@@ -982,7 +1156,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   // The Solar Array's mastery used to switch incidents off entirely, which read as
   // "immune to hazards" but in practice deleted an income stream from anyone who
   // finished the building. It doubles the payout instead.
-  function incidentPayMult(){ return (state.corp.solar || 0) >= 10 ? 2 : 1; }
+  function incidentPayMult(){ return ((state.corp.solar || 0) >= 10 ? 2 : 1) * (hasNode("yard") ? 2 : 1); }
 
   // Payout lives with the table rather than in the tap handler, so a test can clear an
   // incident without having to synthesise a canvas hit.
@@ -1060,6 +1234,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
     incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
+    tree: {}, repSpent: 0,
     corpProgress: {}
   };
 
@@ -1116,6 +1291,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     var lvl = state.corp.training || 0;
     var bonus = (base - 1) * (1 + lvl * 0.05);
     if (lvl >= 10) bonus *= 2;
+    if (hasNode("exec")) bonus *= 1.5;
     return 1 + bonus;
   }
 
@@ -1177,12 +1353,15 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   function flowEfficiency(){
     var units = 0; GENS.forEach(function(g){ units+=(state.owned[g.id]||0); });
     if (units === 0) return 1.0;
-    return 1.0 + Math.sin(Date.now() / 8000) * FLOW_SWING;
+    var swing = Math.sin(Date.now() / 8000) * FLOW_SWING;
+    // Flow Control keeps the good half of the swing and drops the bad half, so throughput
+    // reads 100-115% rather than 85-115%.
+    return 1.0 + (hasNode("flow") ? Math.max(0, swing) : swing);
   }
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -1200,17 +1379,22 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
   function networkRate(){
     var repFloor = state.rep * 2.5;
-    var networkPeakSum = 0;
+    var sum = 0;
     if (state.network && state.network.length > 0) {
-        for (var i=0;i<state.network.length;i++) networkPeakSum += (state.network[i].peak || 0) * 0.15;
+        var counts = netTypeCounts();
+        for (var i=0;i<state.network.length;i++) sum += netSiteRate(state.network[i], counts);
     }
-    return Math.max(repFloor, Math.min(networkPeakSum, activeRate() * 0.40));
+    // The Network is capped as a share of what you are running now, so it supports the
+    // current site rather than replacing it. A Logistics Tycoon lifts that -- which is
+    // what makes investing in retired sites worth doing at all.
+    var cap = hasNode("tycoon") ? Infinity : activeRate() * 0.40;
+    return Math.max(repFloor, Math.min(sum, cap));
   }
   function totalRate(){ return activeRate() + networkRate(); }
 
   function tapValue(){
       var basePassiveVal = (totalRate() * 0.05) / Math.sqrt(Math.max(1, comboMult()));
-      return (1 + basePassiveVal) * upMult("tap") * (state.perks.gloves ? 1.25 : 1) * (state.perks.crew ? 1.60 : 1) * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
+      return (1 + basePassiveVal) * upMult("tap") * (state.perks.gloves ? 1.25 : 1) * (state.perks.crew ? 1.60 : 1) * (hasNode("scan") ? 1.50 : 1) * currentSite().tap * getSku().tapMult * (Date.now() < tapBoostUntil ? 4 : 1) * comboMult();
   }
 
   function costOf(g, qty){
@@ -1219,7 +1403,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     var depotRed = Math.min(0.015, (state.corp.depot || 0) * 0.0015);
     // Cost growth compounds over hundreds of purchases, so the floor is what keeps this
     // from running away -- the Depot lowers it, it does not remove it.
-    var actualGrowth = Math.max(1.12, COST_GROWTH - solarRed - depotRed);
+    var actualGrowth = Math.max(1.12, COST_GROWTH - solarRed - depotRed - (hasNode("lean") ? 0.01 : 0));
     for (var i=0;i<qty;i++) sum += g.cost * Math.pow(actualGrowth, owned+i);
     return Math.ceil(sum * currentSite().cost);
   }
@@ -1251,7 +1435,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday"].forEach(function(k){
+       "incidentPalletsToday","repSpent"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -1272,6 +1456,25 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
         var v = Math.floor(Number(state.corp[cb.id]));
         state.corp[cb.id] = (isFinite(v) && v >= 0) ? v : 0;
       });
+
+      // Retired sites predate having names or investment, and a save can carry entries
+      // for a site type that no longer exists.
+      if (!Array.isArray(state.network)) state.network = [];
+      state.network = state.network.filter(function(e){ return e && typeof e === "object"; });
+      state.network.forEach(function(e){
+        var peak = Number(e.peak);
+        e.peak = (isFinite(peak) && peak >= 0) ? peak : 0;
+        var inv = Math.floor(Number(e.inv));
+        e.inv = (isFinite(inv) && inv >= 0) ? Math.min(NET_INVEST_MAX, inv) : 0;
+        if (!NET_SUFFIX[e.id]) e.id = "general";
+        if (typeof e.suburb !== "string" || !e.suburb) e.suburb = netName(e.id);
+      });
+      if (state.network.length > netCap()) state.network.length = netCap();
+
+      if (!state.tree || typeof state.tree !== "object") state.tree = {};
+      // A save cannot be allowed to claim more spent than earned, or the tree reads as
+      // permanently unaffordable with no way back.
+      if (state.repSpent > state.rep) state.repSpent = state.rep;
 
       if (!state.upgrades) state.upgrades = {};
       invalidateUpMult();
@@ -1322,7 +1525,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
       var secs = (Date.now() - state.lastSeen) / 1000;
       if (secs > 60){
-        var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+        var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
         secs = Math.min(secs, capHours * 3600);
         var earned = totalRate() * secs;
 
@@ -1517,8 +1720,8 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
       sku: sku.id,
       goal: Math.max(2000, Math.floor(r * 3600 * PRIORITY_GOAL_HOURS)),
       prog: 0,
-      base: Math.max(5000, Math.floor(r * 3600 * PRIORITY_HOURS)),
-      crates: PRIORITY_CRATES,
+      base: Math.max(5000, Math.floor(r * 3600 * PRIORITY_HOURS)) * (hasNode("pref") ? 1.6 : 1),
+      crates: PRIORITY_CRATES + (hasNode("pref") ? 1 : 0),
       day: dailyPeriod(),
       collected: false
     };
@@ -1643,6 +1846,10 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   }
 
   function corpCost(cb, lvl){
+    if (hasNode("mogul")) return Math.ceil(corpCostBase(cb, lvl) / 3);
+    return corpCostBase(cb, lvl);
+  }
+  function corpCostBase(cb, lvl){
     return Math.ceil(cb.baseCost * Math.pow(6, lvl) * (1 - corpProgress(cb.id)));
   }
 
@@ -2227,6 +2434,8 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
         elObj.btn.disabled = !canBuy;
       }
     });
+    renderTree();
+    renderNetList();
     renderOffice();
     renderQuality();
     renderNotifs();
@@ -2282,6 +2491,107 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
       comboCount > 1 ? ("COMBO \u00d7" + comboMult().toFixed(2)) : "TAP TO SCAN";
   }
 
+  // --- the Directorship -----------------------------------------------------------------
+  var treeBtnEls = {};
+  function buildTree(){
+    var list = document.getElementById("treeList"); if (!list) return;
+    list.innerHTML = ""; treeBtnEls = {};
+    TREE_BRANCHES.forEach(function(br){
+      var h = document.createElement("div");
+      h.className = "branch"; h.style.borderLeftColor = br.accent; h.textContent = br.name;
+      list.appendChild(h);
+      TREE.filter(function(n){ return n.br === br.id; }).forEach(function(n){
+        var b = document.createElement("button");
+        b.className = "up" + (n.dir ? " dir" : "");
+        b.innerHTML = plate(n.dir ? "hat" : "clip") +
+          '<div><div class="uname">' + n.name + '</div><div class="udesc">' + n.desc + '</div></div>' +
+          '<div class="ucost" data-r="cost"></div>';
+        b.addEventListener("click", function(){
+          var why = nodeBlocked(n);
+          if (why){ showToast(why + "."); return; }
+          if (repAvailable() < n.cost){
+            showToast("<b>" + n.name + "</b> costs <b>" + n.cost + " REP</b>. You have " + repAvailable() + ".");
+            return;
+          }
+          var swapped = buyNode(n);
+          if (!swapped) return;
+          sfx("prestige");
+          showToast(!n.dir ? "<b>" + n.name + "</b> approved."
+            : (swapped === true ? "Directorship taken: <b>" + n.name + "</b>."
+               : "Board reshuffle: <b>" + swapped.name + "</b> refunded, <b>" + n.name + "</b> taken."));
+          render(); saveGame();
+        });
+        list.appendChild(b);
+        treeBtnEls[n.id] = { btn: b, costEl: b.querySelector('[data-r="cost"]') };
+      });
+    });
+  }
+
+  function renderTree(){
+    var bank = document.getElementById("repBank");
+    if (bank) bank.innerHTML = "<b>" + fmt(repAvailable()) + "</b> REP TO SPEND";
+    var held = heldDirectorship();
+    TREE.forEach(function(n){
+      var e = treeBtnEls[n.id]; if (!e) return;
+      var owned = hasNode(n.id), why = nodeBlocked(n);
+      stateClasses(e.btn, owned, !why, repAvailable() >= n.cost);
+      // Say which wall you are actually against. A Directorship behind an unfinished
+      // branch was reading "10 SALES" to a player who already had fourteen.
+      var needsReq = n.req && !hasNode(n.req);
+      e.costEl.textContent = owned ? "HELD"
+        : needsReq ? "LOCKED"
+        : why ? n.sales + " SALES"
+        : (n.dir && held) ? "SWAP"
+        : n.cost + " REP";
+    });
+  }
+
+  // --- the Network ----------------------------------------------------------------------
+  function renderNetList(){
+    var list = document.getElementById("netList"); if (!list) return;
+    var sites = state.network || [];
+    var blurb = document.getElementById("netBlurb");
+    var bank = document.getElementById("netBank");
+    if (bank) bank.innerHTML = sites.length
+      ? "<b>" + money(networkRate()) + "</b>/S PASSIVE"
+      : "NO RETIRED SITES";
+    if (!sites.length){
+      list.innerHTML = "";
+      if (blurb) blurb.innerHTML = "Sites you retire keep running here. Each holds the specialisation you ran it as &mdash; three of a kind pay <b>+10%</b>, six pay <b>+25%</b> &mdash; so what you choose to run before selling decides what you end up holding.";
+      return;
+    }
+    var counts = netTypeCounts(), capped = !hasNode("tycoon");
+    if (blurb){
+      var sets = Object.keys(counts).filter(function(k){ return counts[k] >= 3; })
+        .map(function(k){ return (NET_SUFFIX[k] || k) + " \u00d7" + counts[k] + " (+" + Math.round((netSetBonus(k, counts) - 1) * 100) + "%)"; });
+      blurb.innerHTML = sites.length + " of " + netCap() + " sites \u00b7 <b style='color:var(--cash);'>" + money(networkRate()) + "/s</b>" +
+        (capped ? " \u00b7 capped at 40% of this site's output" : " \u00b7 uncapped") +
+        (sets.length ? "<br>Set bonuses: " + sets.join(", ") : "");
+    }
+    // Strongest first, so the ones worth investing in are the ones you see.
+    var order = sites.map(function(e, i){ return { e:e, i:i }; })
+                     .sort(function(a, b){ return netSiteRate(b.e, counts) - netSiteRate(a.e, counts); });
+    list.innerHTML = "";
+    order.forEach(function(o){
+      var e = o.e, row = document.createElement("div");
+      row.className = "netrow";
+      var maxed = (e.inv || 0) >= NET_INVEST_MAX, cost = netInvestCost(e);
+      var can = !maxed && state.money >= cost;
+      row.innerHTML =
+        '<div class="nname"><b>' + netLabel(e) + '</b><span>' +
+          (e.inv ? "Tier " + e.inv + " \u00b7 " : "") + (NET_SUFFIX[e.id] || "Depot") + '</span></div>' +
+        '<div class="nrate">' + money(netSiteRate(e, counts)) + '/s</div>' +
+        '<button' + (can ? ' class="can"' : '') + (can ? '' : ' disabled') + '>' +
+          (maxed ? "MAX" : "INVEST " + money(cost)) + '</button>';
+      row.querySelector("button").addEventListener("click", function(){
+        if (!netInvest(o.i)) return;
+        sfx("buy"); showToast("Invested in <b>" + netLabel(e) + "</b> \u2014 tier " + e.inv + ".");
+        render(); saveGame();
+      });
+      list.appendChild(row);
+    });
+  }
+
   function renderOffice(){
     var st = document.getElementById("statsText");
     if(st) {
@@ -2315,12 +2625,19 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
     if (!state.network) state.network = [];
-    state.network.push({ id: state.site, peak: activeRate() });
-    if (state.network.length > NETWORK_CAP){
-      state.network.sort(function(a,b){ return (b.peak||0) - (a.peak||0); });
-      state.network.length = NETWORK_CAP;
+    state.network.push({ id: state.site, peak: activeRate(), suburb: netName(state.site), inv: 0 });
+    if (state.network.length > netCap()){
+      // Keep the strongest, and rate them on what they actually contribute rather than on
+      // raw peak -- a smaller site you have invested in can be worth more than a big one
+      // you have not.
+      var counts = netTypeCounts();
+      state.network.sort(function(a,b){ return netSiteRate(b, counts) - netSiteRate(a, counts); });
+      state.network.length = netCap();
     }
-    state.money = 0; state.total = 0;
+    // Working Float is measured before the fleet is cleared, or there is no income left
+    // to take a minute of.
+    var floatCash = hasNode("float") ? activeRate() * 60 : 0;
+    state.money = floatCash; state.total = floatCash;
     state.depotFreeUsed = false;              // the Depot's free purchase refreshes per site
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
@@ -2360,7 +2677,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
         comboCount += 1;
         lastTap = now;
     } else {
-        var timeout = 1600 + ((state.corp.server || 0) * 400);
+        var timeout = (1600 + ((state.corp.server || 0) * 400)) * (hasNode("memory") ? 2 : 1);
         comboCount = (now - lastTap < timeout) ? comboCount + 1 : 1;
         lastTap = now;
     }
@@ -2370,10 +2687,18 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
   }
 
   // --- LIGHTWEIGHT TAP LISTENER (NO DOM THRASING) ---
-  el.pick.addEventListener("pointerdown", function(ev){
-    sfx("tap"); bumpCombo();
+  // Shared by the button and by Full Automation, so an automated pick is a real pick:
+  // it counts, it builds combo, and it is worth exactly what a hand pick is worth.
+  function doPick(){
+    bumpCombo();
     var v = tapValue();
     state.money += v; state.total += v; state.lifetime += v; state.taps++;
+    return v;
+  }
+
+  el.pick.addEventListener("pointerdown", function(ev){
+    sfx("tap");
+    var v = doPick();
 
     // Update only money in DOM immediately
     el.money.textContent = money(state.money);
@@ -2398,7 +2723,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     var customsCut = 1 - Math.min(0.40, (state.corp.customs || 0) * 0.04);
     var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
-    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult;
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1);
 
     return {
       goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
@@ -2482,7 +2807,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
       fired[key] = when;
     }
 
-    var capHours = ((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS);
+    var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
     if (totalRate() > 0) at("offline", capHours * 3600000);
 
     var DAY_MS = 20 * 3600000;
@@ -3442,6 +3767,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
 
   cv.addEventListener("pointerdown", handleCanvasTap);
 
+  var autoPickCarry = 0;
   var animT = 0, lastFrame = 0, nextHotspot = 12;
   var shadowsThisFrame = [], levelsThisFrame = 1, shadowsDone = true;
   var depthGrad = null, depthGradH = 0, skyGrad = null, skyGradH = 0;
@@ -3877,6 +4203,11 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
     tickAmbientRush();
     tickMarkets();
+    // Two a second, paced off the ticker rather than a timer of its own.
+    if (hasNode("singular")){
+      autoPickCarry += dt * 2;
+      while (autoPickCarry >= 1){ autoPickCarry -= 1; doPick(); }
+    }
     var earned = totalRate() * dt;
     state.money += earned; state.total += earned; state.lifetime += earned;
     sessionEarned += earned;
@@ -3911,7 +4242,7 @@ window.__ATLAS_IMG="data:image/webp;base64,UklGRkgTAABXRUJQVlA4WAoAAAAQAAAA1QAAL
     }, 500);
   }
 
-  buildGens(); buildShop(); buildAch();
+  buildGens(); buildShop(); buildAch(); buildTree();
 
   loadGame().then(startGame).catch(function(e){
     console.error(e);

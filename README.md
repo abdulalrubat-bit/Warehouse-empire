@@ -30,6 +30,45 @@ one generates a fresh Capacitor project around the HTML file, so there is no
 early if the substitution did not apply, rather than building an AAB that Play
 would reject.
 
+## The prestige layer
+
+Selling up pays REP. REP is spent in **the Directorship** — four branches of four nodes,
+each ending in a **Directorship** proper, of which you may hold one at a time.
+
+The load-bearing rule: **`state.rep` means total ever earned, and it is what
+`prestigeMult()` reads.** Spending is tracked separately in `state.repSpent`. If the
+multiplier read what was *left*, buying a node would cut your income and every existing
+save would quietly lose power the first time it opened — the tree would be a trap rather
+than a reward.
+
+Taking a different Directorship refunds the one you hold in full. The rule is one at a
+time, not one forever: REP grows as the square root of a lifetime that itself runs away,
+so a permanent lock would only punish a player for choosing before they understood the
+choice. For the same reason a Directorship is gated on **sales**, not on price — a price
+alone stops gating anything a few prestiges later.
+
+`sim-tree.js` is the balance pass. It reports when each tier of the tree comes into
+range, measures each Directorship against holding none, and checks the Network is worth
+managing. Three findings came out of it and are baked into the numbers:
+
+- Entry cost was 40 REP, four sales away. The tree is the headline of the prestige layer
+  and should introduce itself sooner; at 10 REP it lands after the fourth sale.
+- Investing in a retired site paid for itself in **twelve minutes**, which is not an
+  investment, it is a formality. Prices now pay back in about two hours, quadrupling per
+  tier.
+- Logistics Tycoon originally only lifted the Network's output cap — and that cap almost
+  never binds, because right after a sale the REP floor carries the Network and once a
+  fleet is running 40% of it dwarfs the Network sum. It doubles what retired sites are
+  worth as well, which is what makes it a Network build rather than a dead node.
+
+## The Network
+
+Retired sites used to be a list of peaks that summed into an income floor you never saw.
+Each now keeps the specialisation it was run as, so **what you choose to run before
+selling decides what you end up holding** — three of a kind pay +10%, six pay +25%. Each
+can be invested in with cash, and the whole thing is capped as a share of the site you
+are running now, so it supports the current run rather than replacing it.
+
 ## The site view
 
 The yard is drawn in blocks: racking, cladding, hazard markings, corporate towers. That
