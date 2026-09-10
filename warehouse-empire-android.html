@@ -428,7 +428,7 @@
   </section>
 
   <section id="tab-office" hidden>
-    <div class="toolbar"><div class="label">The Office</div><div class="qty"><button id="muteBtn">SFX ON</button></div></div>
+    <div class="toolbar"><div class="label">The Office</div><div class="qty"><button id="muteBtn">SFX ON</button><button id="hapticBtn">BUZZ ON</button></div></div>
     <div class="office-block">
       <div class="office-title">COMPANY</div>
       <div class="office-text">Trading as <b id="companyName">FIRST SHIFT LOGISTICS</b>.</div>
@@ -703,17 +703,29 @@
   var wiping = false;
   var dailyPending = false;
 
+  // Vibration is its own setting. It used to be fired from inside sfx(), which returns
+  // early when muted, so turning the sound off silently killed the haptics too and there
+  // was no way to have one without the other -- the commonest thing a player actually
+  // wants on a phone.
   var haptic = function(type) {
+      if (state.haptics === false) return;
       if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
           try {
               if (type === "light") window.Capacitor.Plugins.Haptics.impact({ style: 'Light' });
               else if (type === "heavy") window.Capacitor.Plugins.Haptics.impact({ style: 'Heavy' });
           } catch(e) {}
+      } else if (navigator.vibrate) {
+          // Plain web build, and any Android WebView without the plugin.
+          try { navigator.vibrate(type === "heavy" ? 24 : 10); } catch(e) {}
       }
   };
+  // Which cue each sound carries, kept out of sfx() so it fires whether or not the
+  // tones do.
+  var HAPTIC_FOR = { tap:"light", buy:"light", upgrade:"heavy", shatter:"heavy", build:"heavy" };
 
   var AC = null;
   function sfx(type){
+    if (HAPTIC_FOR[type]) haptic(HAPTIC_FOR[type]);
     if (state.muted) return;
     try {
       if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -726,12 +738,12 @@
         g.gain.exponentialRampToValueAtTime(0.001, st + dur);
         o.start(st); o.stop(st + dur);
       }
-      if (type === "tap"){ tone(1250, t, 0.05, 0.05); haptic("light"); }
+      if (type === "tap"){ tone(1250, t, 0.05, 0.05); }
       else if (type === "buy"){ tone(300, t, 0.09, 0.09); tone(220, t+0.06, 0.12, 0.09); }
-      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); haptic("heavy"); }
+      else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); }
       else if (type === "prestige"){ tone(523, t, 0.12, 0.08); tone(659, t+0.12, 0.12, 0.08); tone(784, t+0.24, 0.12, 0.08); tone(1046, t+0.36, 0.3, 0.08); }
-      else if (type === "shatter"){ tone(1500, t, 0.05, 0.08); tone(2000, t+0.03, 0.08, 0.05); haptic("heavy"); }
-      else if (type === "build"){ tone(150, t, 0.1, 0.1, "sawtooth"); tone(90, t+0.1, 0.35, 0.15, "square"); haptic("heavy"); }
+      else if (type === "shatter"){ tone(1500, t, 0.05, 0.08); tone(2000, t+0.03, 0.08, 0.05); }
+      else if (type === "build"){ tone(150, t, 0.1, 0.1, "sawtooth"); tone(90, t+0.1, 0.35, 0.15, "square"); }
     } catch(e){}
   }
 
@@ -1226,7 +1238,7 @@
     owned: {}, upgrades: {}, ach: {}, pallets: 0, perks: {},
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
-    site: "general", sku: "fmcg", network: [], muted: false,
+    site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
     prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
@@ -3017,11 +3029,18 @@
   // --- SFX toggle (button existed with no handler; state.muted was read but never written) ---
   function renderMute(){
     document.getElementById("muteBtn").textContent = state.muted ? "SFX OFF" : "SFX ON";
+    document.getElementById("hapticBtn").textContent = state.haptics === false ? "BUZZ OFF" : "BUZZ ON";
   }
   document.getElementById("muteBtn").addEventListener("click", function(){
     state.muted = !state.muted;
     renderMute();
     if (!state.muted) sfx("tap");
+    saveGame();
+  });
+  document.getElementById("hapticBtn").addEventListener("click", function(){
+    state.haptics = state.haptics === false;      // undefined and true both mean "on"
+    renderMute();
+    if (state.haptics) haptic("heavy");           // confirm it by doing it
     saveGame();
   });
 
@@ -3448,24 +3467,63 @@
     ctx.beginPath(); ctx.moveTo(px, py + ph/2); ctx.lineTo(px + pw, py + ph/2); ctx.stroke();
   }
 
+  // A dock is a cycle, not a coin flip. Every bay runs empty -> arriving -> docked ->
+  // leaving on its own clock, and a busier site turns them round faster, so the same
+  // signal the static version carried (fuller site, more trucks) now arrives as traffic.
+  var docks = { R: null, S: null };
+  function initDocks(key, count){
+    var a = [];
+    for (var i = 0; i < count; i++)
+      a.push({ phase:"empty", t: Math.random() * 9, livery: (i * 3 + key.length) % LIVERY.length });
+    return a;
+  }
+  function tickDocks(dt){
+    if (!docks.R) { docks.R = initDocks("R", RECV_DOCKS); docks.S = initDocks("S", SHIP_DOCKS); }
+    var busy = 0.35 + warehouseFillCached * 0.65;       // 0.35 idle site .. 1.0 flat out
+    for (var key in docks){
+      var a = docks[key];
+      for (var i = 0; i < a.length; i++){
+        var d = a[i];
+        d.t += dt;
+        if (d.phase === "empty"   && d.t > (11 - busy * 8) * (0.6 + slotNoise(i, key.length, 2))){
+          d.phase = "arriving"; d.t = 0;
+          d.livery = (d.livery + 1 + Math.floor(Math.random() * 3)) % LIVERY.length;
+        }
+        else if (d.phase === "arriving" && d.t > DOCK_IN)  { d.phase = "docked";  d.t = 0; }
+        else if (d.phase === "docked"   && d.t > (14 - busy * 9)) { d.phase = "leaving"; d.t = 0; }
+        else if (d.phase === "leaving"  && d.t > DOCK_OUT) { d.phase = "empty";   d.t = 0; }
+      }
+    }
+  }
+  var DOCK_IN = 2.6, DOCK_OUT = 2.0;
+  function ease(t){ return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; }
+
   function drawDockRow(z, count, prefix, atTop){
     zoneFloor({x:z.x, y:z.y, w:z.w, h:z.h, label:null});
-    var bw = z.w / count;
+    var bw = z.w / count, row = docks[prefix] || [];
     for (var i = 0; i < count; i++){
-      var bx = z.x + i*bw;
+      var bx = z.x + i*bw, d = row[i];
       ro(bx+8, z.y+8, bw-16, z.h-16, C.line, 2);
       if (QUALITY.decals)
         hatch(bx+14, atTop ? z.y+14 : z.y+z.h-64, bw-28, 50, "rgba(" + hexRGB(C.line) + ",0.20)", 14);
       label(prefix + "0" + (i+1), bx + bw/2, atTop ? z.y+z.h-16 : z.y+18, 11, C.ink, "center");
-      if (slotNoise(i+1, atTop ? 3 : 7, 1) < 0.45 + warehouseFillCached*0.5)
-        drawTrailer(bx+8, z.y+8, bw-16, z.h-16, atTop, i);
+      if (!d || d.phase === "empty") continue;
+
+      // Trucks reverse onto the dock, so they travel outward-to-inward on arrival and
+      // the reverse on departure. Outward is up for receiving, down for shipping.
+      var travel = (z.h + 130) * (atTop ? -1 : 1);
+      var off = 0;
+      if (d.phase === "arriving") off = travel * (1 - ease(Math.min(1, d.t / DOCK_IN)));
+      else if (d.phase === "leaving") off = travel * ease(Math.min(1, d.t / DOCK_OUT));
+      drawTrailer(bx+8, z.y+8 + off, bw-16, z.h-16, atTop, d.livery,
+                  d.phase === "docked", d.phase !== "docked");
     }
     label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center");
   }
 
   var LIVERY = ["#e9edf1", "#3f6ea8", "#e9edf1", "#b8493c", "#e9edf1"];
   // Parked in its bay, seen from above: ribbed trailer with the tractor at the outer end.
-  function drawTrailer(bx, by, bw, bh, atTop, i){
+  function drawTrailer(bx, by, bw, bh, atTop, i, docked, moving){
     var tw = Math.min(58, bw - 22), cabH = 42, gap = 10, th = bh - cabH - gap;
     var cx2 = bx + bw/2;
     var ty = atTop ? by + cabH + gap : by;
@@ -3484,6 +3542,20 @@
     r(cx2 - tw/2 + 4, cy2, tw - 8, cabH, "#2b3037");
     ro(cx2 - tw/2 + 4, cy2, tw - 8, cabH, "rgba(0,0,0,0.4)", 1.5);
     r(cx2 - tw/2 + 10, cy2 + (atTop ? 7 : cabH - 17), tw - 20, 10, "#5d6773");
+
+    // An amber beacon while it is on the dock, reversing lights while it moves. This is
+    // most of what makes the yard feel worked rather than parked.
+    if (docked && QUALITY.decals){
+      var beat = 0.45 + Math.abs(Math.sin(animT * 3.4 + i)) * 0.55;
+      ctx.globalAlpha = beat;
+      r(cx2 - 5, atTop ? by + th + cabH + gap - 12 : by - 4, 10, 8, C.line);
+      ctx.globalAlpha = 1;
+    }
+    if (moving){
+      var lampY = atTop ? by + th - 5 : by;
+      r(cx2 - tw/2 + 5, lampY, 9, 5, "#ffd9a0");
+      r(cx2 + tw/2 - 14, lampY, 9, 5, "#ffd9a0");
+    }
   }
 
   function drawRacks(){
@@ -3663,8 +3735,18 @@
     r(x-9, fy, 6, 12, "#4a4f57"); r(x+3, fy, 6, 12, "#4a4f57");
     if (carrying) pallet(x-11, up ? y-30 : y+14, 22, 18, false);
   }
+  // Eight things can be bought and the plan showed four of them. Pickers and the crane
+  // were both drawn by the renderer this replaced, so porting it lost them; sorters and
+  // hubs were never shown at all. Every generator now puts something on the site, which
+  // is the only reason to look at the site while shopping.
+  function crew(x, y){
+    r(x - 4, y - 6, 8, 12, C.fork);
+    r(x - 3, y - 8, 6, 5, "#2b3037");
+  }
   function drawFleet(){
     var z = ZONE.racks, pitch = AISLE_W + AISLE_GAP;
+
+    // Reach trucks and forklifts run the aisles.
     var fleet = (state.owned.forklift||0) + (state.owned.reach||0);
     var n = Math.min(QUALITY.plant, Math.max(2, Math.round(fleet / 8)));
     for (var i = 0; i < n; i++){
@@ -3675,10 +3757,53 @@
       var ly = z.y - 10 + (Math.sin(phase) * 0.5 + 0.5) * (z.h + 20);
       forklift(lx, ly, Math.cos(phase) * dir > 0, (i % 3) !== 0);
     }
+
+    // Trolleys shuttle the receiving apron.
     var yard = Math.min(6, 2 + Math.round((state.owned.trolley||0)/40));
     for (var j = 0; j < yard; j++){
       var yx = ZONE.receive.x + 60 + ((animT*26 + j*180) % (ZONE.receive.w - 120));
       forklift(yx, ZONE.receive.y + ZONE.receive.h + 34, j % 2 === 0, j % 2 === 0);
+    }
+
+    // Hand pickers work the pick face at the end of each run.
+    var hands = Math.min(QUALITY.plant + 4, Math.round((state.owned.picker||0) / 14));
+    for (var k = 0; k < hands; k++){
+      var kl = k % AISLES_N;
+      var kx = z.x + kl*pitch - AISLE_GAP/2 + Math.sin(animT * 0.9 + k * 2.3) * 9;
+      var ky = z.y + 20 + ((animT * 16 + k * 97) % (z.h - 40));
+      crew(kx, ky);
+    }
+
+    // Sorting robots hold station on the belts and swing their arms.
+    var bots = Math.min(9, Math.round((state.owned.sorter||0) / 4));
+    for (var b = 0; b < bots; b++){
+      var sx = ZONE.sorting.x + 70 + b * ((ZONE.sorting.w - 140) / Math.max(1, bots - 1 || 1));
+      var sy = ZONE.sorting.y + ZONE.sorting.h - 26;
+      r(sx - 9, sy - 9, 18, 18, hx(C.steel, 1.25));
+      ro(sx - 9, sy - 9, 18, 18, "rgba(0,0,0,0.45)", 1.5);
+      var a = animT * 2.2 + b;
+      r(sx - 2 + Math.cos(a) * 7, sy - 2 + Math.sin(a) * 7, 5, 5, C.line);
+    }
+
+    // The AS/RS crane spans the racking and travels its length.
+    if ((state.owned.crane || 0) > 0){
+      var gy = z.y + 10 + (Math.sin(animT * 0.28) * 0.5 + 0.5) * (z.h - 20);
+      shadow(z.x - 26, gy - 7, z.w + 52, 14, 4);
+      r(z.x - 26, gy - 7, z.w + 52, 14, hx(C.steel, 1.35));
+      ro(z.x - 26, gy - 7, z.w + 52, 14, "rgba(0,0,0,0.5)", 1.5);
+      var hoist = z.x + 20 + (Math.sin(animT * 0.63) * 0.5 + 0.5) * (z.w - 40);
+      r(hoist - 13, gy - 13, 26, 26, C.line);
+      ro(hoist - 13, gy - 13, 26, 26, "rgba(0,0,0,0.5)", 1.5);
+    }
+
+    // Distribution hubs put driverless units on the through lanes.
+    var agvs = Math.min(8, (state.owned.hub || 0) * 2);
+    for (var g = 0; g < agvs; g++){
+      var laneY = (g % 2) ? z.y + z.h + 40 : z.y - 26;
+      var gx2 = z.x - 40 + ((animT * 40 + g * 210) % (ZONE.staging.x + ZONE.staging.w - z.x + 40));
+      r(gx2 - 11, laneY - 7, 22, 14, hx(C.boxAlt, 1.1));
+      ro(gx2 - 11, laneY - 7, 22, 14, "rgba(0,0,0,0.45)", 1.5);
+      if (QUALITY.decals) r(gx2 - 3, laneY - 3, 6, 6, C.line);
     }
   }
 
@@ -3861,6 +3986,7 @@
     if (!CW) return;
     animT += dt * ((boostActive() || incidentActive()) ? 2.5 : 1);
     syncWarehouse();
+    tickDocks(dt);
     tickIncidents(dt);
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
