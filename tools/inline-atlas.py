@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Bake art/atlas.png + art/atlas.json into the shipping HTML as one inlined script.
+"""Bake the frames the game draws out of art/atlas.png into the shipping HTML.
 
 The game is a single file: the workflow does `cp warehouse-empire-android.html
 www/index.html` and nothing else, so a sibling atlas.png would simply not be in the
 AAB. Inlining also keeps the file openable straight from a phone's Downloads folder,
 which is how the first prototype broke.
 
-WebP rather than PNG: the atlas is 589KB as PNG and 272KB as WebP at quality 95, with
-a mean channel error under 1/255 over opaque pixels -- no banding, no ringing on the
-alpha edges. Every WebView this ships to is Chromium. The PNG stays in art/ as the
-source the pipeline regenerates.
+WebP rather than PNG, at quality 95: a mean channel error under 1/255 over opaque
+pixels, no banding and no ringing on the alpha edges. Every WebView this ships to is
+Chromium. The full sheet stays in art/ as the source, so adding a model later is a
+matter of naming it in KEEP and re-running this.
 
     python3 tools/inline-atlas.py
 """
@@ -22,21 +22,35 @@ PNG = os.path.join(ROOT, "art", "atlas.png")
 META = os.path.join(ROOT, "art", "atlas.json")
 QUALITY = 95
 
-im = Image.open(PNG).convert("RGBA")
-# The packer leaves the bottom of the sheet empty. Cropping saves nothing much on disk
-# but a great deal of texture memory: 2048x2048 RGBA is 16MB decoded, and the used
-# extent is a little over half that.
-box = im.getbbox()
-used_h = min(im.height, (box[3] + 7) // 8 * 8)
-im = im.crop((0, 0, im.width, used_h))
+# Only the frames the game actually draws. The full sheet is 86 models and 265KB, and
+# the game uses five of them: the site itself is drawn as blocks, because that is what
+# the liveries recolour and what makes the yard read as this game. Repacking to the used
+# set takes the payload from 265KB to a couple of kilobytes.
+KEEP = ["forklift-0", "forklift-90", "forklift-180", "forklift-270", "box-large"]
+
+src = Image.open(PNG).convert("RGBA")
+meta = json.load(open(META))
+
+# Shelf-pack the kept frames into one row, padded so neighbours cannot bleed into each
+# other when the canvas samples them at a fractional scale.
+PAD = 2
+kept = [(k, meta["frames"][k]) for k in KEEP if k in meta["frames"]]
+missing = [k for k in KEEP if k not in meta["frames"]]
+if missing:
+    sys.exit("atlas.json has no frame for: " + ", ".join(missing))
+w = sum(f["w"] + PAD for _, f in kept) + PAD
+h = max(f["h"] for _, f in kept) + PAD * 2
+im = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+frames, x = {}, PAD
+for k, f in kept:
+    im.paste(src.crop((f["x"], f["y"], f["x"] + f["w"], f["y"] + f["h"])), (x, PAD))
+    frames[k] = {"x": x, "y": PAD, "w": f["w"], "h": f["h"], "ax": f["ax"], "ay": f["ay"]}
+    x += f["w"] + PAD
 
 buf = io.BytesIO()
 im.save(buf, format="WEBP", quality=QUALITY, method=6)
 webp = buf.getvalue()
 
-meta = json.load(open(META))
-frames = {k: {"x": f["x"], "y": f["y"], "w": f["w"], "h": f["h"], "ax": f["ax"], "ay": f["ay"]}
-          for k, f in meta["frames"].items()}
 payload = {"tilePx": meta.get("tilePx", 48), "w": im.width, "h": im.height, "frames": frames}
 
 block = (
@@ -59,7 +73,6 @@ else:
     src = src.replace(marker, block + "\n" + marker, 1)
 open(HTML, "w", encoding="utf-8").write(src)
 
-print(f"atlas {im.width}x{im.height}, {len(frames)} frames")
-print(f"png {os.path.getsize(PNG)/1024:.0f}KB -> webp q{QUALITY} {len(webp)/1024:.0f}KB "
-      f"-> base64 {len(webp)*4/3/1024:.0f}KB")
+print(f"atlas {im.width}x{im.height}, {len(frames)} of {len(meta['frames'])} frames kept")
+print(f"webp q{QUALITY} {len(webp)/1024:.1f}KB -> base64 {len(webp)*4/3/1024:.1f}KB")
 print(f"html now {os.path.getsize(HTML)/1024:.0f}KB")
