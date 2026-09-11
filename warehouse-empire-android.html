@@ -631,6 +631,222 @@
     window.storage.ready = Promise.resolve();
   }
 
+  // ==========================================
+  // TELEMETRY (GA4 Measurement Protocol)
+  // ==========================================
+  // Deliberately not the Firebase SDK. That would want a google-services.json in the
+  // repo, a Gradle plugin, and a workflow that fails to build until both exist. This is
+  // one POST to one endpoint, so the game stays a single file with no runtime dependency
+  // and the build keeps working whether or not the two constants below are filled in.
+  //
+  // To turn it on, in Google Analytics:
+  //   1. Admin > Data streams > Add stream > *Web*. A Web stream, not Android -- an
+  //      Android stream is a Firebase stream and wants an app id and the SDK we are
+  //      avoiding. The WebView is a browser, so a Web stream is the honest description.
+  //   2. Copy the Measurement ID (G-XXXXXXXXXX) into GA_MEASUREMENT_ID.
+  //   3. On the same screen: Measurement Protocol API secrets > Create. Copy into
+  //      GA_API_SECRET.
+  // Left empty, every call below returns without doing anything. Nothing queues, nothing
+  // is stored, and no request is made.
+  //
+  // To check a payload is well formed, POST it to /debug/mp/collect instead -- the live
+  // endpoint returns 204 for valid and invalid alike, which is its worst property.
+  var GA_MEASUREMENT_ID = "";
+  var GA_API_SECRET = "";
+
+  // The point of this module is to find out why players leave. That makes it worse than
+  // useless if it is ever the reason one leaves, so every entry point is wrapped and the
+  // failure of any part of it is silent and total.
+  var Tele = (function(){
+    var ENDPOINT  = "https://www.google-analytics.com/mp/collect";
+    var CID_KEY   = "we-tele-cid";
+    var QUEUE_KEY = "we-tele-queue";
+    var MAX_QUEUE = 60;      // events held while offline; the oldest are dropped past this
+    var BATCH     = 25;      // GA4 rejects a payload with more than 25 events
+    var FLUSH_MS  = 30000;
+    var MAX_ERRORS = 5;      // distinct js_error events sent per session
+
+    var RETRY_MS  = 60000;   // quiet period after a failed send
+
+    var cid = null, queue = [], sending = false, live = false, starting = false;
+    var sessionId = 0, sessionStart = 0, seenErrors = null, errorsSent = 0, retryAfter = 0;
+
+    function on(){ return !!(GA_MEASUREMENT_ID && GA_API_SECRET); }
+
+    // GA4 drops an event whose name is not [A-Za-z][A-Za-z0-9_]{0,39}, and silently
+    // truncates string values past 100 chars. Do both here so what we send is what
+    // arrives.
+    function clean(v){
+      if (v === null || v === undefined) return "";
+      if (typeof v === "number") return isFinite(v) ? v : 0;
+      return String(v).slice(0, 100);
+    }
+
+    function ua(re, fallback){
+      try { var m = re.exec(navigator.userAgent); return m ? m[1] : fallback; }
+      catch(e){ return fallback; }
+    }
+    // "SM-A125F" out of "...(Linux; Android 13; SM-A125F Build/TP1A...)". This is the
+    // whole point of the exercise: which physical phones settle on which quality tier.
+    function device(){ return clean(ua(/;\s*([^;)]+?)\s+Build\//, "unknown")); }
+    function androidVer(){ return clean(ua(/Android\s+([\d.]+)/, "unknown")); }
+
+    function rnd(){
+      try {
+        if (window.crypto && window.crypto.getRandomValues){
+          var a = new Uint32Array(2); window.crypto.getRandomValues(a);
+          return a[0].toString(36) + a[1].toString(36);
+        }
+      } catch(e){}
+      return Math.floor(Math.random() * 4294967296).toString(36) + Date.now().toString(36);
+    }
+
+    function persist(){
+      if (!on()) return;
+      try { window.storage.set(QUEUE_KEY, JSON.stringify(queue)); } catch(e){}
+    }
+
+    function send(batch){
+      // No custom headers and a string body keeps this a CORS "simple request", so it
+      // never triggers a preflight. GA4 parses the body whatever content type it arrives
+      // as, and answers 204 with no useful content, so there is nothing to read back.
+      return fetch(ENDPOINT + "?measurement_id=" + encodeURIComponent(GA_MEASUREMENT_ID) +
+                   "&api_secret=" + encodeURIComponent(GA_API_SECRET), {
+        method: "POST",
+        body: JSON.stringify({ client_id: cid, events: batch }),
+        keepalive: true
+      });
+    }
+
+    // A phone on a train fails every send. Without the quiet period each queued event
+    // would fire its own doomed request the moment it was logged, so a long tunnel would
+    // cost hundreds of them; the interval retries on its own once the period is up.
+    function flush(){
+      if (!live || sending || !queue.length || !cid) return;
+      if (Date.now() < retryAfter) return;
+      sending = true;
+      var batch = queue.slice(0, BATCH);
+      var after = function(okay){
+        sending = false;
+        retryAfter = okay ? 0 : Date.now() + RETRY_MS;
+        if (okay) queue = queue.slice(batch.length);
+        persist();
+        if (okay && queue.length) flush();          // more than one batch waiting
+      };
+      try {
+        send(batch).then(function(r){ after(!!r && r.status < 500); },
+                         function(){ after(false); });
+      } catch(e){ after(false); }
+    }
+
+    function log(name, params){
+      try {
+        if (!live) return;
+        // Every GA4 event needs these two or the session never counts as engaged and the
+        // reports come back empty of everything except user counts.
+        var p = { session_id: sessionId, engagement_time_msec: 100 };
+        if (params) for (var k in params) if (params.hasOwnProperty(k)) p[k] = clean(params[k]);
+        queue.push({ name: name, params: p });
+        if (queue.length > MAX_QUEUE) queue = queue.slice(queue.length - MAX_QUEUE);
+        flush();
+      } catch(e){}
+    }
+
+    // One send per distinct message, five distinct messages a session. The failure this
+    // is here to catch is an exception thrown inside the render loop, which would fire
+    // sixty times a second -- uncapped, the diagnostic would be a worse bug than the one
+    // it found.
+    function error(msg, where){
+      try {
+        if (!live) return;
+        var key = String(msg).slice(0, 120);
+        if (seenErrors[key]) { seenErrors[key]++; return; }
+        seenErrors[key] = 1;
+        if (++errorsSent > MAX_ERRORS) return;
+        log("js_error", { message: key, source: where || "", device: device() });
+        flush();
+      } catch(e){}
+    }
+
+    function start(){
+      try {
+        if (!on() || live || starting) return;   // live only settles a tick later, so both
+        starting = true;
+        sessionId = Date.now();
+        sessionStart = sessionId;
+        seenErrors = {};
+        window.storage.get(CID_KEY).then(function(res){
+          var fresh = !(res && res.value);
+          cid = fresh ? rnd() + "." + Math.floor(Date.now() / 1000) : res.value;
+          var write = fresh ? window.storage.set(CID_KEY, cid) : Promise.resolve();
+          return write.then(function(){ return window.storage.get(QUEUE_KEY); })
+            .then(function(q){
+              // Anything that could not be sent last time the app was open.
+              try { if (q && q.value) queue = JSON.parse(q.value) || []; } catch(e){ queue = []; }
+              if (!(queue instanceof Array)) queue = [];
+              live = true;
+              if (fresh) log("install_first", { device: device(), android: androidVer() });
+              log("session_begin", { device: device(), android: androidVer() });
+              flush();
+            });
+        }).catch(function(){});
+        setInterval(function(){ flush(); }, FLUSH_MS);
+      } catch(e){}
+    }
+
+    // Closing time is the one moment the numbers are worth anything, and also the one
+    // moment the process may be about to stop existing. Bucket rather than report raw
+    // seconds: the question is whether a session is a bounce, a sitting, or a habit.
+    // Three separate things all mean "the player has gone" -- appStateChange, a hidden
+    // document and pagehide -- and on Android most backgrounds fire at least two of
+    // them. Clearing sessionStart makes the second and third calls no-ops, so a session
+    // is measured once however many ways the platform announces its end.
+    function endSession(){
+      try {
+        if (!live || !sessionStart) return;
+        var secs = Math.round((Date.now() - sessionStart) / 1000);
+        var bucket = secs < 10 ? "0-10s" : secs < 60 ? "10-60s" : secs < 300 ? "1-5m"
+                   : secs < 900 ? "5-15m" : secs < 3600 ? "15-60m" : "60m+";
+        sessionStart = 0;
+        log("session_length", { bucket: bucket, seconds: secs });
+        persist();
+        flush();
+      } catch(e){}
+    }
+
+    // Coming back from the background is a new session, which is both what GA4 means by
+    // the word and what the retention question is asking about.
+    function resume(){
+      try {
+        if (!live || sessionStart) return;
+        sessionId = Date.now(); sessionStart = sessionId;
+        log("session_begin", { device: device(), android: androidVer() });
+      } catch(e){}
+    }
+
+    return { start: start, log: log, error: error, flush: flush,
+             endSession: endSession, resume: resume,
+             enabled: on, device: device, android: androidVer,
+             __state: function(){ return { cid: cid, queue: queue, live: live,
+                                           errorsSent: errorsSent, retryAfter: retryAfter }; } };
+  })();
+
+  // Installed before anything else runs, because an exception during boot is exactly the
+  // kind that leaves a player staring at a dead canvas. Tele.error() holds its tongue
+  // until start() has run, so the handler is harmless while unconfigured.
+  window.addEventListener("error", function(ev){
+    try {
+      Tele.error((ev && ev.message) || "unknown",
+                 ((ev && ev.filename) || "") + ":" + ((ev && ev.lineno) || 0));
+    } catch(e){}
+  });
+  window.addEventListener("unhandledrejection", function(ev){
+    try {
+      var r = ev && ev.reason;
+      Tele.error((r && (r.message || r)) || "unhandled rejection", "promise");
+    } catch(e){}
+  });
+
   var COST_GROWTH = 1.15;
   var NETWORK_CAP = 25;
   // Retired sites used to be a number: a list of peaks that summed into an income floor
@@ -2036,10 +2252,28 @@
   document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
   document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
 
+  // How far down the four-step opening a player gets is the single number worth having.
+  // The steps are cheap and ordered, so the count of them done is the funnel: step 1 is
+  // tapping at all, step 4 is the first prestige.
+  //
+  // The first call of a session only takes a baseline. Without that, a returning player
+  // sitting on step 2 would re-report steps 1 and 2 every time they opened the app, and
+  // the funnel would measure launches rather than progress. So steps 1 and 2 are counted
+  // from genuinely new players only, which is what they are there to tell us.
+  var reportedStep = -1;
+  function reportProgress(doneCount){
+    if (reportedStep < 0){ reportedStep = doneCount; return; }
+    while (reportedStep < doneCount){
+      reportedStep++;
+      Tele.log("objective_done", { step: reportedStep });
+    }
+  }
+
   function renderObjective(){
     var cur = null, idx = 0;
     for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
     var card = document.getElementById("objective");
+    reportProgress(cur ? idx - 1 : OBJECTIVES.length);
     if (!cur){ card.hidden = true; return; }
     card.hidden = false;
     document.getElementById("objTitle").textContent = cur.title;
@@ -2856,12 +3090,19 @@
     var P = window.Capacitor && window.Capacitor.Plugins;
     if (P && P.App && P.App.addListener){
       P.App.addListener("appStateChange", function(st){
-        if (st && st.isActive) clearNotifications(); else { saveGame(); scheduleNotifications(); }
+        if (st && st.isActive){ clearNotifications(); Tele.resume(); }
+        else { saveGame(); scheduleNotifications(); Tele.endSession(); }
       });
     }
     document.addEventListener("visibilitychange", function(){
-      if (document.hidden){ saveGame(); scheduleNotifications(); } else clearNotifications();
+      if (document.hidden){ saveGame(); scheduleNotifications(); Tele.endSession(); }
+      else { clearNotifications(); Tele.resume(); }
     });
+    // Backgrounding is where a session usually ends, but not where the process usually
+    // does. pagehide is the last point at which a send can still be made, and the queue
+    // is written to storage there so that whatever does not make it out goes with the
+    // next launch rather than being lost.
+    window.addEventListener("pagehide", function(){ Tele.endSession(); });
   }
 
   // --- Milestone bonus, with a review invitation alongside it ---------------------
@@ -3138,14 +3379,20 @@
   }
   // Step down once if we cannot hold the frame, and never climb back on our own --
   // oscillating between tiers is more distracting than sitting on the lower one.
+  //
+  // The average is kept now rather than discarded, and taken even when the tier is
+  // pinned. This loop has been making a fair reading of how fast the player's phone
+  // actually is since the day it was written, on every install, and throwing it away.
+  // It is the only measurement of real hardware the game has ever had.
+  var lastAvgMs = 0;
   function noteFrameTime(ms){
-    if (!qualityAuto) return;
     frameSamples.push(ms);
     if (frameSamples.length < 60) return;
     var sum = 0; for (var i=0;i<frameSamples.length;i++) sum += frameSamples[i];
-    var avg = sum / frameSamples.length;
+    lastAvgMs = sum / frameSamples.length;
     frameSamples.length = 0;
-    if (avg > 20 && qualityIdx > 0 && Date.now() - lastQualityChange > 8000){
+    if (!qualityAuto) return;
+    if (lastAvgMs > 20 && qualityIdx > 0 && Date.now() - lastQualityChange > 8000){
       qualityIdx--; lastQualityChange = Date.now(); applyQuality();
       if (typeof renderQuality === "function") renderQuality();
     }
@@ -4169,6 +4416,7 @@
     plots: CORP_PLOTS, zones: ZONE, site: SITE,
     cam: function(){ return { x: cam.x, y: cam.y, z: cam.z }; }
   };
+  window.__tele = Tele;
 
   /* ---- frame ---------------------------------------------------------------- */
   var animT = 0, lastFrame = 0, lastSitePainted = null;
@@ -4256,6 +4504,18 @@
     if (state.quality && QUALITY_LEVELS[state.quality]) setQuality(state.quality, true);
     renderQuality(); render();
     requestAnimationFrame(frame);
+    Tele.start();
+    // A minute in is long enough for the auto tier to have found its level and for the
+    // averages to mean something, and short enough that most sessions reach it. Reported
+    // against the device model, this says which phones this game is actually playable on
+    // -- which is the question the crash reports were never going to answer, because a
+    // canvas that runs hot and slow does not crash. It just gets uninstalled.
+    setTimeout(function(){
+      Tele.log("quality_settled", {
+        tier: QUALITY_ORDER[qualityIdx], auto: qualityAuto ? 1 : 0,
+        avg_ms: Math.round(lastAvgMs), device: Tele.device(), android: Tele.android()
+      });
+    }, 60000);
     setTimeout(function(){
       var sp = document.getElementById("splash");
       if(sp) sp.classList.add("hide");
