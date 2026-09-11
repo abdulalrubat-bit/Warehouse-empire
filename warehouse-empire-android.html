@@ -671,6 +671,7 @@
 
     var cid = null, queue = [], sending = false, live = false, starting = false;
     var sessionId = 0, sessionStart = 0, seenErrors = null, errorsSent = 0, retryAfter = 0;
+    var flushPending = false, lastEventAt = 0;
 
     function on(){ return !!(GA_MEASUREMENT_ID && GA_API_SECRET); }
 
@@ -719,6 +720,18 @@
       });
     }
 
+    // Events logged in the same turn go out together. log() used to flush inline, which
+    // meant the first event of a launch left in its own request and the second had to wait
+    // for that one to resolve before it could follow -- so install_first and session_begin
+    // were two round trips, and anything that killed the app in between (a fast close, a
+    // dropped connection) landed the install and lost the session. GA4 then reported more
+    // installs than sessions, which cannot happen and made the first day's data unreadable.
+    function scheduleFlush(){
+      if (flushPending) return;
+      flushPending = true;
+      setTimeout(function(){ flushPending = false; flush(); }, 0);
+    }
+
     // A phone on a train fails every send. Without the quiet period each queued event
     // would fire its own doomed request the moment it was logged, so a long tunnel would
     // cost hundreds of them; the interval retries on its own once the period is up.
@@ -743,13 +756,20 @@
     function log(name, params){
       try {
         if (!live) return;
-        // Every GA4 event needs these two or the session never counts as engaged and the
-        // reports come back empty of everything except user counts.
-        var p = { session_id: sessionId, engagement_time_msec: 100 };
+        // GA4 needs both of these or the reports come back empty of everything except user
+        // counts. engagement_time_msec is the foreground time since the previous event --
+        // it was a flat 100 at first, which made every session look like a third of a
+        // second long, put Average engagement time at 00:00:00 and stopped GA4 ever
+        // counting a session as engaged. Capped, because time spent backgrounded is not
+        // engagement and a phone left on the charger would otherwise report hours of it.
+        var now = Date.now();
+        var engaged = lastEventAt ? Math.min(60000, Math.max(1, now - lastEventAt)) : 100;
+        lastEventAt = now;
+        var p = { session_id: sessionId, engagement_time_msec: engaged };
         if (params) for (var k in params) if (params.hasOwnProperty(k)) p[k] = clean(params[k]);
         queue.push({ name: name, params: p });
         if (queue.length > MAX_QUEUE) queue = queue.slice(queue.length - MAX_QUEUE);
-        flush();
+        scheduleFlush();
       } catch(e){}
     }
 
@@ -821,6 +841,7 @@
       try {
         if (!live || sessionStart) return;
         sessionId = Date.now(); sessionStart = sessionId;
+        lastEventAt = 0;                  // time spent backgrounded is not engagement
         log("session_begin", { device: device(), android: androidVer() });
       } catch(e){}
     }
