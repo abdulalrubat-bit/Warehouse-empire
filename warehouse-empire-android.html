@@ -3230,7 +3230,25 @@
     C.boxLo    = mix("#a67f4c", haze, wash);
     C.boxAlt   = mix("#4189b4", haze, wash);
     C.boxAltLo = mix("#2f6384", haze, wash);
+    C.bad      = "#c85a48";
     C.pageBg   = hx(t.sky[2], night ? 0.32 : 0.52);
+
+    // The specialisation shifts the whole site's temperature. A cold store is a blue
+    // place and a DG compound is a warm one, and that reads before any of the geometry
+    // does -- which is the point, because it is the thing you chose at the last sale.
+    var sp = SITE_PLAN[state.site];
+    if (sp && sp.cool){
+      ["ground","slab","road","steel","bldg","bldgLo","kerb"].forEach(function(k){
+        C[k] = mix(C[k], "#7fb4d6", sp.cool);
+      });
+      C.box = mix(C.box, "#cfe4f2", 0.22); C.boxLo = mix(C.boxLo, "#a9c4d6", 0.22);
+    }
+    if (sp && sp.warm){
+      ["ground","slab","road","steel","bldg","bldgLo","kerb"].forEach(function(k){
+        C[k] = mix(C[k], "#d29a4e", sp.warm);
+      });
+    }
+    lastSitePainted = state.site;
     warehouseTier = -1;                    // occupancy is baked, so force a rebuild
   }
   function hexRGB(h){
@@ -3558,33 +3576,214 @@
     }
   }
 
-  function drawRacks(){
-    var z = ZONE.racks, f = warehouseFillCached, pitch = AISLE_W + AISLE_GAP;
+  // ---- site identity --------------------------------------------------------
+  // Four sites, and until now they differed only in their numbers -- you chose one at
+  // every prestige and the yard looked identical. Each one keeps the same skeleton
+  // (goods in at the top, storage through the middle, goods out at the bottom) and
+  // changes what the storage actually is, because that is what a specialisation means.
+  var SITE_PLAN = {
+    general: { hall: hallRacking,    lanes: lanesRacking },
+    cold:    { hall: hallChambers,   lanes: lanesChambers, cool: 0.30 },
+    hazmat:  { hall: hallBunded,     lanes: lanesBunded,   warm: 0.16 },
+    port:    { hall: hallContainers, lanes: lanesBlocks,   quay: true, ownGantry: true }
+  };
+  // Where plant can travel. Without this every site drove the racking pitch, so on a
+  // container terminal the forklifts ran over the stacks and in a DG compound they drove
+  // through the bunds -- the one thing a segregated yard exists to prevent.
+  function lanesRacking(z){
+    var out = [], pitch = AISLE_W + AISLE_GAP;
+    for (var a = 0; a <= AISLES_N; a++) out.push(z.x + a*pitch - AISLE_GAP/2);
+    return out;
+  }
+  function lanesChambers(z){
+    var out = [], cw = z.w / 3;
+    for (var c = 0; c <= 3; c++) out.push(z.x + c*cw - 5);
+    return out;
+  }
+  function lanesBunded(z){
+    var out = [], cells = 4, gap = 26, cw = (z.w - gap*(cells-1)) / cells;
+    for (var c = 0; c <= cells; c++) out.push(z.x + c*(cw + gap) - gap/2);
+    return out;
+  }
+  function lanesBlocks(z){
+    var out = [], cols = 3, bw = (z.w - 40) / cols;
+    for (var c = 0; c <= cols; c++) out.push(z.x + 20 + c*bw - 8);
+    return out;
+  }
+  function siteLanes(){ return (sitePlan().lanes || lanesRacking)(ZONE.racks); }
+  function sitePlan(){ return SITE_PLAN[state.site] || SITE_PLAN.general; }
+
+  function drawStorage(){ sitePlan().hall(ZONE.racks, warehouseFillCached); }
+
+  // General distribution: selective pallet racking, the baseline every other site is a
+  // departure from.
+  function hallRacking(z, f){
+    var pitch = AISLE_W + AISLE_GAP;
     for (var a = 0; a < AISLES_N; a++){
       var ax = z.x + a * pitch;
-      // The travel aisle is worn tarmac between two runs; without darkening it the racks
-      // and the lanes sit at the same value and the hall reads as one grey mass.
-      r(ax - AISLE_GAP, z.y - 8, AISLE_GAP, z.h + 16, hx(C.ground, 0.86));
-      if (QUALITY.decals)
-        dashed(ax - AISLE_GAP/2, z.y - 26, ax - AISLE_GAP/2, z.y + z.h + 26, C.lineSoft, 2, [16,12]);
-      shadow(ax, z.y, AISLE_W, z.h, 4);
-      r(ax, z.y, AISLE_W, z.h, C.steel);
-      ro(ax, z.y, AISLE_W, z.h, "rgba(0,0,0,0.5)", 2.5);
-      var bh = z.h / BAYS_PER_AISLE;
-      for (var b = 0; b < BAYS_PER_AISLE; b++){
-        var by = z.y + b*bh;
-        ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(ax, by); ctx.lineTo(ax + AISLE_W, by); ctx.stroke();
-        for (var s = 0; s < 2; s++){
-          if (slotNoise(a*13 + b, s+1, 2) >= f) continue;
-          pallet(ax + 6 + s*(AISLE_W/2 - 2), by + 5, AISLE_W/2 - 10, bh - 10,
-                 slotNoise(a*31 + b*7 + s, b*13 + s*5 + 1, 4) > 0.76);
-        }
-      }
+      rackRun(ax, z.y, AISLE_W, z.h, a, f, BAYS_PER_AISLE, 2);
       label("A" + (a+1), ax + AISLE_W/2, z.y + z.h + 22, 13, C.ink, "center");
     }
   }
 
+  // One run of racking: worn lane beside it, steel frame, then whatever is in the bays.
+  function rackRun(ax, ay, aw, ah, seed, f, bays, perBay){
+    r(ax - AISLE_GAP, ay - 8, AISLE_GAP, ah + 16, hx(C.ground, 0.86));
+    if (QUALITY.decals)
+      dashed(ax - AISLE_GAP/2, ay - 26, ax - AISLE_GAP/2, ay + ah + 26, C.lineSoft, 2, [16,12]);
+    shadow(ax, ay, aw, ah, 4);
+    r(ax, ay, aw, ah, C.steel);
+    ro(ax, ay, aw, ah, "rgba(0,0,0,0.5)", 2.5);
+    var bh = ah / bays;
+    for (var b = 0; b < bays; b++){
+      var by = ay + b*bh;
+      ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ax, by); ctx.lineTo(ax + aw, by); ctx.stroke();
+      for (var sl = 0; sl < perBay; sl++){
+        if (slotNoise(seed*13 + b, sl+1, 2) >= f) continue;
+        var pw = (aw - 12) / perBay;
+        pallet(ax + 6 + sl*pw, by + 5, pw - 4, bh - 10,
+               slotNoise(seed*31 + b*7 + sl, b*13 + sl*5 + 1, 4) > 0.76);
+      }
+    }
+  }
+
+  // Cold store: you do not run open racking in a chilled space, you run insulated
+  // chambers and you pay to keep every one of them cold. Fewer, bigger rooms behind
+  // panel walls, with strip-curtain doors onto the cross aisle.
+  function hallChambers(z, f){
+    var cells = 3, cw = z.w / cells;
+    for (var c = 0; c < cells; c++){
+      var cx2 = z.x + c*cw;
+      shadow(cx2 + 4, z.y, cw - 14, z.h, 6);
+      r(cx2 + 4, z.y, cw - 14, z.h, hx(C.bldg, 1.22));          // insulated panel
+      ro(cx2 + 4, z.y, cw - 14, z.h, "rgba(0,0,0,0.5)", 3);
+      r(cx2 + 12, z.y + 8, cw - 30, z.h - 16, hx(C.ground, 0.78));  // chilled floor
+      // Two runs inside each chamber.
+      for (var a = 0; a < 2; a++){
+        var ax = cx2 + 22 + a * ((cw - 52) / 2);
+        rackRun(ax, z.y + 20, (cw - 52) / 2 - 16, z.h - 40, c*2 + a, f, 6, 1);
+      }
+      // Strip-curtain door onto the cross aisle, and the chamber's set point.
+      var dx = cx2 + cw/2 - 22;
+      r(dx, z.y + z.h - 6, 44, 10, C.line);
+      if (QUALITY.decals)
+        for (var k = 0; k < 7; k++) r(dx + 2 + k*6, z.y + z.h - 5, 3, 8, "rgba(255,255,255,0.45)");
+      condensers(cx2, cw, z);
+      label("CHAMBER " + (c+1), cx2 + cw/2 - 5, z.y + 18, 10, C.ink, "center");
+      label("-22\u00b0C", cx2 + cw/2 - 5, z.y + z.h + 22, 11, "#8fd0e8", "center");
+    }
+  }
+  // Condensers sit on the chamber roofs, which is where the plant for a cold store
+  // actually goes -- and keeps them off the sorting belts, where putting them on the
+  // apron had them landing on top of the conveyors.
+  function condensers(cx2, cw, z){
+    if (!QUALITY.decals) return;
+    for (var u = 0; u < 2; u++){
+      var ux = cx2 + 18 + u * (cw - 74), uy = z.y + 34;
+      r(ux, uy, 42, 26, hx(C.bldg, 1.16));
+      ro(ux, uy, 42, 26, "rgba(0,0,0,0.45)", 1.5);
+      var fx = ux + 21, fy = uy + 13, rot = animT * 6 + u + cx2 * 0.01;
+      ctx.save(); ctx.translate(fx, fy); ctx.rotate(rot);
+      ctx.strokeStyle = "rgba(205,230,245,0.6)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(8,0); ctx.moveTo(0,-8); ctx.lineTo(0,8); ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Dangerous goods: segregation is the whole discipline. Bunded cells with real gaps
+  // between them, stacked low, placarded, with a deluge monitor covering the compound.
+  function hallBunded(z, f){
+    var cells = 4, gap = 26, cw = (z.w - gap*(cells-1)) / cells;
+    for (var c = 0; c < cells; c++){
+      var cx2 = z.x + c * (cw + gap);
+      // Bund: a kerbed containment tray. Anything spilled stays in the cell.
+      r(cx2, z.y, cw, z.h, hx(C.slab, 0.82));
+      ro(cx2, z.y, cw, z.h, C.line, 4);
+      ro(cx2 + 7, z.y + 7, cw - 14, z.h - 14, "rgba(0,0,0,0.35)", 2);
+      // Stacked low and loose -- DG does not go up high and does not go up tight.
+      var rows = 5, cols = 2;
+      for (var i = 0; i < cols; i++) for (var j = 0; j < rows; j++){
+        if (slotNoise(c*17 + j, i+1, 6) >= f * 0.78) continue;
+        var pw = (cw - 34) / cols, ph = (z.h - 40) / rows;
+        pallet(cx2 + 14 + i*pw, z.y + 20 + j*ph, pw - 10, ph - 12,
+               slotNoise(c + j*5 + i, i*7 + 3, 8) > 0.55);
+      }
+      if (QUALITY.decals) placard(cx2 + cw/2, z.y + 12);
+      label("CELL " + String.fromCharCode(65 + c), cx2 + cw/2, z.y + z.h + 22, 12, C.ink, "center");
+    }
+    // Deluge monitor on the corner of the compound, and a spill station beside it.
+    var mx = z.x - 34, my = z.y + z.h/2;
+    r(mx - 7, my - 7, 14, 14, hx(C.bad || "#b8493c", 1.0));
+    ro(mx - 7, my - 7, 14, 14, "rgba(0,0,0,0.5)", 1.5);
+    if (QUALITY.decals){
+      ctx.strokeStyle = "rgba(140,200,235,0.35)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(mx, my, 44 + Math.sin(animT * 1.6) * 5, -0.7, 0.7); ctx.stroke();
+    }
+  }
+  // The diamond every DG load carries. Two-tone, because that is what a placard is.
+  function placard(x, y){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+    r(-7, -7, 14, 7, "#e0552e");
+    r(-7,  0, 14, 7, C.line);
+    ro(-7, -7, 14, 14, "rgba(0,0,0,0.55)", 1.2);
+    ctx.restore();
+  }
+
+  // Port terminal: no racking at all. Containers stack in the yard on a grid, and a
+  // rail-mounted gantry straddles the rows to move them.
+  var BOX_LIVERY = ["#4a7ba0", "#b8543c", "#6f8f5a", "#c2a04e", "#8a8f96", "#3f6ea8"];
+  function hallContainers(z, f){
+    var rows = 7, cols = 3;
+    var bw = (z.w - 40) / cols, bh = (z.h - 30) / rows;
+    for (var cGrid = 0; cGrid < cols; cGrid++){
+      for (var rGrid = 0; rGrid < rows; rGrid++){
+        var bx = z.x + 20 + cGrid*bw, by = z.y + 15 + rGrid*bh;
+        // Painted slot, always visible, so an empty yard still reads as a yard.
+        if (QUALITY.decals) ro(bx + 2, by + 2, bw - 16, bh - 10, C.lineSoft, 1.5);
+        if (slotNoise(cGrid*23 + rGrid, rGrid + 1, 9) >= f) continue;
+        // A stack is one to three high; from above that reads as offset lids.
+        var high = 1 + Math.floor(slotNoise(cGrid + rGrid*11, 3, 7) * 3);
+        for (var t = 0; t < high; t++){
+          var ox = t * 2.5, oy = t * 2.5;
+          var col = BOX_LIVERY[(cGrid*7 + rGrid*3 + t) % BOX_LIVERY.length];
+          shadow(bx + 4 + ox, by + 4 + oy, bw - 20, bh - 14, 3);
+          r(bx + 4 + ox, by + 4 + oy, bw - 20, bh - 14, col);
+          ro(bx + 4 + ox, by + 4 + oy, bw - 20, bh - 14, "rgba(0,0,0,0.45)", 1.5);
+          if (!QUALITY.decals) continue;
+          for (var rib = 0; rib < 5; rib++)
+            r(bx + 12 + ox + rib * ((bw - 36)/5), by + 7 + oy, 2, bh - 20, "rgba(0,0,0,0.13)");
+        }
+      }
+      label("BLOCK " + (cGrid+1), z.x + 20 + cGrid*bw + bw/2 - 8, z.y + z.h + 22, 12, C.ink, "center");
+    }
+    // Rail-mounted gantry straddling the yard, travelling its length.
+    var gy = z.y + 20 + (Math.sin(animT * 0.3) * 0.5 + 0.5) * (z.h - 40);
+    shadow(z.x - 20, gy - 9, z.w + 40, 18, 5);
+    r(z.x - 20, gy - 9, z.w + 40, 18, hx(C.steel, 1.5));
+    ro(z.x - 20, gy - 9, z.w + 40, 18, "rgba(0,0,0,0.55)", 2);
+    r(z.x - 24, gy - 16, 12, 32, hx(C.steel, 1.2));
+    r(z.x + z.w + 12, gy - 16, 12, 32, hx(C.steel, 1.2));
+    var spread = z.x + 30 + (Math.sin(animT * 0.72) * 0.5 + 0.5) * (z.w - 60);
+    r(spread - 16, gy - 14, 32, 28, C.line);
+    ro(spread - 16, gy - 14, 32, 28, "rgba(0,0,0,0.5)", 1.5);
+  }
+
+  // Water and a quay beyond the fence, for the one site that has a berth.
+  function drawQuay(){
+    if (!sitePlan().quay) return;
+    var qx = SITE.x + SITE.w + 26;
+    r(qx, SITE.y - 160, 30, SITE.h + 320, hx(C.slab, 0.9));            // quay apron
+    ro(qx, SITE.y - 160, 30, SITE.h + 320, "rgba(0,0,0,0.4)", 2);
+    r(qx + 30, SITE.y - 300, 420, SITE.h + 600, "#16384e");            // water
+    if (!QUALITY.decals) return;
+    for (var w = 0; w < 22; w++){
+      var wy = SITE.y - 250 + w * 62 + Math.sin(animT * 0.5 + w) * 5;
+      r(qx + 44 + (w % 3) * 46, wy, 54, 3, "rgba(150,200,225,0.13)");
+    }
+    for (var bol = 0; bol < 9; bol++)
+      r(qx + 10, SITE.y - 120 + bol * 140, 10, 10, hx(C.steel, 1.3));
+  }
   function drawSorting(){
     var z = ZONE.sorting;
     zoneFloor(z);
@@ -3744,14 +3943,13 @@
     r(x - 3, y - 8, 6, 5, "#2b3037");
   }
   function drawFleet(){
-    var z = ZONE.racks, pitch = AISLE_W + AISLE_GAP;
+    var z = ZONE.racks, lanes = siteLanes();
 
-    // Reach trucks and forklifts run the aisles.
+    // Reach trucks and forklifts run whatever lanes this site has.
     var fleet = (state.owned.forklift||0) + (state.owned.reach||0);
     var n = Math.min(QUALITY.plant, Math.max(2, Math.round(fleet / 8)));
     for (var i = 0; i < n; i++){
-      var lane = i % AISLES_N;
-      var lx = z.x + lane*pitch - AISLE_GAP/2;
+      var lx = lanes[i % lanes.length];
       var phase = animT * 0.42 + i * 1.9;
       var dir = (i % 2) ? 1 : -1;
       var ly = z.y - 10 + (Math.sin(phase) * 0.5 + 0.5) * (z.h + 20);
@@ -3768,8 +3966,7 @@
     // Hand pickers work the pick face at the end of each run.
     var hands = Math.min(QUALITY.plant + 4, Math.round((state.owned.picker||0) / 14));
     for (var k = 0; k < hands; k++){
-      var kl = k % AISLES_N;
-      var kx = z.x + kl*pitch - AISLE_GAP/2 + Math.sin(animT * 0.9 + k * 2.3) * 9;
+      var kx = lanes[k % lanes.length] + Math.sin(animT * 0.9 + k * 2.3) * 9;
       var ky = z.y + 20 + ((animT * 16 + k * 97) % (z.h - 40));
       crew(kx, ky);
     }
@@ -3786,7 +3983,7 @@
     }
 
     // The AS/RS crane spans the racking and travels its length.
-    if ((state.owned.crane || 0) > 0){
+    if ((state.owned.crane || 0) > 0 && !sitePlan().ownGantry){
       var gy = z.y + 10 + (Math.sin(animT * 0.28) * 0.5 + 0.5) * (z.h - 20);
       shadow(z.x - 26, gy - 7, z.w + 52, 14, 4);
       r(z.x - 26, gy - 7, z.w + 52, 14, hx(C.steel, 1.35));
@@ -3974,7 +4171,7 @@
   };
 
   /* ---- frame ---------------------------------------------------------------- */
-  var animT = 0, lastFrame = 0;
+  var animT = 0, lastFrame = 0, lastSitePainted = null;
   function frame(ts){
     requestAnimationFrame(frame);
     if (!renderActive) return;
@@ -3984,6 +4181,9 @@
 
     sizeCanvas();
     if (!CW) return;
+    // Selling the business can land you on a different site, and the palette is built
+    // from the theme rather than per frame, so it has to be told.
+    if (lastSitePainted !== state.site) update3DPalette();
     animT += dt * ((boostActive() || incidentActive()) ? 2.5 : 1);
     syncWarehouse();
     tickDocks(dt);
@@ -3998,12 +4198,13 @@
     ctx.scale(cam.z, cam.z);
 
     drawGround();
+    drawQuay();
     drawNetwork();
     drawCorp();
     drawDockRow(ZONE.receive, RECV_DOCKS, "R", true);
     drawSorting();
     drawMarkings();
-    drawRacks();
+    drawStorage();
     zoneFloor(ZONE.packing); stagedPallets(ZONE.packing, 2);
     zoneFloor(ZONE.staging); stagedPallets(ZONE.staging, 3);
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
