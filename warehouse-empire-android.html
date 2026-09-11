@@ -532,6 +532,7 @@
       <div class="modal-title">Freight Manifest (SKU)</div>
       <div class="modal-sub">Specialize your current site's inventory handling rules.</div>
       <div class="sku-list" id="skuList"></div>
+      <div class="office-text" id="changeoverNote" style="margin-top:12px; border-left:3px solid var(--hazard); padding-left:10px;"></div>
       <button class="renamebtn" id="btnCloseSku" style="margin-top:12px;">Close</button>
     </div>
   </div>
@@ -1028,7 +1029,7 @@
   // near the top, while Customs Office trims a number that was already generous.
   var CORP_BUILDINGS = [
     {id: "hr", name: "HR Annex", ic: "building", baseCost: 500e6, desc: "Global Wage Reduction", mastery: "Level 10: 72 Hour Offline Yield"},
-    {id: "customs", name: "Customs Office", ic: "building", baseCost: 2e9, desc: "Smaller Contract Quotas", mastery: "Level 10: Switching Manifest Grants a Boost"},
+    {id: "customs", name: "Customs Office", ic: "building", baseCost: 2e9, desc: "Smaller Contract Quotas", mastery: "Level 10: Manifests Switch With No Changeover"},
     {id: "marketing", name: "Marketing Office", ic: "building", baseCost: 5e9, desc: "Longer Hot & Peak Markets", mastery: "Level 10: Always Return to a Hot Market"},
     {id: "tower", name: "Dispatch Tower", ic: "building", baseCost: 10e9, desc: "Contract Payout Multiplier", mastery: "Level 10: Fast Contracts (5m)"},
     {id: "training", name: "Training Centre", ic: "building", baseCost: 50e9, desc: "Stronger Site Managers", mastery: "Level 10: Managers Double Their Bonus"},
@@ -1274,7 +1275,7 @@
   var TREE = [
     { br:"throughput", id:"bulk",    name:"Bulk Handling",     cost:10,    desc:"All output +12%" },
     { br:"throughput", id:"deep",    name:"Deep Racking",      cost:60,   desc:"Fleet output +18%",             req:"bulk" },
-    { br:"throughput", id:"flow",    name:"Flow Control",      cost:240,   desc:"Throughput never dips below 100%", req:"deep" },
+    { br:"throughput", id:"flow",    name:"Flow Control",      cost:240,   desc:"Manifest changeover takes half as long", req:"deep" },
     { br:"throughput", id:"shift",   name:"Double Shift",      cost:900,  desc:"All output +30%",               req:"flow" },
     { br:"throughput", id:"magnate", name:"Freight Magnate",   cost:6000, sales:10, desc:"All output doubled",            req:"shift", dir:true },
 
@@ -1463,6 +1464,7 @@
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
     incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
     tree: {}, repSpent: 0,
+    changeoverUntil: 0, changeoverSpan: 0,
     corpProgress: {}
   };
 
@@ -1575,16 +1577,81 @@
     showToast("Rush order on the dock! <b>×8 output for " + (RUSH_DURATION / 1000) + "s</b>.");
   }
 
-  // Throughput drifts on a slow wall-clock sine. sin() already bounds this to 0.85-1.15,
-  // so the Math.min/Math.max that used to wrap it could never fire.
-  var FLOW_SWING = 0.15;
+  /* ---- sequencing -----------------------------------------------------------------
+     Before their first tap, on an empty site, a new player was shown: cash, cash per
+     second, tap value, REP, a throughput bar, the yard, an objective, the manifest, that
+     manifest's market state, two rewarded-ad boosts offering to multiply nothing, a
+     priority client, a freight contract, a combo multiplier and five tabs -- and then a
+     seven-day streak calendar opened over the top of all of it.
+
+     Nothing below is removed. Each thing appears the moment it can mean something, which
+     is the only difference between content and clutter. Every predicate is satisfied many
+     times over by an existing save, so nobody loses anything they already had.           */
+  function ownsAnyPlant(){
+    for (var i = 0; i < GENS.length; i++) if ((state.owned[GENS[i].id] || 0) > 0) return true;
+    return false;
+  }
+  // Re-read when a session begins, not while one is running. "Session" here means a
+  // foreground session rather than a process launch, so someone who leaves the app open
+  // overnight and comes back to it still gets their calendar -- but nobody is interrupted
+  // mid-tap by a gate flipping under them.
+  var dailyGateOpen = false;
+  function openDailyGate(){ if (GATES.daily()) dailyGateOpen = true; }
+  var GATES = {
+    // Overtime Shift multiplies output and Double Payout multiplies a hand pick. Offered
+    // at zero plant, the first of those multiplies nothing at all.
+    ads:    function(){ return ownsAnyPlant(); },
+    // A seven-day return streak is a reason to come back, which is not something you can
+    // offer someone who has not yet had a first visit.
+    daily:  function(){ return ownsAnyPlant() || state.taps >= 10 || state.dailyStreak > 0; },
+    // ^ read once at launch into dailyGateOpen, never live. See checkDailyLoginPopup.
+    // The Office holds prestige, the Directorship and a building priced at $600B. It
+    // becomes legible once a contract is done -- objective three, and exactly the point
+    // where the objective chain starts pointing at it.
+    office: function(){ return state.contractsDone >= 1 || state.prestiges > 0; }
+  };
+
+  /* ---- changeover -----------------------------------------------------------------
+     The bar above the site says THROUGHPUT FLOW. Until now it was driven by
+     Math.sin(Date.now()/8000) -- a wiggle that cost nothing and meant nothing, and which
+     the player could neither cause nor avoid.
+
+     What it drives instead is the price of switching manifest. Switching used to be free
+     and instant, and with the Customs mastery it paid a bonus, so the best play was to
+     flip to whichever market had peaked and keep flipping. A choice you always make the
+     same way is not a choice.
+
+     A real site cannot turn over from groceries to cleanroom freight without stopping, so
+     throughput drops and climbs back. That prices the decision against the market clock:
+     Hot runs 3-6 minutes at x1.32, so it usually repays a changeover; Peak is x1.80 but
+     lasts only 60-90 seconds, so chasing one already half spent usually does not.
+
+     Wages are scaled by the same factor (see wageBill). Output alone would have been
+     brutal early: wages are 27.5% of a picker's rate and do not scale with most of the
+     multipliers, so cutting output to 40% with wages left at full would have taken about
+     90% of a new player's net income rather than 60%. Scaling both keeps the cost
+     proportional and legible -- a changeover costs the same share of net to everyone.  */
+  var CHANGEOVER_MS = 60000;
+  var CHANGEOVER_FLOOR = 0.40;
+
+  function changeoverSpan(){ return hasNode("flow") ? CHANGEOVER_MS / 2 : CHANGEOVER_MS; }
+  function changeoverInstant(){ return (state.corp.customs || 0) >= 10; }
+  function changeoverLeft(){ return Math.max(0, (state.changeoverUntil || 0) - Date.now()); }
+
   function flowEfficiency(){
-    var units = 0; GENS.forEach(function(g){ units+=(state.owned[g.id]||0); });
-    if (units === 0) return 1.0;
-    var swing = Math.sin(Date.now() / 8000) * FLOW_SWING;
-    // Flow Control keeps the good half of the swing and drops the bad half, so throughput
-    // reads 100-115% rather than 85-115%.
-    return 1.0 + (hasNode("flow") ? Math.max(0, swing) : swing);
+    var left = changeoverLeft();
+    if (left <= 0) return 1;
+    var span = state.changeoverSpan || CHANGEOVER_MS;
+    var t = 1 - Math.min(1, left / span);            // 0 as it starts, 1 as it finishes
+    return CHANGEOVER_FLOOR + (1 - CHANGEOVER_FLOOR) * (t * t * (3 - 2 * t));
+  }
+
+  function beginChangeover(){
+    if (changeoverInstant()) return 0;
+    var span = changeoverSpan();
+    state.changeoverSpan = span;
+    state.changeoverUntil = Date.now() + span;
+    return span;
   }
 
   function grossRate(){
@@ -1601,7 +1668,10 @@
     if (state.perks.maint) w *= 0.80;
     var hrReduction = Math.min(0.50, (state.corp.hr || 0) * 0.05);
     w *= (1 - hrReduction);
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1);
+    // Scaled by the changeover factor for the same reason grossRate is: a site mid-turnover
+    // is not running, and leaving the payroll at full while output fell to 40% would have
+    // cost an early player almost all of their net income rather than a proportional share.
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * flowEfficiency();
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -1787,6 +1857,10 @@
         }
       }
 
+      // Opened here rather than in startGame: this block runs inside loadGame's own then,
+      // which resolves before startGame does, so a returning player's calendar would have
+      // been tested against a gate that had not been read yet.
+      openDailyGate();
       checkDailyLoginPopup();
     }).catch(function(e){ console.error(e); });
   }
@@ -2105,6 +2179,13 @@
     if (now - state.lastDailyClaim < DAY_MS) return;
 
     var period = dailyPeriod();
+    // Latched at launch, deliberately. This runs from the game tick as well as from
+    // startup, so testing the gate live would let the calendar slam open the instant a new
+    // player bought their first picker -- over the button they were pressing. Reading the
+    // latch instead means a first session never shows it and the next launch does, which is
+    // what "hold it until session two" has to mean to be an improvement rather than a
+    // worse interruption. dailyShownFor is left untouched so nothing is consumed.
+    if (!dailyGateOpen) return;
     if (state.dailyShownFor !== period){
       state.dailyShownFor = period;
       var onTime = (now - state.lastDailyClaim <= DAY_MS * 2);
@@ -2215,6 +2296,15 @@
     var s = getSku();
     document.getElementById("activeSkuLabel").textContent = s.name;
     document.getElementById("activeSkuDesc").textContent = s.desc;
+    // The cost of switching has to be legible before it is paid, or it reads as the game
+    // breaking rather than as a decision the player made.
+    var warn = document.getElementById("changeoverNote");
+    if (warn){
+      warn.innerHTML = changeoverInstant()
+        ? "Customs clears your paperwork in advance &mdash; switching costs you <b>no changeover</b>."
+        : "Switching stops the site: throughput drops to <b>" + Math.round(CHANGEOVER_FLOOR * 100) +
+          "%</b> and climbs back over <b>" + Math.round(changeoverSpan() / 1000) + "s</b>.";
+    }
     var container = document.getElementById("skuList"); container.innerHTML = "";
     skuCardEls = {};
     SKUS.forEach(function(skuItem){
@@ -2234,13 +2324,18 @@
         var switched = state.sku !== skuItem.id;
         state.sku = skuItem.id; document.getElementById("modalSku").hidden = true;
         sfx("upgrade");
-        // Without the mastery, switching is neutral -- you take the new manifest's numbers
-        // and nothing else. With it, the paperwork itself is worth something.
-        if (switched && (state.corp.customs || 0) >= 10){
-          boostUntil = Date.now() + 30000;
-          showToast("Manifest assigned: <b>" + skuItem.name + "</b>. Customs cleared it \u2014 <b>\u00d78 for 30s</b>.");
-        } else {
+        // The Customs mastery used to hand out x8 for 30s on every switch, which made the
+        // best manifest "whichever one I am not currently on". It now exempts you from the
+        // changeover instead -- the same building, doing the job its name implies, and
+        // worth far more at level 10 than a bonus for fidgeting.
+        if (!switched){
           showToast("Manifest assigned: <b>" + skuItem.name + "</b>.");
+        } else if (changeoverInstant()){
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>. Customs had the paperwork ready \u2014 <b>no changeover</b>.");
+        } else {
+          var span = beginChangeover();
+          showToast("Manifest assigned: <b>" + skuItem.name + "</b>. Changeover: <b>" +
+                    Math.round(span / 1000) + "s</b> at reduced throughput.");
         }
         renderSkuUI(); render(); saveGame();
       });
@@ -2549,17 +2644,38 @@
     document.getElementById("repInfo").textContent = "REP " + state.rep;
 
     var currentWages = wageBill();
+    // Sequencing. Both of these re-check every render, so each appears the instant its
+    // condition is met rather than on the next tab change.
+    document.getElementById("adRow").hidden = !GATES.ads();
+    // Taken from tabBtns rather than a fresh querySelector: it is the same list switchTab
+    // already binds, so the button hidden here is provably the button the player clicks.
+    var officeBtn = null;
+    for (var ti = 0; ti < tabBtns.length; ti++)
+      if (tabBtns[ti].getAttribute("data-tab") === "office") officeBtn = tabBtns[ti];
+    if (officeBtn){
+      var officeOpen = GATES.office();
+      officeBtn.hidden = !officeOpen;
+      // Nothing should be able to strand the player on a tab that has just closed.
+      if (!officeOpen && curTab === "office") switchTab("floor");
+    }
+
     document.getElementById("wageTag").innerHTML = currentWages > 0
       ? "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> "
       : "";
 
     var flow = flowEfficiency();
     var bar = document.getElementById("flowBar");
-    // Label and bar share one scale: 100% = nominal throughput. The bar saturates while
-    // the label keeps reading the overdrive above it.
+    // Label and bar share one scale: 100% = nominal throughput.
     bar.style.width = Math.min(100, flow * 100) + "%";
-    bar.style.background = flow >= 0.95 ? "var(--cash)" : "var(--hazard)";
-    document.getElementById("flowPct").textContent = Math.round(flow * 100) + "%";
+    bar.style.background = flow >= 0.99 ? "var(--cash)" : "var(--hazard)";
+    // A bar that has dropped without saying why reads as a fault. Name the cause and count
+    // it down, so the player can see the thing they chose finishing.
+    var left = changeoverLeft();
+    var tag = document.querySelector(".logistics-flow .flow-tag");
+    if (tag) tag.textContent = left > 0 ? "Changeover" : "Throughput Flow";
+    document.getElementById("flowPct").textContent = left > 0
+      ? Math.round(flow * 100) + "% · " + Math.ceil(left / 1000) + "s"
+      : Math.round(flow * 100) + "%";
 
     renderBoostTag();
   }
@@ -3090,13 +3206,13 @@
     var P = window.Capacitor && window.Capacitor.Plugins;
     if (P && P.App && P.App.addListener){
       P.App.addListener("appStateChange", function(st){
-        if (st && st.isActive){ clearNotifications(); Tele.resume(); }
+        if (st && st.isActive){ clearNotifications(); Tele.resume(); openDailyGate(); }
         else { saveGame(); scheduleNotifications(); Tele.endSession(); }
       });
     }
     document.addEventListener("visibilitychange", function(){
       if (document.hidden){ saveGame(); scheduleNotifications(); Tele.endSession(); }
-      else { clearNotifications(); Tele.resume(); }
+      else { clearNotifications(); Tele.resume(); openDailyGate(); }
     });
     // Backgrounding is where a session usually ends, but not where the process usually
     // does. pagehide is the last point at which a send can still be made, and the queue
@@ -4498,6 +4614,7 @@
   setInterval(saveGame, 10000);
 
   function startGame() {
+    openDailyGate();
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
     renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
     bindNotificationLifecycle();
