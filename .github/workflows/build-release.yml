@@ -39,6 +39,46 @@ jobs:
           cp warehouse-empire-android.html www/index.html
           npx cap add android
 
+      # The measurement id and the Measurement Protocol secret are injected here rather
+      # than committed. Both end up inside the bundle either way -- the events are sent
+      # from the client, so anyone who unpacks the APK can read them, and that is the
+      # price of not running a server. What this avoids is the other thing: a secret
+      # committed to a public repository is in the history permanently, and deleting it
+      # from the tip does not remove it. Injected, it can be rotated in the stream's
+      # settings and in this repository's secrets without touching the source.
+      #
+      # Set both under Settings > Secrets and variables > Actions:
+      #   GA_MEASUREMENT_ID   the G-XXXXXXXXXX of a GA4 *Web* data stream
+      #   GA_API_SECRET       that stream's Measurement Protocol API secret
+      # With neither set the build still succeeds and ships telemetry switched off.
+      - name: Inject telemetry configuration
+        env:
+          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          GA_API_SECRET: ${{ secrets.GA_API_SECRET }}
+        run: |
+          if [ -z "$GA_MEASUREMENT_ID" ] || [ -z "$GA_API_SECRET" ]; then
+            echo "::warning::GA_MEASUREMENT_ID or GA_API_SECRET is not set. This release ships with telemetry off and will report nothing."
+            exit 0
+          fi
+          # Values go in via a file so neither ever appears in a command line or a log,
+          # and python rather than sed because a secret containing & or / would corrupt
+          # a sed replacement silently.
+          python3 - <<'PY'
+          import os, re, sys
+          p = "www/index.html"
+          s = open(p, encoding="utf-8").read()
+          for name in ("GA_MEASUREMENT_ID", "GA_API_SECRET"):
+              v = os.environ[name]
+              if '"' in v or "\\" in v:
+                  sys.exit("::error::%s contains a quote or backslash; refusing to inject." % name)
+              s, n = re.subn(r'var %s = "[^"]*";' % name,
+                             'var %s = "%s";' % (name, v), s, count=1)
+              if n != 1:
+                  sys.exit("::error::could not find the %s declaration to replace." % name)
+          open(p, "w", encoding="utf-8").write(s)
+          PY
+          echo "telemetry configuration injected"
+
       # Preferences and Haptics were referenced by the game but never installed, so
       # saves were living in WebView localStorage -- which Android wipes on "clear
       # cache". Preferences survives that. The migration shim in the game moves an
@@ -103,23 +143,32 @@ jobs:
             exit 1
           fi
 
-      # A warning, not an error. Shipping without telemetry costs nothing on the day --
-      # unlike test ads, which cost the release its whole revenue -- it only means this
-      # version comes back knowing no more than the last one did.
+      # Checks what was actually injected, not what the secrets hold, so a substitution
+      # that silently failed is caught here rather than by a fortnight of empty reports.
+      # A missing configuration is a warning, not an error: shipping without telemetry
+      # costs nothing on the day -- unlike test ads, which cost the release its revenue --
+      # it only means this version comes back knowing no more than the last one did.
       - name: Check telemetry configuration
         run: |
           ID=$(grep -oP 'var GA_MEASUREMENT_ID = "\K[^"]*' www/index.html || true)
-          SECRET=$(grep -oP 'var GA_API_SECRET = "\K[^"]*' www/index.html || true)
-          if [ -z "$ID" ] || [ -z "$SECRET" ]; then
-            echo "::warning::Telemetry is off (GA_MEASUREMENT_ID or GA_API_SECRET is empty). This release will report nothing."
-          else
-            echo "telemetry on, measurement id $ID"
-            # A Firebase/app stream id parses fine and fails silently forever, which is the
-            # expensive way to find out. The Measurement Protocol call below needs a Web stream.
-            if ! printf '%s' "$ID" | grep -qE '^G-[A-Z0-9]{6,}$'; then
-              echo "::error::GA_MEASUREMENT_ID is '$ID', not a G-XXXXXXXXXX Web stream measurement id."
-              exit 1
-            fi
+          # Never echoed, never compared in a way that could print it. Length only.
+          SECRET_LEN=$(grep -oP 'var GA_API_SECRET = "\K[^"]*' www/index.html | wc -c)
+          if [ -z "$ID" ] || [ "$SECRET_LEN" -le 1 ]; then
+            echo "::warning::Telemetry is off. This release will report nothing. Set GA_MEASUREMENT_ID and GA_API_SECRET in the repository secrets to turn it on."
+            exit 0
+          fi
+          echo "telemetry on, measurement id $ID, secret present"
+          # A Firebase/app stream id parses fine and then fails silently forever, which is
+          # the expensive way to find out. The Measurement Protocol needs a Web stream.
+          if ! printf '%s' "$ID" | grep -qE '^G-[A-Z0-9]{6,}$'; then
+            echo "::error::GA_MEASUREMENT_ID is '$ID', not a G-XXXXXXXXXX Web stream measurement id."
+            exit 1
+          fi
+          # The source file must never carry them: this repository is public, and a secret
+          # in its history is there permanently whether or not a later commit removes it.
+          if grep -qE 'var GA_(MEASUREMENT_ID|API_SECRET) = "[^"]+";' warehouse-empire-android.html; then
+            echo "::error::A telemetry constant is committed in warehouse-empire-android.html. These belong in repository secrets and are injected at build time."
+            exit 1
           fi
 
       # The android/ folder is rebuilt from scratch every run, so Capacitor's
