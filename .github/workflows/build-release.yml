@@ -103,6 +103,25 @@ jobs:
             exit 1
           fi
 
+      # A warning, not an error. Shipping without telemetry costs nothing on the day --
+      # unlike test ads, which cost the release its whole revenue -- it only means this
+      # version comes back knowing no more than the last one did.
+      - name: Check telemetry configuration
+        run: |
+          ID=$(grep -oP 'var GA_MEASUREMENT_ID = "\K[^"]*' www/index.html || true)
+          SECRET=$(grep -oP 'var GA_API_SECRET = "\K[^"]*' www/index.html || true)
+          if [ -z "$ID" ] || [ -z "$SECRET" ]; then
+            echo "::warning::Telemetry is off (GA_MEASUREMENT_ID or GA_API_SECRET is empty). This release will report nothing."
+          else
+            echo "telemetry on, measurement id $ID"
+            # A Firebase/app stream id parses fine and fails silently forever, which is the
+            # expensive way to find out. The Measurement Protocol call below needs a Web stream.
+            if ! printf '%s' "$ID" | grep -qE '^G-[A-Z0-9]{6,}$'; then
+              echo "::error::GA_MEASUREMENT_ID is '$ID', not a G-XXXXXXXXXX Web stream measurement id."
+              exit 1
+            fi
+          fi
+
       # The android/ folder is rebuilt from scratch every run, so Capacitor's
       # placeholder icons come back each time. This regenerates every density
       # plus the Android 8+ adaptive layers from assets/icon.png.
