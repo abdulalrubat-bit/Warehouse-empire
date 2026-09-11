@@ -43,9 +43,12 @@ jobs:
       # than committed. Both end up inside the bundle either way -- the events are sent
       # from the client, so anyone who unpacks the APK can read them, and that is the
       # price of not running a server. What this avoids is the other thing: a secret
-      # committed to a public repository is in the history permanently, and deleting it
-      # from the tip does not remove it. Injected, it can be rotated in the stream's
-      # settings and in this repository's secrets without touching the source.
+      # committed to a repository is in its history permanently, and deleting it from the
+      # tip does not remove it -- it stays in every clone, fork and archive, and the only
+      # real remedy afterwards is to rotate the key. This repository is private today,
+      # which reduces that exposure but does not undo it: history outlives the setting.
+      # Injected, the secret can be rotated in the stream's settings and in this
+      # repository's secrets without touching the source at all.
       #
       # Set both under Settings > Secrets and variables > Actions:
       #   GA_MEASUREMENT_ID   the G-XXXXXXXXXX of a GA4 *Web* data stream
@@ -164,8 +167,8 @@ jobs:
             echo "::error::GA_MEASUREMENT_ID is '$ID', not a G-XXXXXXXXXX Web stream measurement id."
             exit 1
           fi
-          # The source file must never carry them: this repository is public, and a secret
-          # in its history is there permanently whether or not a later commit removes it.
+          # The source file must never carry them: a secret in a repository's history is
+          # there permanently whether or not a later commit removes it.
           if grep -qE 'var GA_(MEASUREMENT_ID|API_SECRET) = "[^"]+";' warehouse-empire-android.html; then
             echo "::error::A telemetry constant is committed in warehouse-empire-android.html. These belong in repository secrets and are injected at build time."
             exit 1
