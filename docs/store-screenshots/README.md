@@ -1,6 +1,6 @@
 # Play Store screenshots
 
-Captured from the v24 (3.7) build at `634ac0f`, so everything shown is in that
+Captured from the v25 (3.8) build at `536d938`, so everything shown is in that
 release. 1080x1920, 24-bit RGB PNG, no alpha — inside Play's phone screenshot
 requirements (320–3840px per side, under 8MB each).
 
@@ -17,7 +17,7 @@ different game.
 | `05-network.png` | The Network: six retired sites, each with its specialisation |
 | `06-corporate.png` | The corporate estate, including "% BUILT" progress |
 | `07-fleet.png` | The equipment ladder |
-| `08-manifests.png` | All five manifests, three of them in different market states |
+| `08-manifests.png` | All five manifests, three in different market states, and the changeover a switch costs |
 
 Play shows the first two or three in the listing preview, so 01 and 02 lead:
 side by side, tan pallet racking against stacked containers and water makes the

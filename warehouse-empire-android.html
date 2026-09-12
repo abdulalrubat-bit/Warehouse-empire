@@ -2258,7 +2258,15 @@
   }
 
   document.getElementById("btnClaimDaily").addEventListener("click", function(){
+    // A streak of 0 indexes DAILY_REWARDS at -1, and the next line then throws on
+    // undefined. The calendar always used to open at boot and set the streak before this
+    // button could be reached, so the case could not arise; now that it waits for a second
+    // visit, a brand new player is the first state in which it can. The modal is hidden, so
+    // no finger can get here -- but a claim with nothing to claim should close the dialog
+    // rather than take the app down, and this is exactly the silent death js_error exists
+    // to report.
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
+    if (!reward){ document.getElementById("modalDaily").hidden = true; return; }
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
     if (crate) state.crates += 1;
