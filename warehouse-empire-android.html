@@ -654,6 +654,10 @@
   // endpoint returns 204 for valid and invalid alike, which is its worst property.
   var GA_MEASUREMENT_ID = "";
   var GA_API_SECRET = "";
+  // Replaced at build time with the release being built, e.g. "3.8 (25)". Left as "dev"
+  // it marks anything sent from a working copy, which is exactly what you want to filter
+  // out of a report.
+  var APP_VERSION = "dev";
 
   // The point of this module is to find out why players leave. That makes it worse than
   // useless if it is ever the reason one leaves, so every entry point is wrapped and the
@@ -765,7 +769,14 @@
         var now = Date.now();
         var engaged = lastEventAt ? Math.min(60000, Math.max(1, now - lastEventAt)) : 100;
         lastEventAt = now;
-        var p = { session_id: sessionId, engagement_time_msec: engaged };
+        // app_version and device ride on *every* event, not just the ones that announce a
+        // launch. Without the version, v24 and v25 are the same pile and no change can ever
+        // be measured against the release before it -- which is most of the point. Without
+        // the device on the funnel events, there is no way to exclude a particular phone
+        // from the numbers, and at two or three installs a day the developer's own testing
+        // is a large share of every figure on the page.
+        var p = { session_id: sessionId, engagement_time_msec: engaged,
+                  app_version: APP_VERSION, device: device(), android: androidVer() };
         if (params) for (var k in params) if (params.hasOwnProperty(k)) p[k] = clean(params[k]);
         queue.push({ name: name, params: p });
         if (queue.length > MAX_QUEUE) queue = queue.slice(queue.length - MAX_QUEUE);
@@ -784,7 +795,7 @@
         if (seenErrors[key]) { seenErrors[key]++; return; }
         seenErrors[key] = 1;
         if (++errorsSent > MAX_ERRORS) return;
-        log("js_error", { message: key, source: where || "", device: device() });
+        log("js_error", { message: key, source: where || "" });
         flush();
       } catch(e){}
     }
@@ -806,8 +817,8 @@
               try { if (q && q.value) queue = JSON.parse(q.value) || []; } catch(e){ queue = []; }
               if (!(queue instanceof Array)) queue = [];
               live = true;
-              if (fresh) log("install_first", { device: device(), android: androidVer() });
-              log("session_begin", { device: device(), android: androidVer() });
+              if (fresh) log("install_first", {});
+              log("session_begin", {});
               flush();
             });
         }).catch(function(){});
@@ -842,7 +853,7 @@
         if (!live || sessionStart) return;
         sessionId = Date.now(); sessionStart = sessionId;
         lastEventAt = 0;                  // time spent backgrounded is not engagement
-        log("session_begin", { device: device(), android: androidVer() });
+        log("session_begin", {});
       } catch(e){}
     }
 
@@ -4651,7 +4662,7 @@
     setTimeout(function(){
       Tele.log("quality_settled", {
         tier: QUALITY_ORDER[qualityIdx], auto: qualityAuto ? 1 : 0,
-        avg_ms: Math.round(lastAvgMs), device: Tele.device(), android: Tele.android()
+        avg_ms: Math.round(lastAvgMs)
       });
     }, 60000);
     setTimeout(function(){
