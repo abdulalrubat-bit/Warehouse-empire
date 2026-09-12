@@ -54,6 +54,27 @@ jobs:
       #   GA_MEASUREMENT_ID   the G-XXXXXXXXXX of a GA4 *Web* data stream
       #   GA_API_SECRET       that stream's Measurement Protocol API secret
       # With neither set the build still succeeds and ships telemetry switched off.
+      # Stamped whether or not telemetry is configured, and before the early exit below,
+      # because a build that cannot be told apart from the release before it makes every
+      # comparison impossible -- which is most of what the numbers are for.
+      - name: Stamp the build version
+        env:
+          APP_VERSION: ${{ github.event.inputs.version_name }} (${{ github.event.inputs.version_code }})
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          p = "www/index.html"
+          s = open(p, encoding="utf-8").read()
+          v = os.environ["APP_VERSION"]
+          if '"' in v or "\\" in v:
+              sys.exit("::error::version name contains a quote or backslash.")
+          s, n = re.subn(r'var APP_VERSION = "[^"]*";', 'var APP_VERSION = "%s";' % v, s, count=1)
+          if n != 1:
+              sys.exit("::error::could not find the APP_VERSION declaration to replace.")
+          open(p, "w", encoding="utf-8").write(s)
+          PY
+          grep -o 'var APP_VERSION = "[^"]*";' www/index.html
+
       - name: Inject telemetry configuration
         env:
           GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
