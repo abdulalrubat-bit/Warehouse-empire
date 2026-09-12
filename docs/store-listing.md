@@ -35,11 +35,16 @@ leads with the thing a player is actually buying.
 
 ## Full description (4000 char limit)
 
-**The version currently live has lost its line breaks.** Every heading is jammed
-inline — "…without you. Automate everything Climb the equipment tiers…" — so the
-whole thing renders as one unbroken wall of text. Paste the block below *with its
-blank lines intact*; if your browser strips them again, type the returns back in
-before saving.
+**On the wall of text.** The Play Console *summary* view collapses newlines when it
+renders a stored description, so it shows one unbroken block whatever is actually
+saved. Check the live store page — `play.google.com/store/apps/details?id=
+com.abdulgames.warehouseempire`, or About this game in the Play Store app — before
+concluding anything is wrong with the text.
+
+If the live page really is a wall too, the likely cause is single newlines being
+collapsed somewhere while blank lines survive. The block below is written so that
+cannot bite: **every heading has a blank line after it as well as before it**, so the
+structure holds even if single breaks are lost.
 
 It is also out of date: it names three manifests when there are five, "32+
 achievements" when there are 44, and describes none of the top-down site view,
@@ -54,6 +59,7 @@ back into the operation. Hire crew, buy plant, and watch a real site plan
 fill up and start running itself — then keep earning while you're away.
 
 WATCH THE SITE RUN
+
 Your warehouse is drawn from above, the way a site actually is: receiving
 along the top, sorting behind it, racking through the middle, packing and
 staging down the side, shipping across the bottom. Trucks reverse onto the
@@ -61,12 +67,14 @@ docks, load, and pull out. Forklifts work the aisles. Everything you buy
 turns up on the plan.
 
 CLIMB THE EQUIPMENT LADDER
+
 Casual Pickers, Pallet Trolleys, Forklifts, Reach Trucks, Conveyor Lines,
 Sorting Robots, Automated Cranes and full Distribution Hubs. Eight tiers,
 each faster and more expensive than the last, each with upgrades and a
 manager who runs it without you.
 
 RUN REAL FREIGHT
+
 Take dispatch contracts against the clock. Choose your manifest — FMCG
 Groceries, Cold Pharma, Heavy Industrial, Bonded Spirits, Semiconductors —
 and trade output against wages against contract pay. Markets move on their
@@ -74,21 +82,25 @@ own clock, so what is worth running changes. Switching costs you a
 changeover, so chasing a spike is a decision, not a reflex.
 
 FOUR SITES, FOUR DIFFERENT PLACES
+
 A Distribution Centre is aisles of pallet racking. A Cold Store is insulated
 chambers. A Dangerous Goods Yard is separated bunded cells. A Port Terminal
 is container stacks on a quay. Each one runs differently and looks it.
 
 SELL UP AND BUILD A NETWORK
+
 Cash out for permanent Reputation, and spend it in the Directorship — three
 branches, each ending in a title you can hold only one of. Every site you
 retire keeps its specialisation and joins your Network, where it goes on
 earning and can be invested in.
 
 GO IDLE, COME BACK RICH
+
 Offline earnings accumulate while the app is shut. The game plays fully
 without a connection.
 
 ALSO IN THE BOX
+
 • Twelve ranks, from Casual Hand to Empire Magnate
 • 44 awards and a daily shift calendar with streak cover
 • Six kinds of yard incident, each paying differently, each on a clock
