@@ -52,6 +52,9 @@ chk("a first launch is announced as an install", named("install_first").length =
     named("install_first").length + " install_first");
 chk("and as a session", named("session_begin").length === 1,
     named("session_begin").length + " session_begin");
+chk("and that session says it was a cold launch",
+    named("session_begin")[0].params.kind === "launch",
+    "kind=" + named("session_begin")[0].params.kind);
 
 const first = named("install_first")[0] || { params:{} };
 chk("the device model is read out of the user agent",
@@ -282,6 +285,12 @@ document.hidden = false;
 T.resume(); await settle();
 chk("coming back from the background opens a new session",
     named("session_begin").length === 1, named("session_begin").length + " session_begin");
+// A launch and a resume are both sessions, but they answer different questions, and for
+// the first three days of live data nothing told them apart -- so every per-launch
+// measure sat against a denominator of launches plus resumes and could not be read.
+chk("and says it was a resume, not a launch",
+    named("session_begin")[0].params.kind === "resume",
+    "kind=" + named("session_begin")[0].params.kind);
 T.resume(); await settle();
 chk("and resuming twice does not open two", named("session_begin").length === 1,
     named("session_begin").length + " session_begin");

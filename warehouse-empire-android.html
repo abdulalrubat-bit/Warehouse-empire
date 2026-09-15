@@ -854,7 +854,13 @@
               if (!(queue instanceof Array)) queue = [];
               live = true;
               if (fresh) log("install_first", {});
-              log("session_begin", {});
+              // A cold launch and a return from the background are both sessions, and
+              // GA4 is right that they are. But they answer different questions -- one
+              // is "did they come back today", the other "did they put it down for a
+              // minute" -- and until now both logged the same event with nothing to tell
+              // them apart, so neither could be counted. Every per-launch measure sat
+              // against a denominator of launches plus resumes.
+              log("session_begin", { kind: "launch" });
               flush();
             });
         }).catch(function(){});
@@ -889,7 +895,7 @@
         if (!live || sessionStart) return;
         sessionId = Date.now(); sessionStart = sessionId;
         lastEventAt = 0;                  // time spent backgrounded is not engagement
-        log("session_begin", {});
+        log("session_begin", { kind: "resume" });
       } catch(e){}
     }
 
