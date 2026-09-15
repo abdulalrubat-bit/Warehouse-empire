@@ -1,0 +1,12 @@
+{
+  "name": "warehouse-empire-tests",
+  "private": true,
+  "description": "Regression suite for warehouse-empire-android.html",
+  "scripts": {
+    "test": "node run.js",
+    "test:fast": "node run.js --no-browser"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

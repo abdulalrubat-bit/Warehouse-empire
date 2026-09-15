@@ -1,0 +1,50 @@
+name: Tests
+
+# The game is one HTML file that several people and agents edit, and until now nothing
+# checked a change before it merged. This runs the suite on every pull request and on
+# every push to main, so a regression is caught at the PR rather than in a release build.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A second push to the same PR makes the first run irrelevant.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Two of the 29 suites drive a real browser. Cache it: the download is most of the
+      # job's runtime and it only changes when the pinned Playwright version does.
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('tests/package-lock.json') }}
+
+      - name: Install dependencies
+        working-directory: tests
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        working-directory: tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the suite
+        working-directory: tests
+        run: node run.js
