@@ -91,6 +91,15 @@
   .objective .ohint b{color:var(--hazard); font-weight:600;}
   .objective .ogo{font-family:var(--font-cond); font-weight:800; font-size:12px; color:var(--cash); letter-spacing:1px;}
 
+  .bottleneck{margin:8px 14px 0; padding:9px 11px; background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--bad); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer;}
+  .bottleneck.good{border-left-color:var(--cash);}
+  .bottleneck .bbody{flex:1; min-width:0;}
+  .bottleneck .btag{font-family:var(--font-cond); font-weight:800; font-size:8.5px; letter-spacing:1.3px; color:var(--bad); text-transform:uppercase;}
+  .bottleneck.good .btag{color:var(--cash);}
+  .bottleneck .btitle{font-family:var(--font-cond); font-weight:800; font-size:13px; color:var(--ink); text-transform:uppercase; margin-top:1px;}
+  .bottleneck .bdetail{font-size:9px; color:var(--dim); line-height:1.4; margin-top:2px;}
+  .bottleneck .bgo{font-family:var(--font-cond); font-weight:800; font-size:11px; color:var(--cash); white-space:nowrap;}
+
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px;}
   .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; font-weight:400;}
@@ -327,6 +336,15 @@
       <div class="ogo" id="objGo">GO →</div>
     </div>
 
+    <div class="bottleneck" id="bottleneck" hidden>
+      <div class="bbody">
+        <div class="btag" id="bottleneckTag">Current Bottleneck</div>
+        <div class="btitle" id="bottleneckTitle"></div>
+        <div class="bdetail" id="bottleneckDetail"></div>
+      </div>
+      <div class="bgo">FIX →</div>
+    </div>
+
     <div class="skustrip">
       <div>
         <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
@@ -453,7 +471,13 @@
       </div>
       <div class="office-text" id="qualityNote" style="margin-top:8px;"></div>
     </div>
-    
+
+    <div class="office-block" id="officeProgressionLocked" style="border-left-color:var(--hazard);">
+      <div class="office-title">OPERATIONS DESK LOCKED</div>
+      <div class="office-text">Complete your first freight contract to unlock business sales, Corporate Real Estate, the Directorship and the Network.</div>
+    </div>
+
+    <div id="officeProgression" hidden>
     <div class="toolbar" style="padding-left:0; padding-right:0;"><div class="label" style="border-color:var(--corp);">Corporate Real Estate</div></div>
     <div class="office-block" style="border-left-color: var(--corp); margin-top:0;">
       <div class="office-text" style="margin-top:0;">Expand your global footprint. Buy adjacent land plots to build permanent megacorp structures. Rendered live on the 2.5D canvas. Level 10 unlocks a <b>Mastery Perk</b>.</div>
@@ -478,7 +502,7 @@
       <div class="office-text" style="margin-top:0;" id="netBlurb"></div>
     </div>
     <div id="netList" style="margin-top:8px; padding:0 14px;"></div>
-
+    </div>
 
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
@@ -1640,9 +1664,8 @@
     // offer someone who has not yet had a first visit.
     daily:  function(){ return ownsAnyPlant() || state.taps >= 10 || state.dailyStreak > 0; },
     // ^ read once at launch into dailyGateOpen, never live. See checkDailyLoginPopup.
-    // The Office holds prestige, the Directorship and a building priced at $600B. It
-    // becomes legible once a contract is done -- objective three, and exactly the point
-    // where the objective chain starts pointing at it.
+    // The Office tab itself stays available because it also holds settings and save
+    // controls. Only its advanced operations desk waits for the first contract.
     office: function(){ return state.contractsDone >= 1 || state.prestiges > 0; },
     // A timed freight target is noise until the player owns something that can move it.
     contract: function(){ return ownsAnyPlant() || state.contractsDone > 0; }
@@ -2467,6 +2490,48 @@
     return nextProgressTarget(projectedMoney);
   }
 
+  function bottleneckState(){
+    if (!ownsAnyPlant()) return null;
+    var changeLeft = changeoverLeft();
+    if (changeLeft > 0)
+      return { title:"Manifest changeover", tab:"floor", good:false,
+               detail:"Throughput is " + Math.round(flowEfficiency() * 100) + "% · recovers in " + Math.ceil(changeLeft / 1000) + "s." };
+
+    if (state.contract){
+      var seconds = Math.max(1, (state.contract.deadline - Date.now()) / 1000);
+      var remaining = Math.max(0, state.contract.goal - state.contract.prog);
+      var required = remaining / seconds;
+      var current = totalRate();
+      if (required > current * 1.05){
+        var nextName = "more fleet capacity";
+        for (var gi = 0; gi < GENS.length; gi++){
+          if ((state.owned[GENS[gi].id] || 0) === 0){ nextName = GENS[gi].name; break; }
+        }
+        return { title:"Contract capacity", tab:"equip", good:false,
+                 detail:"Moving " + money(current) + "/s · need " + money(required) + "/s. Add " + nextName + "." };
+      }
+      var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
+      return { title:"Contract on schedule", tab:"floor", good:true,
+               detail:pct + "% dispatched · current throughput " + money(current) + "/s." };
+    }
+
+    var next = nextProgressTarget(state.money);
+    return next ? { title:"Next capacity target", tab:next.tab, good:true,
+                    detail:next.title + ". " + next.hint.replace(/<[^>]+>/g, "") } : null;
+  }
+
+  function renderBottleneck(){
+    var card = document.getElementById("bottleneck");
+    var b = bottleneckState();
+    if (!b){ card.hidden = true; return; }
+    card.hidden = false;
+    card.classList.toggle("good", !!b.good);
+    document.getElementById("bottleneckTag").textContent = b.good ? "Flow Status" : "Current Bottleneck";
+    document.getElementById("bottleneckTitle").textContent = b.title;
+    document.getElementById("bottleneckDetail").textContent = b.detail;
+    card.onclick = function(){ switchTab(b.tab); };
+  }
+
   function renderObjective(){
     var cur = null, idx = 0;
     for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
@@ -2544,9 +2609,13 @@
       b.addEventListener("click", function(){
         if (state.money < u.cost || state.upgrades[u.id]) return;
         if (!upgradeUnlocked(u)){ showToast("Requires <b>" + u.reqCount + " \u00d7 " + u.reqGen + "</b> first."); return; }
+        var beforeRate = totalRate();
         state.money -= u.cost; state.upgrades[u.id] = true; invalidateUpMult(); sfx("upgrade");
+        var afterRate = totalRate();
         Tele.log("upgrade_bought", { upgrade:u.id, cost:u.cost });
-        showToast("<b>" + u.name + "</b> installed."); render(); saveGame();
+        showToast("<b>" + u.name + "</b> installed." +
+                  (afterRate > beforeRate ? "<br>Throughput: " + money(beforeRate) + "/s → <b>" + money(afterRate) + "/s</b>" : ""));
+        render(); saveGame();
       });
       shop.appendChild(b); upEls[u.id] = { btn: b, costEl: b.querySelector(".ucost") };
     });
@@ -2750,20 +2819,12 @@
     document.getElementById("repInfo").textContent = "REP " + state.rep;
 
     var currentWages = wageBill();
-    // Sequencing. Both of these re-check every render, so each appears the instant its
-    // condition is met rather than on the next tab change.
+    // The Office tab always remains accessible for settings; only its progression-heavy
+    // operations desk waits until the first contract proves those systems are relevant.
     document.getElementById("adRow").hidden = !GATES.ads();
-    // Taken from tabBtns rather than a fresh querySelector: it is the same list switchTab
-    // already binds, so the button hidden here is provably the button the player clicks.
-    var officeBtn = null;
-    for (var ti = 0; ti < tabBtns.length; ti++)
-      if (tabBtns[ti].getAttribute("data-tab") === "office") officeBtn = tabBtns[ti];
-    if (officeBtn){
-      var officeOpen = GATES.office();
-      officeBtn.hidden = !officeOpen;
-      // Nothing should be able to strand the player on a tab that has just closed.
-      if (!officeOpen && curTab === "office") switchTab("floor");
-    }
+    var officeOpen = GATES.office();
+    document.getElementById("officeProgression").hidden = !officeOpen;
+    document.getElementById("officeProgressionLocked").hidden = officeOpen;
 
     document.getElementById("wageTag").innerHTML = currentWages > 0
       ? "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> "
@@ -2790,7 +2851,7 @@
     document.getElementById("shiftEarned").textContent = money(sessionEarned);
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
-    renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderAdButtons();
+    renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderBottleneck(); renderAdButtons();
   }
 
   function renderEquipTab(){
@@ -3128,15 +3189,16 @@
     var c = costOf(g, buyQty);
     var free = depotFreeReady();
     if (!free && state.money < c) return;
-    if (free){
-      state.depotFreeUsed = true;
-      showToast("Fleet Depot covered it: <b>" + buyQty + " \u00d7 " + g.name + "</b> free.");
-    } else {
-      state.money -= c;
-    }
+    var beforeRate = totalRate();
+    if (free) state.depotFreeUsed = true;
+    else state.money -= c;
     state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    var afterRate = totalRate();
     Tele.log("equipment_bought", { equipment:g.id, qty:buyQty, owned:state.owned[g.id] });
-    sfx("buy"); render(); saveGame();
+    sfx("buy");
+    showToast((free ? "Fleet Depot supplied " : "Added ") + "<b>" + buyQty + " × " + g.name + "</b>." +
+              "<br>Throughput: " + money(beforeRate) + "/s → <b>" + money(afterRate) + "/s</b>");
+    render(); saveGame();
   }
 
   var comboCount = 0, lastTap = 0;
