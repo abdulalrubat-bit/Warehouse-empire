@@ -99,6 +99,8 @@
   .bottleneck .btitle{font-family:var(--font-cond); font-weight:800; font-size:13px; color:var(--ink); text-transform:uppercase; margin-top:1px;}
   .bottleneck .bdetail{font-size:9px; color:var(--dim); line-height:1.4; margin-top:2px;}
   .bottleneck .bgo{font-family:var(--font-cond); font-weight:800; font-size:11px; color:var(--cash); white-space:nowrap;}
+  .bottleneck .baction{flex:0 0 auto; border:1px solid var(--hazard); border-radius:4px; background:var(--hazard); color:#20130a; padding:7px 8px; font-family:var(--font-cond); font-weight:800; font-size:10px; letter-spacing:.8px; text-transform:uppercase; cursor:pointer;}
+  .bottleneck .baction:disabled{border-color:var(--line); background:var(--panel2); color:var(--dim); cursor:default;}
 
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px;}
@@ -342,7 +344,8 @@
         <div class="btitle" id="bottleneckTitle"></div>
         <div class="bdetail" id="bottleneckDetail"></div>
       </div>
-      <div class="bgo">FIX →</div>
+      <button class="baction" id="bottleneckAction" type="button" hidden></button>
+      <div class="bgo" id="bottleneckGo">FIX →</div>
     </div>
 
     <div class="skustrip">
@@ -1515,7 +1518,7 @@
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
@@ -1524,6 +1527,7 @@
     incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
     tree: {}, repSpent: 0,
     changeoverUntil: 0, changeoverSpan: 0,
+    expediteReadyAt: 0,
     corpProgress: {}
   };
 
@@ -1538,7 +1542,7 @@
 
   GENS.forEach(function(g){ state.owned[g.id] = 0; });
 
-  var buyQty = 1, boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0;
+  var buyQty = 1, boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0, expediteUntil = 0;
   var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
   var sessionEarned = 0, maxCombo = 1.0;
 
@@ -1716,7 +1720,7 @@
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
   }
 
   function wageBill(){
@@ -1800,7 +1804,7 @@
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent"].forEach(function(k){
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -2490,29 +2494,67 @@
     return nextProgressTarget(projectedMoney);
   }
 
+  var EXPEDITE_MS = 30000;
+  var EXPEDITE_COOLDOWN_MS = 120000;
+
+  function expediteActive(){ return Date.now() < expediteUntil; }
+
+  function contractPressure(){
+    var c = state.contract;
+    if (!c || Date.now() >= c.deadline || c.prog >= c.goal) return null;
+    var seconds = Math.max(1, (c.deadline - Date.now()) / 1000);
+    var remaining = Math.max(0, c.goal - c.prog);
+    var current = Math.max(0.001, totalRate());
+    var required = remaining / seconds;
+    return { current:current, required:required, ratio:required / current };
+  }
+
+  function expediteAction(pressure){
+    if (expediteActive())
+      return { label:"EXPEDITING " + Math.ceil((expediteUntil - Date.now()) / 1000) + "s", disabled:true };
+    if (!pressure || pressure.ratio <= 1.05) return null;
+    var wait = Math.max(0, (state.expediteReadyAt || 0) - Date.now());
+    return wait > 0
+      ? { label:"READY IN " + Math.ceil(wait / 1000) + "s", disabled:true }
+      : { label:"EXPEDITE LOAD", disabled:false };
+  }
+
+  function useExpedite(ev){
+    if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+    var pressure = contractPressure();
+    if (!pressure || pressure.ratio <= 1.05 || expediteActive() || Date.now() < (state.expediteReadyAt || 0)) return;
+    expediteUntil = Date.now() + EXPEDITE_MS;
+    state.expediteReadyAt = Date.now() + EXPEDITE_COOLDOWN_MS;
+    Tele.log("bottleneck_intervention", {
+      contract:state.contract && state.contract.rush ? "rush" : "standard",
+      pressure:Math.round(pressure.ratio * 100)
+    });
+    sfx("upgrade");
+    showToast("<b>Priority dispatch active.</b><br>Throughput +75% for " + (EXPEDITE_MS / 1000) + " seconds.");
+    render(); saveGame();
+  }
+
   function bottleneckState(){
     if (!ownsAnyPlant()) return null;
+    var pressure = contractPressure();
+    var action = expediteAction(pressure);
     var changeLeft = changeoverLeft();
     if (changeLeft > 0)
-      return { title:"Manifest changeover", tab:"floor", good:false,
+      return { title:"Manifest changeover", tab:"floor", good:false, action:action,
                detail:"Throughput is " + Math.round(flowEfficiency() * 100) + "% · recovers in " + Math.ceil(changeLeft / 1000) + "s." };
 
     if (state.contract){
-      var seconds = Math.max(1, (state.contract.deadline - Date.now()) / 1000);
-      var remaining = Math.max(0, state.contract.goal - state.contract.prog);
-      var required = remaining / seconds;
-      var current = totalRate();
-      if (required > current * 1.05){
+      if (pressure && pressure.ratio > 1.05){
         var nextName = "more fleet capacity";
         for (var gi = 0; gi < GENS.length; gi++){
           if ((state.owned[GENS[gi].id] || 0) === 0){ nextName = GENS[gi].name; break; }
         }
-        return { title:"Contract capacity", tab:"equip", good:false,
-                 detail:"Moving " + money(current) + "/s · need " + money(required) + "/s. Add " + nextName + "." };
+        return { title:state.contract.rush ? "Rush dispatch backlog" : "Contract capacity", tab:"equip", good:false, action:action,
+                 detail:"Moving " + money(pressure.current) + "/s · need " + money(pressure.required) + "/s. Expedite or add " + nextName + "." };
       }
       var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
-      return { title:"Contract on schedule", tab:"floor", good:true,
-               detail:pct + "% dispatched · current throughput " + money(current) + "/s." };
+      return { title:expediteActive() ? "Backlog clearing" : "Contract on schedule", tab:"floor", good:true, action:action,
+               detail:pct + "% dispatched · current throughput " + money(totalRate()) + "/s." };
     }
 
     var next = nextProgressTarget(state.money);
@@ -2529,6 +2571,12 @@
     document.getElementById("bottleneckTag").textContent = b.good ? "Flow Status" : "Current Bottleneck";
     document.getElementById("bottleneckTitle").textContent = b.title;
     document.getElementById("bottleneckDetail").textContent = b.detail;
+    var action = document.getElementById("bottleneckAction");
+    action.hidden = !b.action;
+    action.disabled = !b.action || !!b.action.disabled;
+    action.textContent = b.action ? b.action.label : "";
+    action.onclick = useExpedite;
+    document.getElementById("bottleneckGo").hidden = !!b.action;
     card.onclick = function(){ switchTab(b.tab); };
   }
 
@@ -3012,6 +3060,7 @@
     if (boostActive())    parts.push("<b style='color:var(--hivis);'>RUSH \u00d78 " + Math.ceil((boostUntil - Date.now())/1000) + "s</b>");
     if (tapBoostActive()) parts.push("<b style='color:var(--hazard);'>TAP \u00d74 " + Math.ceil((tapBoostUntil - Date.now())/1000) + "s</b>");
     if (incidentActive()) parts.push("<b style='color:var(--cash);'>+50% SPEED</b>");
+    if (expediteActive()) parts.push("<b style='color:var(--hazard);'>PRIORITY +" + 75 + "% " + Math.ceil((expediteUntil - Date.now())/1000) + "s</b>");
     t.innerHTML = parts.length ? "\u00b7 " + parts.join(" ") : "";
   }
 
@@ -3257,20 +3306,27 @@
 
   function newContract(){
     var r = totalRate();
-    var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
+    // Every fourth job is a short, optional pressure test. It carries no failure penalty:
+    // the player can solve it with Priority Dispatch, buy capacity, or let it pass.
+    state.contractsOffered = (state.contractsOffered || 0) + 1;
+    var rush = state.contractsOffered > 1 && state.contractsOffered % 4 === 0;
+    var mins = rush ? 2 : (((state.corp.tower || 0) >= 10) ? 5 : 15);
     var conMult = getSku().conMult * (currentSite().conMult || 1) * marketMult(state.sku);
     var customsCut = 1 - Math.min(0.40, (state.corp.customs || 0) * 0.04);
     // The first job is deliberately smaller: it closes the opening loop soon after the
-    // Pallet Trolley arrives. Later contracts keep the established $500 floor.
+    // Pallet Trolley arrives. Standard jobs keep the safe 60% load; a rush deliberately
+    // asks for 110% so the visible backlog needs a decision.
     var minGoal = state.contractsDone === 0 ? 150 : 500;
-    var goal = Math.max(minGoal, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
+    var goalFraction = rush ? 1.10 : CONTRACT_GOAL_FRACTION;
+    var goal = Math.max(minGoal, Math.floor(r * 60 * mins * goalFraction * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
-    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1);
+    var rushReward = rush ? 2.5 : 1;
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward;
 
     return {
       goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
-      label: "Dispatch " + money(goal) + " of freight",
-      cash: cashReward, pallets: 3
+      label: (rush ? "RUSH · " : "") + "Dispatch " + money(goal) + " of freight",
+      cash: cashReward, pallets: rush ? 5 : 3, rush: rush
     };
   }
 
@@ -3280,12 +3336,18 @@
     card.hidden = false;
     if (!state.contract) state.contract = newContract();
     var c = state.contract;
-    if (Date.now() > c.deadline){ state.contract = newContract(); c = state.contract; }
+    if (Date.now() > c.deadline){
+      if (c.rush){
+        Tele.log("rush_contract_missed", { progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        showToast("Rush window closed. <b>No penalty.</b>");
+      }
+      state.contract = newContract(); c = state.contract;
+    }
     var pct = Math.min(100, (c.prog / c.goal) * 100);
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
-    document.getElementById("contractReward").textContent = "REWARD " + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
   }
 
   // --- Local notifications ---------------------------------------------------------
@@ -4119,6 +4181,29 @@
     }
   }
 
+  // Contract pressure is drawn into the operation rather than left in a statistic.
+  // The display eases down after an intervention so the player watches the queue clear.
+  var backlogVisual = 0;
+  function drawContractBacklog(dt){
+    var pressure = contractPressure();
+    var target = pressure ? Math.min(1, Math.max(0, (pressure.ratio - 1) / 0.20)) : 0;
+    var speed = target > backlogVisual ? 1.8 : 3.5;
+    backlogVisual += (target - backlogVisual) * Math.min(1, dt * speed);
+    if (backlogVisual < 0.015) return;
+
+    var palletCount = Math.max(1, Math.ceil(backlogVisual * 12));
+    var z = ZONE.staging;
+    for (var p = 0; p < palletCount; p++){
+      var col = p % 3, row = Math.floor(p / 3);
+      pallet(z.x + 20 + col * 48, z.y + 58 + row * 48, 36, 36, p % 4 === 0);
+    }
+
+    var trucks = Math.max(1, Math.ceil(backlogVisual * 4));
+    for (var i = 0; i < trucks; i++)
+      drawTrailer(SITE.x + SITE.w + 24, SITE.y + 270 + i * 174, 102, 150, false, i + 1, false, false);
+    label("DISPATCH QUEUE ×" + trucks, SITE.x + SITE.w + 74, SITE.y + 238, 11, "#df5b4e", "center");
+  }
+
   // ---- site identity --------------------------------------------------------
   // Four sites, and until now they differed only in their numbers -- you chose one at
   // every prestige and the yard looked identical. Each one keeps the same skeleton
@@ -4752,6 +4837,7 @@
     zoneFloor(ZONE.packing); stagedPallets(ZONE.packing, 2);
     zoneFloor(ZONE.staging); stagedPallets(ZONE.staging, 3);
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
+    drawContractBacklog(dt);
     drawFleet();
     drawIncidents();
     drawParticles(dt);
@@ -4783,7 +4869,7 @@
       if (state.contract.prog >= state.contract.goal){
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
-        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets });
+        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0 });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
       }
