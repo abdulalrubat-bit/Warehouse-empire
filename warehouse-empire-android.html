@@ -515,10 +515,12 @@
     <div class="modal-box" style="border-top-color:var(--cash);">
       <div class="modal-title" style="color:var(--cash);">Welcome Back</div>
       <div class="modal-sub">While you were away, your shift managers kept the freight moving.</div>
-      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:10px;">
         <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Base Earnings</div>
         <b id="offlineBaseTxt" style="font-family:var(--font-cond); font-size:28px; color:var(--ink);"></b>
+        <div id="offlineTimeTxt" style="font-size:9px; color:var(--dim); margin-top:5px;"></div>
       </div>
+      <div id="offlineNextTxt" style="font-size:10px; color:var(--steel); line-height:1.5; text-align:center; margin:0 4px 12px;"></div>
       <button class="modal-btn" id="btnDoubleOffline" style="background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; margin-bottom:10px; display:flex; flex-direction:column; align-items:center; gap:2px;">
         <span>CLAIM DOUBLE</span>
         <small style="font-family:var(--font-mono); font-size:8.5px; letter-spacing:1px; opacity:0.8; font-weight:400;">WATCH AD · INSTANT 2× BONUS</small>
@@ -1460,10 +1462,11 @@
   ];
 
   var OBJECTIVES = [
-    { title: "Pick your first order", tab: "floor", hint: "Tap the <b>PICK ORDER</b> button to start generating capital.", done: function(){ return state.taps >= 10; } },
-    { title: "Hire a Casual Picker", tab: "equip", hint: "Open <b>FLEET</b> and hire your first worker to earn passive cash.", done: function(){ return (state.owned.picker||0) >= 1; } },
-    { title: "Complete Freight Contract", tab: "floor", hint: "Fulfill a contract on the <b>FLOOR</b> tab for cash + pallets.", done: function(){ return state.contractsDone >= 1; } },
-    { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to build your Network.", done: function(){ return state.prestiges >= 1; } }
+    { title: "Pick your first order", tab: "floor", hint: "Tap <b>PICK ORDER</b> ten times to start generating capital.", done: function(){ return state.taps >= 10; } },
+    { title: "Hire a Casual Picker", tab: "equip", hint: "Keep picking until you have <b>$15</b>, then hire your first worker in <b>FLEET</b>.", done: function(){ return (state.owned.picker||0) >= 1; } },
+    { title: "Add a Pallet Trolley", tab: "equip", hint: "Reinvest <b>$100</b> in a Pallet Trolley so the first contract can move at a useful pace.", done: function(){ return (state.owned.trolley||0) >= 1; } },
+    { title: "Complete Freight Contract", tab: "floor", hint: "Hand picks and automated output both advance the active contract. Fulfil it for cash and pallets.", done: function(){ return state.contractsDone >= 1; } },
+    { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to retire this site into your Network.", done: function(){ return state.prestiges >= 1; } }
   ];
 
   // The ladder used to stop at Site Manager -- $250B -- which is roughly where the
@@ -1640,7 +1643,9 @@
     // The Office holds prestige, the Directorship and a building priced at $600B. It
     // becomes legible once a contract is done -- objective three, and exactly the point
     // where the objective chain starts pointing at it.
-    office: function(){ return state.contractsDone >= 1 || state.prestiges > 0; }
+    office: function(){ return state.contractsDone >= 1 || state.prestiges > 0; },
+    // A timed freight target is noise until the player owns something that can move it.
+    contract: function(){ return ownsAnyPlant() || state.contractsDone > 0; }
   };
 
   /* ---- changeover -----------------------------------------------------------------
@@ -1743,6 +1748,13 @@
   function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
 
   function saveGame(){ if (wiping) return; state.lastSeen = Date.now(); window.storage.set(SAVE_KEY, JSON.stringify(state)); }
+
+  function awayTime(secs){
+    secs = Math.max(0, Math.round(secs));
+    var h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+    if (h) return h + "h " + m + "m";
+    return Math.max(1, m) + "m";
+  }
 
   function loadGame(){
     // storage.ready settles the legacy->Preferences migration before we read.
@@ -1853,14 +1865,25 @@
         }
       }
 
-      var secs = (Date.now() - state.lastSeen) / 1000;
-      if (secs > 60){
+      var rawSecs = (Date.now() - state.lastSeen) / 1000;
+      if (rawSecs > 60){
         var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
-        secs = Math.min(secs, capHours * 3600);
+        var secs = Math.min(rawSecs, capHours * 3600);
+        var capped = rawSecs > secs;
         var earned = totalRate() * secs;
 
-        if (earned >= 10){
+        // A short early return must still prove that leaving the game was worthwhile.
+        if (earned > 0 && earned < 1){
+          state.money += earned; state.total += earned; state.lifetime += earned;
+        } else if (earned >= 1){
           document.getElementById("offlineBaseTxt").textContent = money(earned);
+          document.getElementById("offlineTimeTxt").textContent =
+            "Away " + awayTime(rawSecs) + (capped ? " · storage capped at " + capHours + "h" : "");
+          var projected = state.money + earned;
+          var next = currentProgressTarget(projected);
+          document.getElementById("offlineNextTxt").innerHTML =
+            "After collecting: <b style='color:var(--cash);'>" + money(projected) + "</b>" +
+            (next ? "<br>Next target: <b style='color:var(--ink);'>" + next.title + "</b>" : "");
           document.getElementById("modalOffline").hidden = false;
 
           var claimBtn = document.getElementById("btnClaimOffline");
@@ -1870,6 +1893,7 @@
 
           newClaim.addEventListener("click", function(){
             state.money += earned; state.total += earned; state.lifetime += earned;
+            Tele.log("offline_claim", { reward:"standard", seconds:Math.round(secs), amount:Math.round(earned) });
             document.getElementById("modalOffline").hidden = true;
             sfx("buy"); render(); saveGame(); showPendingDaily();
           });
@@ -1879,11 +1903,12 @@
             Ads.show("offline", function(){
               var doubled = earned * 2;
               state.money += doubled; state.total += doubled; state.lifetime += doubled;
+              Tele.log("offline_claim", { reward:"double", seconds:Math.round(secs), amount:Math.round(doubled) });
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
               render(); saveGame(); showPendingDaily();
             }, function(){
-              newDouble.disabled = false;   // ad failed: let them retry or claim standard
+              newDouble.disabled = false;
             });
           });
         }
@@ -1949,7 +1974,7 @@
         .then(function(reward){
           inFlight = false;
           // The plugin resolves with a reward item only if the video was watched through.
-          if (reward) onReward();
+          if (reward){ Tele.log("rewarded_ad", { placement:placement }); onReward(); }
           else fail("Ad closed early \u2014 no reward.");
         })
         .catch(function(e){
@@ -2268,6 +2293,7 @@
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
     if (!reward){ document.getElementById("modalDaily").hidden = true; return; }
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
+    Tele.log("daily_claim", { day:state.dailyStreak, pallets:reward.pallets });
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
     if (crate) state.crates += 1;
     var built = advanceCorpProgress();
@@ -2387,9 +2413,9 @@
   document.getElementById("openSkuBtn").addEventListener("click", function(){ renderSkuUI(); document.getElementById("modalSku").hidden = false; });
   document.getElementById("btnCloseSku").addEventListener("click", function(){ document.getElementById("modalSku").hidden = true; });
 
-  // How far down the four-step opening a player gets is the single number worth having.
+  // How far down the five-step opening a player gets is the single number worth having.
   // The steps are cheap and ordered, so the count of them done is the funnel: step 1 is
-  // tapping at all, step 4 is the first prestige.
+  // tapping at all, step 5 is the first prestige.
   //
   // The first call of a session only takes a baseline. Without that, a returning player
   // sitting on step 2 would re-report steps 1 and 2 every time they opened the app, and
@@ -2404,17 +2430,56 @@
     }
   }
 
+  function nextProgressTarget(projectedMoney){
+    var cash = typeof projectedMoney === "number" ? projectedMoney : state.money;
+    var picker = document.getElementById("sitePick");
+    if (picker && !picker.hidden)
+      return { title:"Commission your next site", tab:"floor", hint:"Choose the next site your Network will support." };
+    if (pendingRep() >= 1)
+      return { title:"Sell this site for " + pendingRep() + " REP", tab:"office", hint:"Your next permanent gain is ready in the <b>OFFICE</b>." };
+
+    var best = null;
+    for (var gi = 0; gi < GENS.length; gi++){
+      var g = GENS[gi];
+      if ((state.owned[g.id] || 0) > 0) continue;
+      best = { title:"Acquire " + g.name, tab:"equip", cost:costOf(g, 1) };
+      break;
+    }
+    for (var ui = 0; ui < UPGRADES.length; ui++){
+      var u = UPGRADES[ui];
+      if (state.upgrades[u.id] || !upgradeUnlocked(u)) continue;
+      if (!best || u.cost < best.cost) best = { title:"Install " + u.name, tab:"upgrades", cost:u.cost };
+    }
+    if (best){
+      var left = Math.max(0, best.cost - cash);
+      best.hint = left > 0 ? "Earn <b>" + money(left) + " more</b> · target cost " + money(best.cost) + "."
+                           : "<b>Ready now</b> · costs " + money(best.cost) + ".";
+      return best;
+    }
+    var earnedRep = repEarnedByLifetime();
+    var targetLifetime = Math.pow(earnedRep + 1, 2) * 20000;
+    return { title:"Grow toward the next REP", tab:"floor",
+             hint:"Earn <b>" + money(Math.max(0, targetLifetime - state.lifetime)) + " more lifetime capital</b>." };
+  }
+
+  function currentProgressTarget(projectedMoney){
+    for (var i = 0; i < OBJECTIVES.length; i++) if (!OBJECTIVES[i].done()) return OBJECTIVES[i];
+    return nextProgressTarget(projectedMoney);
+  }
+
   function renderObjective(){
     var cur = null, idx = 0;
     for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
     var card = document.getElementById("objective");
     reportProgress(cur ? idx - 1 : OBJECTIVES.length);
+    var onboarding = !!cur;
+    if (!cur) cur = nextProgressTarget(state.money);
     if (!cur){ card.hidden = true; return; }
     card.hidden = false;
     document.getElementById("objTitle").textContent = cur.title;
     document.getElementById("objHint").innerHTML = cur.hint;
     var tag = card.querySelector(".otag");
-    if(tag) tag.textContent = "TASK " + idx + "/" + OBJECTIVES.length;
+    if(tag) tag.textContent = onboarding ? "TASK " + idx + "/" + OBJECTIVES.length : "NEXT";
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
@@ -2480,6 +2545,7 @@
         if (state.money < u.cost || state.upgrades[u.id]) return;
         if (!upgradeUnlocked(u)){ showToast("Requires <b>" + u.reqCount + " \u00d7 " + u.reqGen + "</b> first."); return; }
         state.money -= u.cost; state.upgrades[u.id] = true; invalidateUpMult(); sfx("upgrade");
+        Tele.log("upgrade_bought", { upgrade:u.id, cost:u.cost });
         showToast("<b>" + u.name + "</b> installed."); render(); saveGame();
       });
       shop.appendChild(b); upEls[u.id] = { btn: b, costEl: b.querySelector(".ucost") };
@@ -3028,6 +3094,7 @@
 
     state.rep += gain; state.prestiges++;
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
+    Tele.log("business_sold", { rep_gain:gain, sales:state.prestiges, site:state.site });
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
     if (!state.network) state.network = [];
@@ -3068,6 +3135,7 @@
       state.money -= c;
     }
     state.owned[g.id] = (state.owned[g.id]||0) + buyQty;
+    Tele.log("equipment_bought", { equipment:g.id, qty:buyQty, owned:state.owned[g.id] });
     sfx("buy"); render(); saveGame();
   }
 
@@ -3099,6 +3167,9 @@
     bumpCombo();
     var v = tapValue();
     state.money += v; state.total += v; state.lifetime += v; state.taps++;
+    // Hand-picked freight is still freight, so the opening contract moves while the
+    // first small fleet comes online instead of turning the objective into a wait.
+    if (state.contract) state.contract.prog += v;
     return v;
   }
 
@@ -3127,7 +3198,10 @@
     var mins = ((state.corp.tower || 0) >= 10) ? 5 : 15;
     var conMult = getSku().conMult * (currentSite().conMult || 1) * marketMult(state.sku);
     var customsCut = 1 - Math.min(0.40, (state.corp.customs || 0) * 0.04);
-    var goal = Math.max(500, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
+    // The first job is deliberately smaller: it closes the opening loop soon after the
+    // Pallet Trolley arrives. Later contracts keep the established $500 floor.
+    var minGoal = state.contractsDone === 0 ? 150 : 500;
+    var goal = Math.max(minGoal, Math.floor(r * 60 * mins * CONTRACT_GOAL_FRACTION * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1);
 
@@ -3139,6 +3213,9 @@
   }
 
   function renderContract(){
+    var card = document.getElementById("contractCard");
+    if (!GATES.contract()){ card.hidden = true; return; }
+    card.hidden = false;
     if (!state.contract) state.contract = newContract();
     var c = state.contract;
     if (Date.now() > c.deadline){ state.contract = newContract(); c = state.contract; }
@@ -3394,6 +3471,7 @@
     state.notifAsked = true;
     requestNotifPermission().then(function(granted){
       state.notifPerm = granted;
+      Tele.log("notification_permission", { granted:granted ? 1 : 0 });
       if (!granted) showToast("Notifications are off in your device settings.");
       else scheduleNotifications();
       renderNotifs(); saveGame();
@@ -4643,6 +4721,7 @@
       if (state.contract.prog >= state.contract.goal){
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
+        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
       }
