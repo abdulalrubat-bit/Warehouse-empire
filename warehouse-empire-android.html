@@ -204,6 +204,11 @@
 
   .floorview{margin:10px 14px 0; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--sky-mid); position:relative; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);}
   .floorview canvas{display:block; width:100%; height:clamp(200px, 36vh, 320px); cursor:crosshair; touch-action:none;}
+  .canvas-controls{display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--panel); color:var(--dim); font-size:10px;}
+  .canvas-controls span{flex:1;}
+  .canvas-controls button{min-height:44px; padding:8px 12px; background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:4px;}
+  .zone-info{padding:10px; background:var(--panel); border-top:1px solid var(--line); color:var(--ink); font-size:12px;}
+  .zone-info p{margin:5px 0 0; color:var(--dim); line-height:1.5;}
 
   .palletbar{display:flex; align-items:center; justify-content:space-between; margin:10px 14px 0; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .palletcount{font-family:var(--font-cond); font-weight:800; font-size:26px; color:var(--hazard); display:flex; align-items:center; gap:7px;}
@@ -320,6 +325,8 @@
   <section id="tab-floor">
     <div class="floorview">
       <canvas id="wcanvas"></canvas>
+      <div class="canvas-controls"><span>Tap a zone to inspect · drag or pinch to explore</span><button id="canvasOverview" type="button">Overview</button></div>
+      <div class="zone-info" id="canvasZoneInfo" hidden><strong id="canvasZoneTitle"></strong><p id="canvasZoneDetail"></p><div class="canvas-controls"><button id="canvasZoneEquipment" type="button">View equipment</button></div></div>
     </div>
     <div class="pickwrap">
       <button id="pickBtn">Pick Order<small id="pickSub">TAP TO SCAN</small></button>
@@ -2896,6 +2903,7 @@
   }
 
   function renderFloorTab(){
+    renderZoneInfo();
     document.getElementById("shiftEarned").textContent = money(sessionEarned);
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
@@ -3683,7 +3691,7 @@
   var cv = document.getElementById("wcanvas"), ctx = cv.getContext("2d");
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   var CW = 0, CH = 0;
-  var cam = { x:0, y:0, z:1, min:0.16, max:2.2 };
+  var cam = { x:0, y:0, z:1, min:0.10, max:2.2 };
 
   var SITE = { x:0, y:0, w:1560, h:1040 };
 
@@ -3870,24 +3878,69 @@
     CW = w; CH = h;
     cv.width = Math.floor(w * DPR); cv.height = Math.floor(h * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cameraTarget = null;
     if (first || !camTouched) frameCamera();
+    else if (selectedZone) focusZone(selectedZone);
     clampCam();
   }
   var camTouched = false;
-  // Land on the operational core. The whole site only fits a phone panel at about 0.22,
-  // where a pallet is 7px and nothing reads, so the office wing and the plant yard are
-  // things you pan to rather than things you are shown.
+  var selectedZone = null, cameraTarget = null;
+  var ZONE_INFO = {
+    receive: {name:"Receiving", detail:"Incoming freight arrives at these docks. Trolleys handle the receiving apron."},
+    sorting: {name:"Sorting", detail:"Conveyor lines and sorting robots work here."},
+    racks: {name:"Storage", detail:"Forklifts and reach trucks service these aisles. Rack fill represents fleet growth, not measured storage capacity."},
+    packing: {name:"Packing", detail:"Cargo is prepared here before moving into staging."},
+    staging: {name:"Staging", detail:"Prepared loads wait here before dispatch."},
+    ship: {name:"Shipping", detail:"Outbound freight leaves through these docks. Contract progress is tracked across the whole operation."}
+  };
+  function cameraFor(bounds){
+    var z = Math.max(cam.min, Math.min(cam.max, Math.min(CW / bounds.w, CH / bounds.h)));
+    return {z:z, x:CW/2 - (bounds.x + bounds.w/2)*z, y:CH/2 - (bounds.y + bounds.h/2)*z};
+  }
+  function focusZone(id){
+    if (!ZONE[id] || !CW || !CH) return;
+    selectedZone = id; camTouched = true;
+    var z = ZONE[id];
+    cameraTarget = cameraFor({x:z.x-50, y:z.y-50, w:z.w+100, h:z.h+100});
+    renderZoneInfo();
+  }
+  function renderZoneInfo(){
+    if (!selectedZone) return;
+    var id = selectedZone;
+    var ids = id === "receive" ? ["trolley"] : id === "sorting" ? ["conveyor","sorter"] : id === "racks" ? ["forklift","reach","crane"] : [];
+    var owned = GENS.filter(function(g){ return ids.indexOf(g.id) >= 0; }).map(function(g){ return g.name + ": " + (state.owned[g.id] || 0); });
+    document.getElementById("canvasZoneInfo").hidden = false;
+    document.getElementById("canvasZoneTitle").textContent = ZONE_INFO[id].name;
+    document.getElementById("canvasZoneDetail").textContent = ZONE_INFO[id].detail + (owned.length ? " Owned — " + owned.join(" · ") : "");
+  }
+  document.getElementById("canvasZoneEquipment").addEventListener("click", function(){
+    var gen = selectedZone === "receive" ? "trolley" : selectedZone === "sorting" ? "conveyor" : selectedZone === "racks" ? "forklift" : null;
+    switchTab("equip");
+    if (gen && genEls[gen]) genEls[gen].card.scrollIntoView({block:"center"});
+  });
+  function overviewCamera(){
+    selectedZone = null; camTouched = false;
+    document.getElementById("canvasZoneInfo").hidden = true;
+    cameraTarget = cameraFor(overviewBounds());
+  }
+  function overviewBounds(){
+    var top = NET_BAND.y - 40;
+    return {x:SITE.x-60, y:top, w:SITE.w+120, h:SITE.y+SITE.h-top+60};
+  }
+  function tickCamera(dt){
+    if (!cameraTarget) return;
+    var t = 1-Math.exp(-10*dt);
+    cam.x += (cameraTarget.x-cam.x)*t;
+    cam.y += (cameraTarget.y-cam.y)*t;
+    cam.z += (cameraTarget.z-cam.z)*t;
+    if (Math.abs(cam.x-cameraTarget.x)+Math.abs(cam.y-cameraTarget.y)+Math.abs(cam.z-cameraTarget.z) < 0.05){
+      Object.assign(cam, cameraTarget); cameraTarget = null;
+    }
+  }
+  document.getElementById("canvasOverview").addEventListener("click", overviewCamera);
+  // Start with the whole site; tapping a zone supplies the closer operational view.
   function frameCamera(){
-    var pad = 40;
-    // Top of frame is the Network band, not the building line: retired sites are the
-    // one part of the plan that is not inside the fence, and a strip nobody ever sees
-    // is the same as not drawing it.
-    var top = NET_BAND.y - 24;
-    var f = { x: ZONE.receive.x - pad, y: top,
-              w: (SITE.w - ZONE.receive.x) + pad*2, h: (SITE.h - top) + pad };
-    cam.z = Math.max(cam.min, Math.min(cam.max, Math.min(CW / f.w, CH / f.h)));
-    cam.x = CW/2 - (f.x + f.w/2) * cam.z;
-    cam.y = CH/2 - (f.y + f.h/2) * cam.z;
+    Object.assign(cam, cameraFor(overviewBounds()));
   }
   // Keep some of the site on screen whichever way you drag.
   function clampCam(){
@@ -3902,12 +3955,14 @@
   window.addEventListener("resize", sizeCanvas);
 
   /* ---- input: drag to pan, pinch or wheel to zoom, tap to act -------------- */
-  var pointers = {}, dragFrom = null, pinchFrom = null, movedBy = 0;
+  var pointers = {}, dragFrom = null, pinchFrom = null, movedBy = 0, multiTouch = false;
   cv.addEventListener("pointerdown", function(e){
+    cameraTarget = null;
     cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
     pointers[e.pointerId] = { x:e.clientX, y:e.clientY };
     var ids = Object.keys(pointers);
-    movedBy = 0;
+    if (ids.length === 1){ movedBy = 0; multiTouch = false; }
+    else multiTouch = true;
     if (ids.length === 1) dragFrom = { x:e.clientX - cam.x, y:e.clientY - cam.y };
     else if (ids.length === 2) { dragFrom = null; pinchFrom = pinchState(ids); }
   });
@@ -3928,18 +3983,19 @@
   });
   function pinchState(ids){
     var a = pointers[ids[0]], b = pointers[ids[1]];
-    return { d: Math.hypot(a.x-b.x, a.y-b.y), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2 };
+    var rect = cv.getBoundingClientRect();
+    return { d: Math.hypot(a.x-b.x, a.y-b.y), cx:(a.x+b.x)/2-rect.left, cy:(a.y+b.y)/2-rect.top };
   }
   function endPointer(e){
     delete pointers[e.pointerId];
     if (Object.keys(pointers).length < 2) pinchFrom = null;
     if (Object.keys(pointers).length === 0){
       dragFrom = null;
-      if (movedBy < 12) handleCanvasTap(e);      // a tap, not the end of a drag
+      if (!multiTouch && movedBy < 12) handleCanvasTap(e);
     }
   }
   cv.addEventListener("pointerup", endPointer);
-  cv.addEventListener("pointercancel", function(e){ delete pointers[e.pointerId]; dragFrom = null; pinchFrom = null; });
+  cv.addEventListener("pointercancel", function(e){ delete pointers[e.pointerId]; dragFrom = null; pinchFrom = null; multiTouch = true; });
   cv.addEventListener("wheel", function(e){
     e.preventDefault();
     var r = cv.getBoundingClientRect();
@@ -3947,6 +4003,7 @@
     camTouched = true;
   }, { passive:false });
   function zoomAt(sx, sy, k){
+    cameraTarget = null;
     var nz = Math.max(cam.min, Math.min(cam.max, cam.z * k));
     cam.x = sx - (sx - cam.x) * (nz / cam.z);
     cam.y = sy - (sy - cam.y) * (nz / cam.z);
@@ -3980,6 +4037,8 @@
   function flushLabels(){
     for (var i = 0; i < labelQueue.length; i++){
       var L = labelQueue[i];
+      if (cam.z < 0.45 && L.s < 14) continue;
+      if (L.s >= 14) L.s = Math.max(L.s, 10 / cam.z);
       ctx.font = "600 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = L.a; ctx.textBaseline = "middle";
       if (L.p){
@@ -4078,6 +4137,7 @@
   function pallet(px, py, pw, ph, alt){
     r(px, py, pw, ph, alt ? C.boxAlt : C.box);
     ro(px, py, pw, ph, alt ? C.boxAltLo : C.boxLo, 1.5);
+    if (cam.z < 0.45) ro(px, py, pw, ph, alt ? "#9bd9ff" : "#f2cf94", 0.7/cam.z);
     if (!QUALITY.decals) return;
     // A lit top edge and a dark bottom one. Flat-filled squares read as a spreadsheet;
     // two one-pixel lines are what make a pallet look like it has a height.
@@ -4155,6 +4215,7 @@
     shadow(cx2 - tw/2, ty, tw, th + cabH + gap, 5);
     r(cx2 - tw/2, ty, tw, th, body);
     ro(cx2 - tw/2, ty, tw, th, "rgba(0,0,0,0.38)", 2);
+    if (cam.z < 0.45) ro(cx2 - tw/2, ty, tw, th, "#dce8ef", 1/cam.z);
     if (QUALITY.decals){
       ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 1.5;
       for (var k = 14; k < th - 6; k += 15){
@@ -4555,20 +4616,30 @@
 
   /* ---- moving plant --------------------------------------------------------- */
   function forklift(x, y, up, carrying){
+    ctx.save();
+    var scale = Math.min(1.65, Math.max(1, 0.35/cam.z));
+    ctx.translate(x,y); ctx.scale(scale,scale); ctx.translate(-x,-y);
     r(x-12, y-16, 24, 32, C.fork);
     ro(x-12, y-16, 24, 32, C.forkDark, 1.5);
     r(x-8, y-10, 16, 12, "#2b3037");
     var fy = up ? y - 28 : y + 16;
     r(x-9, fy, 6, 12, "#4a4f57"); r(x+3, fy, 6, 12, "#4a4f57");
     if (carrying) pallet(x-11, up ? y-30 : y+14, 22, 18, false);
+    ro(x-12,y-16,24,32,"#ffe29a",1.5);
+    ctx.restore();
   }
   // Eight things can be bought and the plan showed four of them. Pickers and the crane
   // were both drawn by the renderer this replaced, so porting it lost them; sorters and
   // hubs were never shown at all. Every generator now puts something on the site, which
   // is the only reason to look at the site while shopping.
   function crew(x, y){
+    ctx.save();
+    var scale = Math.min(2, Math.max(1, 0.45/cam.z));
+    ctx.translate(x,y); ctx.scale(scale,scale); ctx.translate(-x,-y);
     r(x - 4, y - 6, 8, 12, C.fork);
     r(x - 3, y - 8, 6, 5, "#2b3037");
+    ro(x-4,y-6,8,12,"#ffe29a",1);
+    ctx.restore();
   }
   function drawFleet(){
     var z = ZONE.racks, lanes = siteLanes();
@@ -4726,6 +4797,13 @@
       }
     }
     // Then a corporate plot: a plain rectangle now, not a projected diamond.
+    for (var zoneId in ZONE){
+      var zone = ZONE[zoneId];
+      if (w.x >= zone.x && w.x <= zone.x+zone.w && w.y >= zone.y && w.y <= zone.y+zone.h){
+        focusZone(zoneId);
+        return;
+      }
+    }
     for (var id in CORP_PLOTS){
       var p = CORP_PLOTS[id];
       if (w.x >= p.gx && w.x <= p.gx + p.gw && w.y >= p.gy && w.y <= p.gy + p.gd){
@@ -4810,6 +4888,7 @@
 
     sizeCanvas();
     if (!CW) return;
+    tickCamera(dt);
     // Selling the business can land you on a different site, and the palette is built
     // from the theme rather than per frame, so it has to be told.
     if (lastSitePainted !== state.site) update3DPalette();
@@ -4842,6 +4921,10 @@
     drawIncidents();
     drawParticles(dt);
     flushLabels();          // last, so nothing on the site can bury a zone name
+    if (selectedZone){
+      var selected = ZONE[selectedZone];
+      ro(selected.x-4, selected.y-4, selected.w+8, selected.h+8, "#8de7ff", 3/cam.z);
+    }
 
     ctx.restore();
     drawVignette();
