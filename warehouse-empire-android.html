@@ -2943,9 +2943,15 @@
     // and the picture cannot disagree. Payroll and Network are shares of figures the
     // economy already computes, and both are invisible anywhere else in the app.
     document.getElementById("mDispatched").textContent = fmt(freightDispatched);
+    // A late site earns millions a second against a wage bill in the tens of thousands, so
+    // an integer percentage rounds to 0% and sits there looking broken for the whole late
+    // game -- which a store screenshot duly caught. One decimal under ten percent keeps it
+    // informative across the entire range the game spans.
     var gross = grossRate();
+    var share = gross > 0 ? currentWages / gross * 100 : 0;
     document.getElementById("mPayroll").textContent =
-      (gross > 0 ? Math.round(currentWages / gross * 100) : 0) + "%";
+      (share > 0 && share < 0.1) ? "<0.1%"
+      : (share < 10 ? share.toFixed(1) : Math.round(share)) + "%";
     var net = networkRate(), tot = totalRate();
     var netWrap = document.getElementById("mNetWrap");
     netWrap.hidden = !(state.network && state.network.length);

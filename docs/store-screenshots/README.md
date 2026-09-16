@@ -1,41 +1,44 @@
-# Play Store screenshots
+# Play Store phone screenshots
 
-Captured from the v25 (3.8) build at `536d938`, so everything shown is in that
-release. 1080x1920, 24-bit RGB PNG, no alpha — inside Play's phone screenshot
-requirements (320–3840px per side, under 8MB each).
+Captured from **4.0 (v27)**. 1080×1920 (9:16), which is Play's phone aspect —
+a 540×960 viewport at deviceScaleFactor 2 hits it exactly, and the app's 520px
+max-width sits inside that on its own background, so the thin side bands read as
+page rather than letterboxing.
 
-The previous set was captured from v20 (2.9) and showed the isometric renderer,
-which no longer exists. Anyone who installed off that listing was being shown a
-different game.
+Play accepts 2–8 phone screenshots. This is eight, and the order matters: Play
+shows the first two or three side by side, and the site canvas is only about a
+fifth of a portrait frame, so **adjacent shots have to differ in colour** to read
+as different at thumbnail size.
 
-| File | Shows |
-|------|-------|
-| `01-site.png` | Distribution Centre: pallet racking, full estate, trucks on both aprons |
-| `02-port.png` | Port Terminal: container stacks, gantry, open water at the quay |
-| `03-night-livery.png` | Dangerous Goods Yard under Night Shift — bunded cells, warm palette |
-| `04-directorship.png` | The Directorship tree, one branch held and another part-bought |
-| `05-network.png` | The Network: six retired sites, each with its specialisation |
-| `06-corporate.png` | The corporate estate, including "% BUILT" progress |
-| `07-fleet.png` | The equipment ladder |
-| `08-manifests.png` | All five manifests, three in different market states, and the changeover a switch costs |
+| | Shows | Listing section |
+|---|---|---|
+| `01-site` | The plan running, freight in transit, new steel chrome | WATCH THE SITE RUN |
+| `02-port` | Port Terminal — containers and open water | FOUR SITES |
+| `03-night-livery` | Dangerous Goods at night on another livery | FOUR SITES |
+| `04-rush` | A rush contract behind schedule, Priority Dispatch offered | RUN FREIGHT AGAINST THE CLOCK |
+| `05-zone` | Sorting inspected, with its equipment counts | WATCH THE SITE RUN |
+| `06-manifests` | All five, in three different market states, two locked | CHOOSE YOUR MANIFEST |
+| `07-fleet` | The eight-tier equipment ladder | CLIMB THE EQUIPMENT LADDER |
+| `08-network` | Retired sites as a managed layer | SELL UP AND BUILD A NETWORK |
 
-Play shows the first two or three in the listing preview, so 01 and 02 lead:
-side by side, tan pallet racking against stacked containers and water makes the
-point that a site is a place rather than a set of multipliers.
+## Why the whole set was replaced
 
-**On ordering.** The canvas is about a fifth of a portrait frame, so adjacent
-shots have to differ in *colour* to read as different at thumbnail size. Cold
-Store is the fourth site and is not here — its layout is the closest to the
-Distribution Centre, and next to 01 the two thumbnails were nearly
-indistinguishable. It lost its slot to the manifests.
+The previous set was captured from 3.7 and every frame showed the hi-vis chrome
+that 4.0 removed, on a plan with no freight moving on it — so all eight
+photographed the two things this release changed, as absent.
 
-These are browser captures rather than device captures. Rendering is identical —
-the app is a WebView — but there is no Android status bar or rounded corner
-mask. Play does not require either.
+## Recapturing
 
-Regenerate with `storeshots37.js` (kept in the working scratchpad, not the
-repo): it seeds a late-game save, forces High quality, gives the site a couple
-of seconds to run so the docks are not caught empty, and walks the tabs at a
-540x960 viewport with deviceScaleFactor 2. It also blocks the analytics endpoint
-outright, so a capture run cannot post events even if the build it is shooting
-is configured.
+`storeshots40.js` in the session scratchpad. Two things it has to get right,
+both learned by getting them wrong:
+
+- **Freight takes about ten seconds to cross the site.** A frame grabbed early
+  catches an empty plan, which photographs the headline feature as missing. The
+  capture waits, and prints the in-flight count so a shot taken on an idle site
+  is obvious rather than silent.
+- **A shot that is deliberately of a modal must not use `clean()`**, which hides
+  every modal including the one being photographed. That is how the 3.7 manifests
+  shot came back as the floor tab.
+
+The run also asserts no page errors and routes Google Analytics to a 204, so a
+capture can never post telemetry even though the committed file has no keys.

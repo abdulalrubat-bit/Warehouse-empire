@@ -101,7 +101,7 @@ chk("boost tag empty when nothing is active", $("boostTag").innerHTML === "", JS
 {
   s.network = []; s.owned = { picker: 40, trolley: 10 }; s.corp.hr = 0;
   global.render();
-  chk("the strip reports a payroll share", /^\d+%$/.test($("mPayroll").textContent),
+  chk("the strip reports a payroll share", /^(<0\.1|\d+(\.\d)?)%$/.test($("mPayroll").textContent),
       $("mPayroll").textContent);
   const withoutHR = parseInt($("mPayroll").textContent, 10);
   chk("and it is not zero for a site that employs people", withoutHR > 0, withoutHR + "%");
@@ -122,6 +122,15 @@ chk("boost tag empty when nothing is active", $("boostTag").innerHTML === "", JS
       $("mNetWrap").hidden === false && /^\d+%$/.test($("mNetwork").textContent),
       $("mNetwork").textContent);
   s.network = []; s.rep = 0;
+
+  // A store screenshot of a late site read "0% PAYROLL": millions a second against a wage
+  // bill in the tens of thousands rounds to nothing as an integer.
+  s.owned = { picker:118, trolley:96, forklift:74, reach:58, conveyor:41, sorter:27, crane:14, hub:5 };
+  s.lifetime = 6.4e10; s.rep = 920; s.prestiges = 7; global.render();
+  const lateShare = $("mPayroll").textContent;
+  chk("a late site does not report zero payroll", lateShare !== "0%" && lateShare !== "0.0%",
+      lateShare);
+  s.owned = { picker: 40, trolley: 10 }; s.lifetime = 0; s.rep = 0; s.prestiges = 0;
 
   chk("dispatched starts at zero and is a plain count",
       $("mDispatched").textContent === "0", $("mDispatched").textContent);
