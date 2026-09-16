@@ -10,9 +10,13 @@
        as update3DPalette runs; they match UI_BASE.console so the app never flashes a
        light frame before the theme lands. The site view is a top-down plan on charcoal
        in every livery, so the chrome is dark in every livery too. */
-    --bg:#141719; --panel:#20252a; --panel2:#2a3037; --line:#3a424a;
-    --ink:#e9edf1; --dim:#8d959e; --steel:#79818b;
+    --bg:#101316; --panel:#181d22; --panel2:#1f252b; --line:#2b333b;
+    --ink:#dfe5ea; --dim:#7d8794; --steel:#69727d;
     --hivis:#f2740f; --hivis-d:#b8500a; --hazard:#e8c22a;
+    /* The chrome accent. Deliberately not the livery's: the furniture of the app should
+       not change colour because the yard did, and an interface where the accent is on
+       everything at once has no accent at all. */
+    --chrome:#78838f; --chrome-d:#5c656f; --chrome-on:rgba(190,201,212,.10);
     --cash:#4fd97b; --bad:#e05a4e; --corp:#a98cf0;
     /* The money readout stays a dark instrument panel -- it is the one thing that
        should look like a screen rather than a printed card. */
@@ -50,26 +54,31 @@
   section { padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
   #tab-floor { padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px)); }
 
-  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 4px 12px var(--shadow);}
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:2px solid var(--chrome); box-shadow:0 4px 12px var(--shadow);}
   header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
   header h1{margin:0; font-family:var(--font-cond); font-weight:800; font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
   header h1 span{color:var(--ink);}
   #headMark svg{width:22px; height:22px; display:block;}
 
   .terminal{margin:0 14px; background:linear-gradient(180deg,var(--screen),var(--screen-2)); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
-  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--screen-ink); line-height:1; letter-spacing:.5px;}
-  .rate{font-size:10.5px; color:var(--screen-dim); margin-top:4px; letter-spacing:.3px;}
-  .rate b{color:var(--cash); font-weight:600;}
-  .logistics-flow{margin:6px 0 2px; display:flex; align-items:center; gap:8px; font-size:9.5px;}
-  .flow-bar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
+  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:21px; font-weight:500; color:var(--screen-dim); line-height:1.1; letter-spacing:.3px;}
+  .rate{font-size:15px; color:var(--screen-ink); margin-top:3px; letter-spacing:.2px;
+         font-variant-numeric:tabular-nums;}
+  .rate b{color:var(--cash); font-weight:700; font-size:17px;}
+  /* Second line, so a wage figure can never push the throughput reading onto a wrap --
+     which is exactly what a font-size bump alone did. */
+  .rate-2{font-size:10.5px; color:var(--screen-dim); margin-top:3px; letter-spacing:.3px;}
+  .rate-2 b{color:var(--screen-dim); font-weight:600; font-size:10.5px;}
+  .logistics-flow{margin:9px 0 2px; display:flex; align-items:center; gap:8px; font-size:11px;}
+  .flow-bar{flex:1; height:9px; background:#131517; border-radius:2px; overflow:hidden;}
   .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
   .flow-tag{color:var(--screen-dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
 
   .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -4px 12px var(--shadow); pointer-events:none;}
   .pickwrap > *{pointer-events:auto;}
-  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 5px 12px rgba(60,55,45,.24); cursor:pointer; user-select:none;}
-  #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
-  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
+  #pickBtn{width:100%; padding:9px; font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; color:#12161a; background:linear-gradient(180deg,var(--chrome),var(--chrome-d)); border:none; border-radius:4px; box-shadow:0 3px 0 var(--chrome-d), 0 5px 12px rgba(60,55,45,.24); cursor:pointer; user-select:none;}
+  #pickBtn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--chrome-d);}
+  #pickBtn small{display:block; font-size:8px; letter-spacing:1.2px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
 
   .adrow{display:flex; gap:8px; margin:10px 14px 0;}
   .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px; background:transparent; color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase; cursor:pointer;}
@@ -79,7 +88,7 @@
 
   .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
   .combobar{flex:1; height:5px; background:var(--panel2); border-radius:3px; overflow:hidden; border:1px solid var(--line);}
-  .combobar i{display:block; height:100%; width:0; background:var(--hivis);}
+  .combobar i{display:block; height:100%; width:0; background:var(--chrome);}
   #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
 
   .objective{margin:10px 14px 0; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3);}
@@ -160,7 +169,7 @@
   .toolbar .label{font-family:var(--font-cond); font-weight:800; letter-spacing:3px; font-size:13px; color:var(--steel); text-transform:uppercase; border-left:3px solid var(--hivis); padding-left:8px;}
   .qty{display:flex; gap:6px;}
   .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:5px 12px; font-family:inherit; font-size:11px; cursor:pointer;}
-  .qty button.on{background:var(--hivis); color:#20130a; border-color:var(--hivis); font-weight:600;}
+  .qty button.on{background:var(--chrome); color:#12161a; border-color:var(--chrome); font-weight:600;}
 
   .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
   .plate svg{width:24px; height:24px; display:block;}
@@ -172,7 +181,7 @@
   .gen-card-header{display:flex; align-items:center; gap:10px;}
   .gen-card-title{flex:1; min-width:0;}
   .gen-card-title .name{font-family:var(--font-cond); font-weight:700; font-size:16px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
-  .gen-card-title .count{color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
+  .gen-card-title .count{color:var(--ink); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
   .gen-card-title .desc{font-size:9.5px; color:var(--dim); margin-top:1px;}
   .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
   .gen-card-metrics{display:flex; flex-direction:column; gap:3px;}
@@ -242,7 +251,7 @@
   .tabs button{flex:1; background:none; border:none; color:var(--dim); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
   .tabs button svg{width:21px; height:21px;}
   .tabs button span{font-size:8.5px; letter-spacing:.6px; text-transform:uppercase;}
-  .tabs button.on{color:var(--hivis); box-shadow:inset 0 3px 0 var(--hivis); background:rgba(224,86,10,.10);}
+  .tabs button.on{color:var(--ink); box-shadow:inset 0 2px 0 var(--chrome); background:var(--chrome-on);}
 
   .office-block{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--steel); border-radius:4px; padding:12px;}
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
@@ -258,7 +267,7 @@
   @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
 
   .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--scrim);}
-  .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--hivis); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
+  .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:3px solid var(--chrome); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
   .modal-title{font-family:var(--font-cond); font-weight:800; font-size:22px; letter-spacing:2px; text-transform:uppercase; color:var(--ink); margin-bottom:4px;}
   .modal-sub{font-size:10.5px; color:var(--dim); margin-bottom:14px; line-height:1.5;}
   .cal-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px;}
@@ -267,7 +276,7 @@
   .cal-day.claimed{border-color:var(--cash); opacity:.5;}
   .cal-day b{display:block; font-family:var(--font-cond); font-size:14px; color:var(--ink); margin-top:2px;}
   .cal-day.active b{color:var(--hivis);}
-  .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
+  .modal-btn{width:100%; background:linear-gradient(180deg,var(--chrome),var(--chrome-d)); color:#12161a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
   .sku-list{display:flex; flex-direction:column; gap:8px;}
   /* One badge style, four tints -- the colour is the whole signal, so it has to read at
      a glance on the strip without the player opening the modal. */
@@ -316,7 +325,8 @@
     </header>
     <div class="terminal">
       <div class="money" id="money">$0</div>
-      <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span>&middot; tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
+      <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span></div>
+      <div class="rate-2">tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
       <div class="logistics-flow">
         <span class="flow-tag">Throughput Flow</span>
         <div class="flow-bar"><b id="flowBar"></b></div>
@@ -1145,10 +1155,11 @@
   // this site worked in daylight or under floods -- and drives the canvas alone.
   var UI_BASE = {
     console: {
-      bg:'#141719', panel:'#20252a', panel2:'#2a3037', line:'#3a424a',
-      ink:'#e9edf1', dim:'#8d959e', steel:'#79818b',
-      raise1:'#2f363d', raise2:'#232830', tab1:'#242a30', tab2:'#1a1e23',
-      screen:'#0d1013', screen2:'#080a0c', screenInk:'#eef1f3', screenDim:'#8f979f',
+      bg:'#101316', panel:'#181d22', panel2:'#1f252b', line:'#2b333b',
+      ink:'#dfe5ea', dim:'#7d8794', steel:'#69727d',
+      raise1:'#1f262c', raise2:'#181d23', tab1:'#161b20', tab2:'#11151a',
+      screen:'#0b0e11', screen2:'#070909', screenInk:'#eef1f3', screenDim:'#8f979f',
+      chrome:'#78838f', chromeD:'#5c656f', chromeOn:'rgba(190,201,212,.10)',
       scrim:'rgba(4,6,8,.80)', shadow:'rgba(0,0,0,.45)'
     }
   };
@@ -3826,6 +3837,7 @@
       '--raise-1':base.raise1, '--raise-2':base.raise2,
       '--tab-1':base.tab1, '--tab-2':base.tab2,
       '--screen':base.screen, '--screen-2':base.screen2,
+      '--chrome':base.chrome, '--chrome-d':base.chromeD, '--chrome-on':base.chromeOn,
       '--screen-ink':base.screenInk, '--screen-dim':base.screenDim,
       '--scrim':base.scrim, '--shadow':base.shadow,
       '--hivis':t.accent, '--hivis-d':t.accentD, '--hazard':t.hazard, '--cash':t.cash,
