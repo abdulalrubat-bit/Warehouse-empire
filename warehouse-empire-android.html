@@ -1569,6 +1569,10 @@
   window.__freightCount = function(){ return freight.length; };
   window.__freightCap = function(){ return freightCap(); };
   window.__freightFill = function(){ while (spawnFreight(false)) {} return freight.length; };
+  // Freight is animated, so any measurement of how much the rest of the site costs to draw
+  // has to be able to hold it still first -- otherwise the pool drifts between two samples
+  // and the difference is read as the thing being measured.
+  window.__freightSuspend = function(on){ freightSuspended = !!on; if (on) freight.length = 0; };
   // Same reason as the two above: a yard incident is resolved from a tap at a projected
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
@@ -4692,7 +4696,8 @@
   var FREIGHT_STAGE_MS  = 1900;     // dwell per leg; six legs is roughly ten seconds end to end
   var freight = [], freightSpawnAcc = 0, freightLastDepart = 0, freightFloats = [];
 
-  function freightCap(){ return QUALITY.freight || 0; }
+  var freightSuspended = false;
+  function freightCap(){ return freightSuspended ? 0 : (QUALITY.freight || 0); }
 
   // Where a leg begins and ends. Recomputed per frame is wasteful and per site is not, so
   // it is derived from ZONE, which only changes when the site does.

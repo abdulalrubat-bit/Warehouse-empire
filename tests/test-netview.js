@@ -67,6 +67,10 @@ const CORNERS = () => {
   // ---- the belt is the Network ----
   { const {ctx,p} = await page(b);
     const counts = {};
+    // Hold the freight animation still. It draws a variable number of marks and the pool
+    // grows between samples, so leaving it running biased counts[40] upward and made this
+    // block flaky -- +169 marks on one run, +225 on the next, against a threshold of 200.
+    await p.evaluate(()=>{ if (window.__freightSuspend) window.__freightSuspend(true); });
     for (const nn of [0, 12, 40]) {
       await p.evaluate(LATE, nn); await p.waitForTimeout(800);
       counts[nn] = await p.evaluate(INSTRUMENT);
