@@ -94,6 +94,39 @@ chk("boost tag empty when nothing is active", $("boostTag").innerHTML === "", JS
       bl ? bl.textContent : "-");
 }
 
+// ---- the metrics strip ---------------------------------------------------------------
+// Three readings the game can stand behind. The point of each assertion is that the number
+// is DERIVED, not decorative -- a strip of plausible-looking constants would pass a glance
+// and teach the player nothing.
+{
+  s.network = []; s.owned = { picker: 40, trolley: 10 }; s.corp.hr = 0;
+  global.render();
+  chk("the strip reports a payroll share", /^\d+%$/.test($("mPayroll").textContent),
+      $("mPayroll").textContent);
+  const withoutHR = parseInt($("mPayroll").textContent, 10);
+  chk("and it is not zero for a site that employs people", withoutHR > 0, withoutHR + "%");
+
+  // HR cuts the wage bill by 5% a level, so the share must fall. If the figure were
+  // cosmetic this is where it would fail to move.
+  s.corp.hr = 10; global.render();
+  const withHR = parseInt($("mPayroll").textContent, 10);
+  chk("payroll share falls when HR cuts the wage bill", withHR < withoutHR,
+      withoutHR + "% -> " + withHR + "%");
+  s.corp.hr = 0;
+
+  chk("the network reading is hidden when there is no network",
+      $("mNetWrap").hidden === true);
+  s.network = [{ id:"general", peak: 5e6, suburb:"Derrimut", inv: 0 }];
+  s.rep = 40; global.render();
+  chk("and appears once a site has been retired into one",
+      $("mNetWrap").hidden === false && /^\d+%$/.test($("mNetwork").textContent),
+      $("mNetwork").textContent);
+  s.network = []; s.rep = 0;
+
+  chk("dispatched starts at zero and is a plain count",
+      $("mDispatched").textContent === "0", $("mDispatched").textContent);
+}
+
 console.log("PASS:"); ok.forEach(l=>console.log("  + "+l));
 if(bad.length){ console.log("FAIL:"); bad.forEach(l=>console.log("  - "+l)); process.exitCode=1; }
 })();

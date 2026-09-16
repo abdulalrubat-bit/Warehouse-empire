@@ -73,6 +73,13 @@
   .flow-bar{flex:1; height:9px; background:#131517; border-radius:2px; overflow:hidden;}
   .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
   .flow-tag{color:var(--screen-dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
+  .metrics{display:flex; gap:18px; margin-top:8px; padding-top:7px;
+           border-top:1px solid rgba(255,255,255,.07);}
+  .metrics span{display:flex; align-items:baseline; gap:5px;}
+  .metrics b{font-family:var(--font-mono); font-size:12.5px; font-weight:500;
+             color:var(--screen-ink); font-variant-numeric:tabular-nums;}
+  .metrics i{font-family:var(--font-cond); font-style:normal; font-size:9px; letter-spacing:1.2px;
+             text-transform:uppercase; color:var(--screen-dim);}
 
   .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -4px 12px var(--shadow); pointer-events:none;}
   .pickwrap > *{pointer-events:auto;}
@@ -331,6 +338,11 @@
         <span class="flow-tag">Throughput Flow</span>
         <div class="flow-bar"><b id="flowBar"></b></div>
         <span id="flowPct" style="color:var(--cash); font-weight:700;">100%</span>
+      </div>
+      <div class="metrics" id="metricsRow">
+        <span><b id="mDispatched">0</b><i>dispatched</i></span>
+        <span><b id="mPayroll">0%</b><i>payroll</i></span>
+        <span id="mNetWrap" hidden><b id="mNetwork">0%</b><i>network</i></span>
       </div>
     </div>
   </div>
@@ -1573,6 +1585,7 @@
   // has to be able to hold it still first -- otherwise the pool drifts between two samples
   // and the difference is read as the thing being measured.
   window.__freightSuspend = function(on){ freightSuspended = !!on; if (on) freight.length = 0; };
+  window.__dispatched = function(){ return freightDispatched; };
   // Same reason as the two above: a yard incident is resolved from a tap at a projected
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
@@ -2924,6 +2937,21 @@
     var officeOpen = GATES.office();
     document.getElementById("officeProgression").hidden = !officeOpen;
     document.getElementById("officeProgressionLocked").hidden = officeOpen;
+
+    // Three readings the game can stand behind. Deliberately not the set the plan named:
+    // see the commit. "Dispatched" counts actual departures from the flow, so the number
+    // and the picture cannot disagree. Payroll and Network are shares of figures the
+    // economy already computes, and both are invisible anywhere else in the app.
+    document.getElementById("mDispatched").textContent = fmt(freightDispatched);
+    var gross = grossRate();
+    document.getElementById("mPayroll").textContent =
+      (gross > 0 ? Math.round(currentWages / gross * 100) : 0) + "%";
+    var net = networkRate(), tot = totalRate();
+    var netWrap = document.getElementById("mNetWrap");
+    netWrap.hidden = !(state.network && state.network.length);
+    if (!netWrap.hidden)
+      document.getElementById("mNetwork").textContent =
+        (tot > 0 ? Math.round(net / tot * 100) : 0) + "%";
 
     document.getElementById("wageTag").innerHTML = currentWages > 0
       ? "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> "
@@ -4695,6 +4723,7 @@
   var FREIGHT_MAX_SPAWN = 3.0;      // units per second at full tilt, enough to reach the cap
   var FREIGHT_STAGE_MS  = 1900;     // dwell per leg; six legs is roughly ten seconds end to end
   var freight = [], freightSpawnAcc = 0, freightLastDepart = 0, freightFloats = [];
+  var freightDispatched = 0;        // this session, which is what "this shift" means
 
   var freightSuspended = false;
   function freightCap(){ return freightSuspended ? 0 : (QUALITY.freight || 0); }
@@ -4728,6 +4757,7 @@
   // A completing unit carries the money banked since the last one left, so the floating
   // amounts literally sum to your income rather than being invented for the animation.
   function freightDepart(now){
+    freightDispatched++;            // counted before any of the early returns below
     if (!freightLastDepart){ freightLastDepart = now; return; }
     var secs = (now - freightLastDepart) / 1000;
     freightLastDepart = now;

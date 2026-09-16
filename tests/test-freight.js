@@ -80,10 +80,19 @@ const fps = p => p.evaluate(()=>new Promise(r=>{let f=0;const t0=performance.now
     await p.evaluate(()=>{ const s=window.state;
       s.owned={picker:0,trolley:0,forklift:0,reach:0,conveyor:0,sorter:0,crane:0,hub:0};
       s.network=[]; s.rep=0; window.render(); });
+    const dispatchedBefore = await p.evaluate(()=>window.__dispatched());
     await p.waitForTimeout(14000);
     const drained = await p.evaluate(()=>window.__freightCount());
+    const dispatchedAfter = await p.evaluate(()=>window.__dispatched());
     chk("freight drains off the site rather than piling up", drained < full,
         full + " -> " + drained);
+    // The readout counts real departures. If it were cosmetic it would not move here,
+    // and it must account for everything that left rather than a sample of it.
+    chk("the dispatched reading counts what actually left",
+        dispatchedAfter - dispatchedBefore >= full - drained,
+        `${dispatchedAfter - dispatchedBefore} counted, ${full - drained} left the site`);
+    const shown = await p.evaluate(()=>document.getElementById("mDispatched").textContent);
+    chk("and the strip shows it rather than a constant", shown !== "0", "reads " + shown);
     await ctx.close(); }
 
   // ---- the frame budget ----------------------------------------------------------------
