@@ -82,6 +82,18 @@ chk("scale strip task denominator matches OBJECTIVES (was /9)",
 global.render();
 chk("boost tag empty when nothing is active", $("boostTag").innerHTML === "", JSON.stringify($("boostTag").innerHTML));
 
+// ---- the build is stated in the app ------------------------------------------------
+// A device that had simply not taken an update looked exactly like a broken release,
+// because nothing in the UI said which build was running.
+{
+  const bl = $("buildLine");
+  chk("the Office tab states which build is running", !!bl && /BUILD /.test(bl.textContent),
+      bl ? bl.textContent : "no #buildLine");
+  chk("and it is the version the build stamped in, not a hardcoded string",
+      !!bl && bl.textContent.indexOf(String(__html.match(/var APP_VERSION = "([^"]*)"/)[1]).toUpperCase()) >= 0,
+      bl ? bl.textContent : "-");
+}
+
 console.log("PASS:"); ok.forEach(l=>console.log("  + "+l));
 if(bad.length){ console.log("FAIL:"); bad.forEach(l=>console.log("  - "+l)); process.exitCode=1; }
 })();

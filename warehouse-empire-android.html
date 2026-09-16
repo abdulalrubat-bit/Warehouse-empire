@@ -235,6 +235,9 @@
   .netrow button.can{border-color:var(--cash); color:var(--cash);}
   .netrow button:disabled{opacity:.4; cursor:default;}
 
+  .buildline{margin:18px 14px 6px; text-align:center; font-family:var(--font-mono);
+             font-size:9px; letter-spacing:1px; color:var(--steel); opacity:.75;}
+
   .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,var(--tab-1),var(--tab-2)); border-top:1px solid var(--line); box-shadow:0 -3px 10px var(--shadow);}
   .tabs button{flex:1; background:none; border:none; color:var(--dim); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
   .tabs button svg{width:21px; height:21px;}
@@ -525,6 +528,8 @@
       <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
       <button id="hardResetBtn" class="renamebtn" style="color: var(--bad); border-color: var(--bad);">HARD RESET SAVE</button>
     </div>
+
+    <div class="buildline" id="buildLine"></div>
   </section>
 
   <nav class="tabs">
@@ -5004,6 +5009,11 @@
   setInterval(saveGame, 10000);
 
   function startGame() {
+    // Which build am I looking at? Until now the only place APP_VERSION appeared was on
+    // telemetry, so answering that meant Android's app settings -- or, once, a diff of two
+    // git revisions to establish that a device had simply not taken the update yet.
+    var bl = document.getElementById("buildLine");
+    if (bl) bl.textContent = "WAREHOUSE EMPIRE \u00b7 BUILD " + APP_VERSION.toUpperCase();
     openDailyGate();
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
     renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
