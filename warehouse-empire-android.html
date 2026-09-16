@@ -1565,6 +1565,10 @@
 
   window.state = state;
   window.render = render;
+  // read-only probes for the frame-budget gate; they expose no way to change anything
+  window.__freightCount = function(){ return freight.length; };
+  window.__freightCap = function(){ return freightCap(); };
+  window.__freightFill = function(){ while (spawnFreight(false)) {} return freight.length; };
   // Same reason as the two above: a yard incident is resolved from a tap at a projected
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
@@ -3340,7 +3344,24 @@
     var f = document.createElement("div"); f.className = "float"; f.textContent = "+" + money(v);
     f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
     document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 800);
+
+    // A tap used to give a number and a noise while the site ignored it entirely. It now
+    // puts a pallet into the flow and throws a little dust where it entered, so the thing
+    // the player is looking at reacts to the thing the player did.
+    pickPulse();
   });
+
+  function pickPulse(){
+    try {
+      var u = spawnFreight(true);
+      if (!u) return;
+      var w = freightWaypoint(0);
+      for (var i = 0; i < 7; i++)
+        isoParticles.push({ x:w.x, y:w.y,
+          vx:(Math.random()-0.5)*190, vy:(Math.random()-0.5)*190,
+          color:"#f0c98a", life:0.45 + Math.random()*0.25 });
+    } catch(e){}
+  }
 
   // Contract goals are a fraction of what the site produces over the window, so they stay
   // winnable. The SKU/site conMult scales the PAYOUT (what "premium contracts" and "massive
@@ -3767,9 +3788,9 @@
   // lastQualityChange, so the tiers keep exactly that contract -- only what each tier
   // means changed, because a plan view has no shadows or depth passes to drop.
   var QUALITY_LEVELS = {
-    low:    { name:"Low",    detail: 0.45, plant: 5,  decals: false },
-    medium: { name:"Medium", detail: 0.75, plant: 9,  decals: true  },
-    high:   { name:"High",   detail: 1.00, plant: 14, decals: true  }
+    low:    { name:"Low",    detail: 0.45, plant: 5,  decals: false, freight: 0  },
+    medium: { name:"Medium", detail: 0.75, plant: 9,  decals: true,  freight: 14 },
+    high:   { name:"High",   detail: 1.00, plant: 14, decals: true,  freight: 26 }
   };
   var QUALITY_ORDER = ['low', 'medium', 'high'];
   var qualityIdx = 2, qualityAuto = true, frameSamples = [], lastQualityChange = 0;
@@ -4655,6 +4676,116 @@
     }
   }
 
+
+  /* ---- freight in motion ------------------------------------------------------------
+     Until now nothing in this game moved anywhere. stagedPallets() draws from a fill level
+     derived from how much plant you own, so the pallets correlated with progress rather
+     than being goods going somewhere -- which meant no question of the form "where did
+     that money come from" or "did that forklift help" had anything on screen to answer it.
+
+     This is an INDICATOR, not a simulation. totalRate() runs from a few cents a second to
+     numbers with eighteen digits; density here is log-compressed and capped, so it says
+     "busy" and never claims to be a pallet count. A readout that disagreed with the
+     picture would be worse than no picture.                                             */
+  var FREIGHT_PATH_IDS = ["receive","sorting","racks","packing","staging","ship"];
+  var FREIGHT_MAX_SPAWN = 3.0;      // units per second at full tilt, enough to reach the cap
+  var FREIGHT_STAGE_MS  = 1900;     // dwell per leg; six legs is roughly ten seconds end to end
+  var freight = [], freightSpawnAcc = 0, freightLastDepart = 0, freightFloats = [];
+
+  function freightCap(){ return QUALITY.freight || 0; }
+
+  // Where a leg begins and ends. Recomputed per frame is wasteful and per site is not, so
+  // it is derived from ZONE, which only changes when the site does.
+  function freightWaypoint(i){
+    var z = ZONE[FREIGHT_PATH_IDS[i]];
+    return { x: z.x + z.w * 0.5, y: z.y + z.h * 0.5 };
+  }
+
+  // How busy the site looks, 0..1. The first curve divided by twelve, which put a
+  // thoroughly developed site at six pallets against a cap of twenty-six -- barely
+  // distinguishable from the opening. Eight decades saturates at around $100M/s, which is
+  // deep enough that the yard reads as full for the whole late game and sparse at the
+  // start, which is the contrast that carries the information.
+  function freightBusy(){
+    var r = totalRate();
+    if (!(r > 0)) return 0;
+    return Math.max(0, Math.min(1, Math.log(r + 1) / Math.log(10) / 8));
+  }
+
+  function spawnFreight(fast){
+    if (freight.length >= freightCap()) return null;
+    var u = { stage:0, t:0, lane:(Math.random()-0.5), alt:Math.random() < 0.38,
+              speed: fast ? 2.1 : (0.85 + Math.random()*0.3) };
+    freight.push(u);
+    return u;
+  }
+
+  // A completing unit carries the money banked since the last one left, so the floating
+  // amounts literally sum to your income rather than being invented for the animation.
+  function freightDepart(now){
+    if (!freightLastDepart){ freightLastDepart = now; return; }
+    var secs = (now - freightLastDepart) / 1000;
+    freightLastDepart = now;
+    var amt = activeRate() * secs;
+    if (!(amt > 0)) return;
+    if (freightFloats.length >= 4) return;          // the readout must stay readable
+    var z = ZONE.ship;
+    freightFloats.push({ x: z.x + z.w * 0.5, y: z.y + 26, txt: "+" + money(amt), life: 1.5 });
+  }
+
+  function tickFreight(dt){
+    var cap = freightCap();
+    if (!cap){ if (freight.length) freight.length = 0; return; }
+    var now = Date.now();
+
+    freightSpawnAcc += dt * FREIGHT_MAX_SPAWN * freightBusy();
+    while (freightSpawnAcc >= 1){ freightSpawnAcc -= 1; spawnFreight(false); }
+
+    var legs = FREIGHT_PATH_IDS.length - 1;
+    for (var i = freight.length - 1; i >= 0; i--){
+      var u = freight[i];
+      u.t += dt * 1000 / FREIGHT_STAGE_MS * u.speed;
+      while (u.t >= 1){
+        u.t -= 1; u.stage++;
+        if (u.stage >= legs){ freight.splice(i, 1); freightDepart(now); break; }
+      }
+    }
+    for (var f = freightFloats.length - 1; f >= 0; f--){
+      freightFloats[f].life -= dt;
+      if (freightFloats[f].life <= 0) freightFloats.splice(f, 1);
+    }
+  }
+
+  function drawFreight(){
+    if (!freight.length) return;
+    var size = 20;
+    for (var i = 0; i < freight.length; i++){
+      var u = freight[i];
+      var a = freightWaypoint(u.stage), b = freightWaypoint(u.stage + 1);
+      var e = u.t * u.t * (3 - 2 * u.t);                 // ease so a leg does not start jerkily
+      var px = a.x + (b.x - a.x) * e;
+      var py = a.y + (b.y - a.y) * e;
+      // Spread across the width of the leg rather than filing along one line.
+      var dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      px += (-dy / len) * u.lane * 96;
+      py += ( dx / len) * u.lane * 96;
+      // Freight in transit has to be distinguishable from freight in a rack, or the whole
+      // animation reads as more decoration. A drop shadow lifts it off the floor -- the
+      // same device drawTrailer already uses for a moving vehicle -- and a lit edge picks
+      // it out against the racking it passes.
+      shadow(px - size/2, py - size/2, size, size, 4);
+      pallet(px - size/2, py - size/2, size, size, u.alt);
+      ro(px - size/2, py - size/2, size, size, "#ffe9b8", 1.4);
+    }
+  }
+
+  function drawFreightFloats(){
+    for (var i = 0; i < freightFloats.length; i++){
+      var f = freightFloats[i];
+      label(f.txt, f.x, f.y - (1.5 - f.life) * 34, 13, C.cash || "#4fd97b", "center");
+    }
+  }
+
   /* ---- moving plant --------------------------------------------------------- */
   function forklift(x, y, up, carrying){
     ctx.save();
@@ -4974,9 +5105,12 @@
     zoneFloor(ZONE.staging); stagedPallets(ZONE.staging, 3);
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
     drawContractBacklog(dt);
+    tickFreight(dt);
+    drawFreight();
     drawFleet();
     drawIncidents();
     drawParticles(dt);
+    drawFreightFloats();
     flushLabels();          // last, so nothing on the site can bury a zone name
     if (selectedZone){
       var selected = ZONE[selectedZone];
