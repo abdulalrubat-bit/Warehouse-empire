@@ -10,9 +10,13 @@
        as update3DPalette runs; they match UI_BASE.console so the app never flashes a
        light frame before the theme lands. The site view is a top-down plan on charcoal
        in every livery, so the chrome is dark in every livery too. */
-    --bg:#141719; --panel:#20252a; --panel2:#2a3037; --line:#3a424a;
-    --ink:#e9edf1; --dim:#8d959e; --steel:#79818b;
+    --bg:#101316; --panel:#181d22; --panel2:#1f252b; --line:#2b333b;
+    --ink:#dfe5ea; --dim:#7d8794; --steel:#69727d;
     --hivis:#f2740f; --hivis-d:#b8500a; --hazard:#e8c22a;
+    /* The chrome accent. Deliberately not the livery's: the furniture of the app should
+       not change colour because the yard did, and an interface where the accent is on
+       everything at once has no accent at all. */
+    --chrome:#78838f; --chrome-d:#5c656f; --chrome-on:rgba(190,201,212,.10);
     --cash:#4fd97b; --bad:#e05a4e; --corp:#a98cf0;
     /* The money readout stays a dark instrument panel -- it is the one thing that
        should look like a screen rather than a printed card. */
@@ -50,26 +54,38 @@
   section { padding-bottom: calc(105px + env(safe-area-inset-bottom, 0px)); }
   #tab-floor { padding-bottom: calc(185px + env(safe-area-inset-bottom, 0px)); }
 
-  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:3px solid var(--hivis); box-shadow:0 4px 12px var(--shadow);}
+  .topbar{position:sticky; top:0; z-index:5; background:var(--bg); padding-top:env(safe-area-inset-top, 0px); padding-bottom:8px; border-bottom:2px solid var(--chrome); box-shadow:0 4px 12px var(--shadow);}
   header{padding:8px 14px 4px; display:flex; align-items:center; gap:8px;}
   header h1{margin:0; font-family:var(--font-cond); font-weight:800; font-size:19px; letter-spacing:2px; text-transform:uppercase; color:var(--steel);}
   header h1 span{color:var(--ink);}
   #headMark svg{width:22px; height:22px; display:block;}
 
   .terminal{margin:0 14px; background:linear-gradient(180deg,var(--screen),var(--screen-2)); border:1px solid var(--line); border-radius:6px; padding:9px 12px; position:relative; overflow:hidden; box-shadow:inset 0 1px 0 rgba(255,255,255,.05);}
-  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:34px; font-weight:800; color:var(--screen-ink); line-height:1; letter-spacing:.5px;}
-  .rate{font-size:10.5px; color:var(--screen-dim); margin-top:4px; letter-spacing:.3px;}
-  .rate b{color:var(--cash); font-weight:600;}
-  .logistics-flow{margin:6px 0 2px; display:flex; align-items:center; gap:8px; font-size:9.5px;}
-  .flow-bar{flex:1; height:4px; background:#131517; border-radius:2px; overflow:hidden;}
+  .money{font-family:var(--font-cond); font-variant-numeric:tabular-nums; font-size:21px; font-weight:500; color:var(--screen-dim); line-height:1.1; letter-spacing:.3px;}
+  .rate{font-size:15px; color:var(--screen-ink); margin-top:3px; letter-spacing:.2px;
+         font-variant-numeric:tabular-nums;}
+  .rate b{color:var(--cash); font-weight:700; font-size:17px;}
+  /* Second line, so a wage figure can never push the throughput reading onto a wrap --
+     which is exactly what a font-size bump alone did. */
+  .rate-2{font-size:10.5px; color:var(--screen-dim); margin-top:3px; letter-spacing:.3px;}
+  .rate-2 b{color:var(--screen-dim); font-weight:600; font-size:10.5px;}
+  .logistics-flow{margin:9px 0 2px; display:flex; align-items:center; gap:8px; font-size:11px;}
+  .flow-bar{flex:1; height:9px; background:#131517; border-radius:2px; overflow:hidden;}
   .flow-bar b{display:block; height:100%; width:50%; background:var(--cash); transition:width .3s, background .3s;}
   .flow-tag{color:var(--screen-dim); font-family:var(--font-cond); font-weight:700; text-transform:uppercase;}
+  .metrics{display:flex; gap:18px; margin-top:8px; padding-top:7px;
+           border-top:1px solid rgba(255,255,255,.07);}
+  .metrics span{display:flex; align-items:baseline; gap:5px;}
+  .metrics b{font-family:var(--font-mono); font-size:12.5px; font-weight:500;
+             color:var(--screen-ink); font-variant-numeric:tabular-nums;}
+  .metrics i{font-family:var(--font-cond); font-style:normal; font-size:9px; letter-spacing:1.2px;
+             text-transform:uppercase; color:var(--screen-dim);}
 
   .pickwrap{position:fixed; left:50%; transform:translateX(-50%); width:100%; max-width:520px; z-index:5; bottom:calc(54px + env(safe-area-inset-bottom, 0px)); padding:9px 14px 11px; background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -4px 12px var(--shadow); pointer-events:none;}
   .pickwrap > *{pointer-events:auto;}
-  #pickBtn{width:100%; padding:14px; font-family:var(--font-cond); font-weight:800; font-size:21px; letter-spacing:3px; text-transform:uppercase; color:#20130a; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); border:none; border-radius:6px; box-shadow:0 4px 0 var(--hivis-d), 0 5px 12px rgba(60,55,45,.24); cursor:pointer; user-select:none;}
-  #pickBtn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--hivis-d);}
-  #pickBtn small{display:block; font-size:10px; letter-spacing:1.5px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
+  #pickBtn{width:100%; padding:9px; font-family:var(--font-cond); font-weight:700; font-size:14px; letter-spacing:2px; text-transform:uppercase; color:#12161a; background:linear-gradient(180deg,var(--chrome),var(--chrome-d)); border:none; border-radius:4px; box-shadow:0 3px 0 var(--chrome-d), 0 5px 12px rgba(60,55,45,.24); cursor:pointer; user-select:none;}
+  #pickBtn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--chrome-d);}
+  #pickBtn small{display:block; font-size:8px; letter-spacing:1.2px; font-family:var(--font-mono); font-weight:600; opacity:.75;}
 
   .adrow{display:flex; gap:8px; margin:10px 14px 0;}
   .adbtn{flex:1; padding:9px 6px; border:1px dashed var(--hivis); border-radius:4px; background:transparent; color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:1.4px; text-transform:uppercase; cursor:pointer;}
@@ -79,7 +95,7 @@
 
   .combo{display:flex; align-items:center; gap:8px; margin-top:7px;}
   .combobar{flex:1; height:5px; background:var(--panel2); border-radius:3px; overflow:hidden; border:1px solid var(--line);}
-  .combobar i{display:block; height:100%; width:0; background:var(--hivis);}
+  .combobar i{display:block; height:100%; width:0; background:var(--chrome);}
   #comboText{font-family:var(--font-cond); font-weight:800; font-size:13px; letter-spacing:1px; color:var(--steel); min-width:78px; text-align:right;}
 
   .objective{margin:10px 14px 0; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--hazard); border-radius:4px; display:flex; align-items:center; gap:10px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,.3);}
@@ -160,7 +176,7 @@
   .toolbar .label{font-family:var(--font-cond); font-weight:800; letter-spacing:3px; font-size:13px; color:var(--steel); text-transform:uppercase; border-left:3px solid var(--hivis); padding-left:8px;}
   .qty{display:flex; gap:6px;}
   .qty button{background:var(--panel2); color:var(--dim); border:1px solid var(--line); border-radius:4px; padding:5px 12px; font-family:inherit; font-size:11px; cursor:pointer;}
-  .qty button.on{background:var(--hivis); color:#20130a; border-color:var(--hivis); font-weight:600;}
+  .qty button.on{background:var(--chrome); color:#12161a; border-color:var(--chrome); font-weight:600;}
 
   .plate{width:38px; height:38px; flex:0 0 38px; border-radius:4px; background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); display:flex; align-items:center; justify-content:center;}
   .plate svg{width:24px; height:24px; display:block;}
@@ -172,7 +188,7 @@
   .gen-card-header{display:flex; align-items:center; gap:10px;}
   .gen-card-title{flex:1; min-width:0;}
   .gen-card-title .name{font-family:var(--font-cond); font-weight:700; font-size:16px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
-  .gen-card-title .count{color:var(--hivis); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
+  .gen-card-title .count{color:var(--ink); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
   .gen-card-title .desc{font-size:9.5px; color:var(--dim); margin-top:1px;}
   .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
   .gen-card-metrics{display:flex; flex-direction:column; gap:3px;}
@@ -235,11 +251,14 @@
   .netrow button.can{border-color:var(--cash); color:var(--cash);}
   .netrow button:disabled{opacity:.4; cursor:default;}
 
+  .buildline{margin:18px 14px 6px; text-align:center; font-family:var(--font-mono);
+             font-size:9px; letter-spacing:1px; color:var(--steel); opacity:.75;}
+
   .tabs{position:fixed; left:50%; transform:translateX(-50%); bottom:0; z-index:6; padding-bottom:env(safe-area-inset-bottom, 0px); width:100%; max-width:520px; display:flex; background:linear-gradient(180deg,var(--tab-1),var(--tab-2)); border-top:1px solid var(--line); box-shadow:0 -3px 10px var(--shadow);}
   .tabs button{flex:1; background:none; border:none; color:var(--dim); font-family:var(--font-mono); padding:7px 0 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;}
   .tabs button svg{width:21px; height:21px;}
   .tabs button span{font-size:8.5px; letter-spacing:.6px; text-transform:uppercase;}
-  .tabs button.on{color:var(--hivis); box-shadow:inset 0 3px 0 var(--hivis); background:rgba(224,86,10,.10);}
+  .tabs button.on{color:var(--ink); box-shadow:inset 0 2px 0 var(--chrome); background:var(--chrome-on);}
 
   .office-block{margin:8px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--steel); border-radius:4px; padding:12px;}
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
@@ -255,7 +274,7 @@
   @keyframes rise{to{transform:translateY(-46px); opacity:0;}}
 
   .modal-screen{position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; background:var(--scrim);}
-  .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--hivis); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
+  .modal-box{width:100%; max-width:400px; background:var(--panel); border:1px solid var(--line); border-top:3px solid var(--chrome); border-radius:6px; padding:18px; max-height:90vh; overflow-y:auto;}
   .modal-title{font-family:var(--font-cond); font-weight:800; font-size:22px; letter-spacing:2px; text-transform:uppercase; color:var(--ink); margin-bottom:4px;}
   .modal-sub{font-size:10.5px; color:var(--dim); margin-bottom:14px; line-height:1.5;}
   .cal-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:14px;}
@@ -264,7 +283,7 @@
   .cal-day.claimed{border-color:var(--cash); opacity:.5;}
   .cal-day b{display:block; font-family:var(--font-cond); font-size:14px; color:var(--ink); margin-top:2px;}
   .cal-day.active b{color:var(--hivis);}
-  .modal-btn{width:100%; background:linear-gradient(180deg,var(--hivis),var(--hivis-d)); color:#20130a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
+  .modal-btn{width:100%; background:linear-gradient(180deg,var(--chrome),var(--chrome-d)); color:#12161a; border:none; border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;}
   .sku-list{display:flex; flex-direction:column; gap:8px;}
   /* One badge style, four tints -- the colour is the whole signal, so it has to read at
      a glance on the strip without the player opening the modal. */
@@ -313,11 +332,17 @@
     </header>
     <div class="terminal">
       <div class="money" id="money">$0</div>
-      <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span>&middot; tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
+      <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span></div>
+      <div class="rate-2">tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
       <div class="logistics-flow">
         <span class="flow-tag">Throughput Flow</span>
         <div class="flow-bar"><b id="flowBar"></b></div>
         <span id="flowPct" style="color:var(--cash); font-weight:700;">100%</span>
+      </div>
+      <div class="metrics" id="metricsRow">
+        <span><b id="mDispatched">0</b><i>dispatched</i></span>
+        <span><b id="mPayroll">0%</b><i>payroll</i></span>
+        <span id="mNetWrap" hidden><b id="mNetwork">0%</b><i>network</i></span>
       </div>
     </div>
   </div>
@@ -525,6 +550,8 @@
       <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
       <button id="hardResetBtn" class="renamebtn" style="color: var(--bad); border-color: var(--bad);">HARD RESET SAVE</button>
     </div>
+
+    <div class="buildline" id="buildLine"></div>
   </section>
 
   <nav class="tabs">
@@ -1140,10 +1167,11 @@
   // this site worked in daylight or under floods -- and drives the canvas alone.
   var UI_BASE = {
     console: {
-      bg:'#141719', panel:'#20252a', panel2:'#2a3037', line:'#3a424a',
-      ink:'#e9edf1', dim:'#8d959e', steel:'#79818b',
-      raise1:'#2f363d', raise2:'#232830', tab1:'#242a30', tab2:'#1a1e23',
-      screen:'#0d1013', screen2:'#080a0c', screenInk:'#eef1f3', screenDim:'#8f979f',
+      bg:'#101316', panel:'#181d22', panel2:'#1f252b', line:'#2b333b',
+      ink:'#dfe5ea', dim:'#7d8794', steel:'#69727d',
+      raise1:'#1f262c', raise2:'#181d23', tab1:'#161b20', tab2:'#11151a',
+      screen:'#0b0e11', screen2:'#070909', screenInk:'#eef1f3', screenDim:'#8f979f',
+      chrome:'#78838f', chromeD:'#5c656f', chromeOn:'rgba(190,201,212,.10)',
       scrim:'rgba(4,6,8,.80)', shadow:'rgba(0,0,0,.45)'
     }
   };
@@ -1549,6 +1577,15 @@
 
   window.state = state;
   window.render = render;
+  // read-only probes for the frame-budget gate; they expose no way to change anything
+  window.__freightCount = function(){ return freight.length; };
+  window.__freightCap = function(){ return freightCap(); };
+  window.__freightFill = function(){ while (spawnFreight(false)) {} return freight.length; };
+  // Freight is animated, so any measurement of how much the rest of the site costs to draw
+  // has to be able to hold it still first -- otherwise the pool drifts between two samples
+  // and the difference is read as the thing being measured.
+  window.__freightSuspend = function(on){ freightSuspended = !!on; if (on) freight.length = 0; };
+  window.__dispatched = function(){ return freightDispatched; };
   // Same reason as the two above: a yard incident is resolved from a tap at a projected
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
@@ -2901,6 +2938,27 @@
     document.getElementById("officeProgression").hidden = !officeOpen;
     document.getElementById("officeProgressionLocked").hidden = officeOpen;
 
+    // Three readings the game can stand behind. Deliberately not the set the plan named:
+    // see the commit. "Dispatched" counts actual departures from the flow, so the number
+    // and the picture cannot disagree. Payroll and Network are shares of figures the
+    // economy already computes, and both are invisible anywhere else in the app.
+    document.getElementById("mDispatched").textContent = fmt(freightDispatched);
+    // A late site earns millions a second against a wage bill in the tens of thousands, so
+    // an integer percentage rounds to 0% and sits there looking broken for the whole late
+    // game -- which a store screenshot duly caught. One decimal under ten percent keeps it
+    // informative across the entire range the game spans.
+    var gross = grossRate();
+    var share = gross > 0 ? currentWages / gross * 100 : 0;
+    document.getElementById("mPayroll").textContent =
+      (share > 0 && share < 0.1) ? "<0.1%"
+      : (share < 10 ? share.toFixed(1) : Math.round(share)) + "%";
+    var net = networkRate(), tot = totalRate();
+    var netWrap = document.getElementById("mNetWrap");
+    netWrap.hidden = !(state.network && state.network.length);
+    if (!netWrap.hidden)
+      document.getElementById("mNetwork").textContent =
+        (tot > 0 ? Math.round(net / tot * 100) : 0) + "%";
+
     document.getElementById("wageTag").innerHTML = currentWages > 0
       ? "<span style='color:var(--bad);'>(-" + money(currentWages) + "/s wages)</span> "
       : "";
@@ -3324,7 +3382,24 @@
     var f = document.createElement("div"); f.className = "float"; f.textContent = "+" + money(v);
     f.style.left = (x-14) + "px"; f.style.top = (y-30) + "px";
     document.body.appendChild(f); setTimeout(function(){ f.remove(); }, 800);
+
+    // A tap used to give a number and a noise while the site ignored it entirely. It now
+    // puts a pallet into the flow and throws a little dust where it entered, so the thing
+    // the player is looking at reacts to the thing the player did.
+    pickPulse();
   });
+
+  function pickPulse(){
+    try {
+      var u = spawnFreight(true);
+      if (!u) return;
+      var w = freightWaypoint(0);
+      for (var i = 0; i < 7; i++)
+        isoParticles.push({ x:w.x, y:w.y,
+          vx:(Math.random()-0.5)*190, vy:(Math.random()-0.5)*190,
+          color:"#f0c98a", life:0.45 + Math.random()*0.25 });
+    } catch(e){}
+  }
 
   // Contract goals are a fraction of what the site produces over the window, so they stay
   // winnable. The SKU/site conMult scales the PAYOUT (what "premium contracts" and "massive
@@ -3751,9 +3826,9 @@
   // lastQualityChange, so the tiers keep exactly that contract -- only what each tier
   // means changed, because a plan view has no shadows or depth passes to drop.
   var QUALITY_LEVELS = {
-    low:    { name:"Low",    detail: 0.45, plant: 5,  decals: false },
-    medium: { name:"Medium", detail: 0.75, plant: 9,  decals: true  },
-    high:   { name:"High",   detail: 1.00, plant: 14, decals: true  }
+    low:    { name:"Low",    detail: 0.45, plant: 5,  decals: false, freight: 0  },
+    medium: { name:"Medium", detail: 0.75, plant: 9,  decals: true,  freight: 14 },
+    high:   { name:"High",   detail: 1.00, plant: 14, decals: true,  freight: 26 }
   };
   var QUALITY_ORDER = ['low', 'medium', 'high'];
   var qualityIdx = 2, qualityAuto = true, frameSamples = [], lastQualityChange = 0;
@@ -3821,6 +3896,7 @@
       '--raise-1':base.raise1, '--raise-2':base.raise2,
       '--tab-1':base.tab1, '--tab-2':base.tab2,
       '--screen':base.screen, '--screen-2':base.screen2,
+      '--chrome':base.chrome, '--chrome-d':base.chromeD, '--chrome-on':base.chromeOn,
       '--screen-ink':base.screenInk, '--screen-dim':base.screenDim,
       '--scrim':base.scrim, '--shadow':base.shadow,
       '--hivis':t.accent, '--hivis-d':t.accentD, '--hazard':t.hazard, '--cash':t.cash,
@@ -4638,6 +4714,119 @@
     }
   }
 
+
+  /* ---- freight in motion ------------------------------------------------------------
+     Until now nothing in this game moved anywhere. stagedPallets() draws from a fill level
+     derived from how much plant you own, so the pallets correlated with progress rather
+     than being goods going somewhere -- which meant no question of the form "where did
+     that money come from" or "did that forklift help" had anything on screen to answer it.
+
+     This is an INDICATOR, not a simulation. totalRate() runs from a few cents a second to
+     numbers with eighteen digits; density here is log-compressed and capped, so it says
+     "busy" and never claims to be a pallet count. A readout that disagreed with the
+     picture would be worse than no picture.                                             */
+  var FREIGHT_PATH_IDS = ["receive","sorting","racks","packing","staging","ship"];
+  var FREIGHT_MAX_SPAWN = 3.0;      // units per second at full tilt, enough to reach the cap
+  var FREIGHT_STAGE_MS  = 1900;     // dwell per leg; six legs is roughly ten seconds end to end
+  var freight = [], freightSpawnAcc = 0, freightLastDepart = 0, freightFloats = [];
+  var freightDispatched = 0;        // this session, which is what "this shift" means
+
+  var freightSuspended = false;
+  function freightCap(){ return freightSuspended ? 0 : (QUALITY.freight || 0); }
+
+  // Where a leg begins and ends. Recomputed per frame is wasteful and per site is not, so
+  // it is derived from ZONE, which only changes when the site does.
+  function freightWaypoint(i){
+    var z = ZONE[FREIGHT_PATH_IDS[i]];
+    return { x: z.x + z.w * 0.5, y: z.y + z.h * 0.5 };
+  }
+
+  // How busy the site looks, 0..1. The first curve divided by twelve, which put a
+  // thoroughly developed site at six pallets against a cap of twenty-six -- barely
+  // distinguishable from the opening. Eight decades saturates at around $100M/s, which is
+  // deep enough that the yard reads as full for the whole late game and sparse at the
+  // start, which is the contrast that carries the information.
+  function freightBusy(){
+    var r = totalRate();
+    if (!(r > 0)) return 0;
+    return Math.max(0, Math.min(1, Math.log(r + 1) / Math.log(10) / 8));
+  }
+
+  function spawnFreight(fast){
+    if (freight.length >= freightCap()) return null;
+    var u = { stage:0, t:0, lane:(Math.random()-0.5), alt:Math.random() < 0.38,
+              speed: fast ? 2.1 : (0.85 + Math.random()*0.3) };
+    freight.push(u);
+    return u;
+  }
+
+  // A completing unit carries the money banked since the last one left, so the floating
+  // amounts literally sum to your income rather than being invented for the animation.
+  function freightDepart(now){
+    freightDispatched++;            // counted before any of the early returns below
+    if (!freightLastDepart){ freightLastDepart = now; return; }
+    var secs = (now - freightLastDepart) / 1000;
+    freightLastDepart = now;
+    var amt = activeRate() * secs;
+    if (!(amt > 0)) return;
+    if (freightFloats.length >= 4) return;          // the readout must stay readable
+    var z = ZONE.ship;
+    freightFloats.push({ x: z.x + z.w * 0.5, y: z.y + 26, txt: "+" + money(amt), life: 1.5 });
+  }
+
+  function tickFreight(dt){
+    var cap = freightCap();
+    if (!cap){ if (freight.length) freight.length = 0; return; }
+    var now = Date.now();
+
+    freightSpawnAcc += dt * FREIGHT_MAX_SPAWN * freightBusy();
+    while (freightSpawnAcc >= 1){ freightSpawnAcc -= 1; spawnFreight(false); }
+
+    var legs = FREIGHT_PATH_IDS.length - 1;
+    for (var i = freight.length - 1; i >= 0; i--){
+      var u = freight[i];
+      u.t += dt * 1000 / FREIGHT_STAGE_MS * u.speed;
+      while (u.t >= 1){
+        u.t -= 1; u.stage++;
+        if (u.stage >= legs){ freight.splice(i, 1); freightDepart(now); break; }
+      }
+    }
+    for (var f = freightFloats.length - 1; f >= 0; f--){
+      freightFloats[f].life -= dt;
+      if (freightFloats[f].life <= 0) freightFloats.splice(f, 1);
+    }
+  }
+
+  function drawFreight(){
+    if (!freight.length) return;
+    var size = 20;
+    for (var i = 0; i < freight.length; i++){
+      var u = freight[i];
+      var a = freightWaypoint(u.stage), b = freightWaypoint(u.stage + 1);
+      var e = u.t * u.t * (3 - 2 * u.t);                 // ease so a leg does not start jerkily
+      var px = a.x + (b.x - a.x) * e;
+      var py = a.y + (b.y - a.y) * e;
+      // Spread across the width of the leg rather than filing along one line.
+      var dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      px += (-dy / len) * u.lane * 96;
+      py += ( dx / len) * u.lane * 96;
+      // Freight in transit has to be distinguishable from freight in a rack, or the whole
+      // animation reads as more decoration. A drop shadow lifts it off the floor -- the
+      // same device drawTrailer already uses for a moving vehicle -- and a lit edge picks
+      // it out against the racking it passes.
+      shadow(px - size/2, py - size/2, size, size, 4);
+      pallet(px - size/2, py - size/2, size, size, u.alt);
+      ro(px - size/2, py - size/2, size, size, "#ffe9b8", 1.4);
+    }
+  }
+
+  function drawFreightFloats(){
+    for (var i = 0; i < freightFloats.length; i++){
+      var f = freightFloats[i];
+      label(f.txt, f.x, f.y - (1.5 - f.life) * 34, 13, C.cash || "#4fd97b", "center");
+    }
+  }
+
   /* ---- moving plant --------------------------------------------------------- */
   function forklift(x, y, up, carrying){
     ctx.save();
@@ -4957,9 +5146,12 @@
     zoneFloor(ZONE.staging); stagedPallets(ZONE.staging, 3);
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
     drawContractBacklog(dt);
+    tickFreight(dt);
+    drawFreight();
     drawFleet();
     drawIncidents();
     drawParticles(dt);
+    drawFreightFloats();
     flushLabels();          // last, so nothing on the site can bury a zone name
     if (selectedZone){
       var selected = ZONE[selectedZone];
@@ -5004,6 +5196,11 @@
   setInterval(saveGame, 10000);
 
   function startGame() {
+    // Which build am I looking at? Until now the only place APP_VERSION appeared was on
+    // telemetry, so answering that meant Android's app settings -- or, once, a diff of two
+    // git revisions to establish that a device had simply not taken the update yet.
+    var bl = document.getElementById("buildLine");
+    if (bl) bl.textContent = "WAREHOUSE EMPIRE \u00b7 BUILD " + APP_VERSION.toUpperCase();
     openDailyGate();
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
     renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
