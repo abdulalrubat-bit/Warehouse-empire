@@ -854,7 +854,13 @@
               if (!(queue instanceof Array)) queue = [];
               live = true;
               if (fresh) log("install_first", {});
-              log("session_begin", {});
+              // A cold launch and a return from the background are both sessions, and
+              // GA4 is right that they are. But they answer different questions -- one
+              // is "did they come back today", the other "did they put it down for a
+              // minute" -- and until now both logged the same event with nothing to tell
+              // them apart, so neither could be counted. Every per-launch measure sat
+              // against a denominator of launches plus resumes.
+              log("session_begin", { kind: "launch" });
               flush();
             });
         }).catch(function(){});
@@ -889,7 +895,7 @@
         if (!live || sessionStart) return;
         sessionId = Date.now(); sessionStart = sessionId;
         lastEventAt = 0;                  // time spent backgrounded is not engagement
-        log("session_begin", {});
+        log("session_begin", { kind: "resume" });
       } catch(e){}
     }
 
@@ -1573,6 +1579,14 @@
     return (Math.floor(v*100)/100) + FMT_UNITS[u];
   }
   function money(n){ return "$" + fmt(n); }
+  // fmt() floors to a tenth below 1000, which is right for cash on hand and wrong for a
+  // per-second rate: one Casual Picker earns a few cents a second, so the bottleneck card
+  // greeted a brand new player with "Moving $0/s · need $0.5/s" at the very moment it
+  // first appeared. A rate that is not zero must never read as zero.
+  function moneyRate(n){
+    if (!(n > 0) || n >= 0.1) return money(n);
+    return n < 0.01 ? "<$0.01" : "$" + n.toFixed(2);
+  }
 
   function multFor(count){
     var m = 1;
@@ -1742,7 +1756,13 @@
     // Scaled by the changeover factor for the same reason grossRate is: a site mid-turnover
     // is not running, and leaving the payroll at full while output fell to 40% would have
     // cost an early player almost all of their net income rather than a proportional share.
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * flowEfficiency();
+    // Every global throughput multiplier belongs here, for the reason the changeover note
+    // above gives: payroll follows the operation. Priority Dispatch was the one that did
+    // not, so it lifted gross 75% while wages stayed flat and a new player's NET went up
+    // x2.03 against a button that says +75%. Pushing the crew harder costs more in wages,
+    // not the same, and the rush it exists to solve is still winnable with it priced
+    // honestly: 90s at x1 plus 30s at x1.75 clears a goal sized at 110% of two minutes.
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -2470,7 +2490,7 @@
     if (picker && !picker.hidden)
       return { title:"Commission your next site", tab:"floor", hint:"Choose the next site your Network will support." };
     if (pendingRep() >= 1)
-      return { title:"Sell this site for " + pendingRep() + " REP", tab:"office", hint:"Your next permanent gain is ready in the <b>OFFICE</b>." };
+      return { title:"Sell this site for " + fmt(pendingRep()) + " REP", tab:"office", hint:"Your next permanent gain is ready in the <b>OFFICE</b>." };
 
     var best = null;
     for (var gi = 0; gi < GENS.length; gi++){
@@ -2557,11 +2577,11 @@
           if ((state.owned[GENS[gi].id] || 0) === 0){ nextName = GENS[gi].name; break; }
         }
         return { title:state.contract.rush ? "Rush dispatch backlog" : "Contract capacity", tab:"equip", good:false, action:action,
-                 detail:"Moving " + money(pressure.current) + "/s · need " + money(pressure.required) + "/s. Expedite or add " + nextName + "." };
+                 detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s. Expedite or add " + nextName + "." };
       }
       var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
       return { title:expediteActive() ? "Backlog clearing" : "Contract on schedule", tab:"floor", good:true, action:action,
-               detail:pct + "% dispatched · current throughput " + money(totalRate()) + "/s." };
+               detail:pct + "% dispatched · current throughput " + moneyRate(totalRate()) + "/s." };
     }
 
     var next = nextProgressTarget(state.money);
@@ -3705,6 +3725,10 @@
     staging: { x:1350, y: 280, w: 180, h: 300, label:"STAGING"   },
     ship:    { x: 380, y: 830, w: 700, h: 180, label:"SHIPPING"  }
   };
+  // How far outside a zone a tap still counts as meaning it, in plan units. A pallet is 34,
+  // so this is under two pallets -- enough to close the gutters, not enough to swallow a
+  // deliberate tap on open ground.
+  var ZONE_SNAP = 60;
 
   // Corporate Real Estate, as rooms and yards on the plan. Each is a tap target, so the
   // hit test is now a plain rectangle instead of a projected diamond.
@@ -4796,7 +4820,7 @@
         return;
       }
     }
-    // Then a corporate plot: a plain rectangle now, not a projected diamond.
+    // Then a zone of the operation, which opens its panel and flies the camera to it.
     for (var zoneId in ZONE){
       var zone = ZONE[zoneId];
       if (w.x >= zone.x && w.x <= zone.x+zone.w && w.y >= zone.y && w.y <= zone.y+zone.h){
@@ -4804,6 +4828,8 @@
         return;
       }
     }
+    // Then a corporate plot: a plain rectangle now, not a projected diamond. It is tested
+    // after the zones but before the snap below, so an explicit target always wins.
     for (var id in CORP_PLOTS){
       var p = CORP_PLOTS[id];
       if (w.x >= p.gx && w.x <= p.gx + p.gw && w.y >= p.gy && w.y <= p.gy + p.gd){
@@ -4811,6 +4837,20 @@
         return;
       }
     }
+    // Nothing claimed it. The zones do not tile the site -- there are gutters between them,
+    // and the 25-unit gap between Sorting and Storage happens to sit at the dead centre of
+    // the default camera, so the likeliest first tap in the game landed on nothing at all
+    // under a caption reading "Tap a zone to inspect". Snap to the nearest zone, but only
+    // for a tap already close to one, so empty yard stays empty yard.
+    var near = null, nearD = ZONE_SNAP;
+    for (var sz in ZONE){
+      var z = ZONE[sz];
+      var dx = Math.max(z.x - w.x, 0, w.x - (z.x + z.w));
+      var dy = Math.max(z.y - w.y, 0, w.y - (z.y + z.h));
+      var d = Math.hypot(dx, dy);
+      if (d < nearD){ nearD = d; near = sz; }
+    }
+    if (near) focusZone(near);
   }
 
   // Same purchase path the Corporate shop uses, so a tap on the plan and a tap on the

@@ -4,7 +4,7 @@
 // before, so nothing here was covered.
 require("./harness.js");
 const cvEl = document.getElementById("wcanvas"); cvEl._cw = 400; cvEl._ch = 300;
-require("./game.js");
+require("./game-sim.js");
 
 const s = global.state;
 const ok=[], bad=[];
@@ -22,6 +22,10 @@ const card   = () => $("bottleneck");
 // The button is wired with .onclick rather than addEventListener, so pressing it in the
 // stub means invoking that handler with the event it expects to be able to cancel.
 const press  = () => action().onclick({ preventDefault(){}, stopPropagation(){} });
+// Net income -- gross less payroll -- is what a player actually banks, and therefore what
+// a throughput boost has to be measured against.
+const S = global.__sim;
+const netRate = () => S.grossRate() - S.wageBill();
 const action = () => $("bottleneckAction");
 const fresh = () => {
   s.owned = {}; s.taps = 0; s.contractsDone = 0; s.contractsOffered = 0; s.prestiges = 0;
@@ -106,7 +110,22 @@ chk("a contract running behind offers Priority Dispatch",
     "label=" + action().textContent);
 chk("and the card reads as a problem, not a status", card().classList.contains("good") === false);
 
+// Measured around the one clean press in this file -- expediteUntil is a module variable
+// that the fixture reset cannot reach, so every later press is a no-op. A new player is
+// also the worst case for this: payroll is the biggest share of their gross, so a boost
+// that skipped wages would inflate their net the most.
+const grossBefore = S.grossRate(), wageBefore = S.wageBill(), netBefore = netRate();
 press(); await settle();
+const grossLift = S.grossRate() / grossBefore;
+const wageLift  = S.wageBill() / wageBefore;
+const netLift   = netRate() / netBefore;
+chk("it lifts throughput by the 75% it advertises",
+    Math.abs(grossLift - 1.75) < 0.001, "gross x" + grossLift.toFixed(3));
+chk("payroll follows the operation, as it does for every other multiplier",
+    Math.abs(wageLift - 1.75) < 0.001, "wages x" + wageLift.toFixed(3));
+chk("so net rises by the advertised amount and not more",
+    Math.abs(netLift - 1.75) < 0.001, "net x" + netLift.toFixed(3));
+
 chk("using it starts a visible countdown",
     /EXPEDITING/.test(action().textContent) && action().disabled === true, action().textContent);
 chk("it goes on cooldown so it is not a hold-to-win button",
@@ -148,6 +167,38 @@ chk("a player past the opening is given a next target, not a blank card",
 chk("and it is tagged as a rolling target rather than a numbered task",
     $("objective").querySelector(".otag").textContent === "NEXT",
     $("objective").querySelector(".otag").textContent);
+
+// ---- a rate that is not zero must never read as zero ---------------------------------
+// The card first appears the moment a player owns one Casual Picker, and that picker earns
+// a few cents a second. fmt() floors below a tenth, so the very first thing the feature
+// ever said to a new player was "Moving $0/s".
+{
+  // Hit the formatter directly. Driving the game into a sub-tenth-of-a-cent rate depends
+  // on which market state the RNG picked, so an end-to-end version of this passes whether
+  // or not the bug is fixed -- which is no test at all.
+  chk("a rate of five cents does not print as zero", S.moneyRate(0.05) === "$0.05",
+      S.moneyRate(0.05));
+  chk("nor does half a cent", S.moneyRate(0.005) === "<$0.01", S.moneyRate(0.005));
+  chk("a real zero still prints as zero", S.moneyRate(0) === "$0", S.moneyRate(0));
+  chk("and ordinary money is untouched", S.moneyRate(1234) === "$1.23K", S.moneyRate(1234));
+
+  fresh(); s.owned = { picker: 1 }; s.contractsDone = 1;
+  beat(); await settle();
+  const detail = $("bottleneckDetail").textContent;
+  chk("the opening bottleneck card does not quote a rate of zero",
+      !/\$0\/s/.test(detail), detail);
+  chk("and still names both sides of the gap", /Moving .* need /.test(detail), detail);
+}
+
+// ---- REP goes through the formatter, like every other number -------------------------
+{
+  fresh(); s.owned = { picker: 500, trolley: 500, forklift: 500 };
+  s.taps = 99; s.contractsDone = 9; s.prestiges = 3; s.lifetime = 1e20; s.money = 1e18;
+  global.render(); await settle();
+  const title = $("objTitle").textContent;
+  chk("a late-game REP target is formatted, not an eight digit integer",
+      !/\d{7}/.test(title), title);
+}
 
 console.log("PASS:"); ok.forEach(x=>console.log("  + " + x));
 if (bad.length){ console.log("FAIL:"); bad.forEach(x=>console.log("  - " + x)); }
