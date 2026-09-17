@@ -5165,6 +5165,13 @@
 
   // --- TICKER LOOP (100ms) ---
   var last = Date.now();
+  // Fractional picks carried between ticks. This was never declared. Reading an undeclared
+  // name throws, and the read sits three statements ahead of the line that banks income --
+  // inside an interval with no catch -- so the first tick after Full Automation was bought
+  // stopped the save earning, stopped its contracts, and stopped it rendering, permanently
+  // and on every launch after. It only fires at 6000 REP and ten sales, which is to say it
+  // only ever reached the players with the most to lose.
+  var autoPickCarry = 0;
   setInterval(function(){
     var now = Date.now(), dt = Math.min(1.0, (now-last)/1000); last = now;
     tickAmbientRush();
