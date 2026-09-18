@@ -869,7 +869,8 @@
         // is a large share of every figure on the page.
         var p = { session_id: sessionId, engagement_time_msec: engaged,
                   app_version: APP_VERSION, device: device(), android: androidVer() };
-        if (params) for (var k in params) if (params.hasOwnProperty(k)) p[k] = clean(params[k]);
+        if (params) for (var k in params)
+          if (Object.prototype.hasOwnProperty.call(params, k)) p[k] = clean(params[k]);
         queue.push({ name: name, params: p });
         if (queue.length > MAX_QUEUE) queue = queue.slice(queue.length - MAX_QUEUE);
         scheduleFlush();
@@ -1073,20 +1074,20 @@
   var HAPTIC_FOR = { tap:"light", buy:"light", upgrade:"heavy", shatter:"heavy", build:"heavy" };
 
   var AC = null;
+  function tone(f, st, dur, vol, shape){
+    var o = AC.createOscillator(), g = AC.createGain();
+    o.type = shape || "square"; o.frequency.value = f;
+    o.connect(g); g.connect(AC.destination);
+    g.gain.setValueAtTime(vol, st);
+    g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+    o.start(st); o.stop(st + dur);
+  }
   function sfx(type){
     if (HAPTIC_FOR[type]) haptic(HAPTIC_FOR[type]);
     if (state.muted) return;
     try {
       if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
       var t = AC.currentTime;
-      function tone(f, st, dur, vol, shape){
-        var o = AC.createOscillator(), g = AC.createGain();
-        o.type = shape || "square"; o.frequency.value = f;
-        o.connect(g); g.connect(AC.destination);
-        g.gain.setValueAtTime(vol, st);
-        g.gain.exponentialRampToValueAtTime(0.001, st + dur);
-        o.start(st); o.stop(st + dur);
-      }
       if (type === "tap"){ tone(1250, t, 0.05, 0.05); }
       else if (type === "buy"){ tone(300, t, 0.09, 0.09); tone(220, t+0.06, 0.12, 0.09); }
       else if (type === "upgrade"){ tone(880, t, 0.08, 0.07); tone(1320, t+0.08, 0.14, 0.07); }

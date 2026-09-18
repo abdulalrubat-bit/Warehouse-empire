@@ -7,6 +7,7 @@
     "test:fast": "node run.js --no-browser"
   },
   "devDependencies": {
+    "eslint": "^8.57.0",
     "playwright": "^1.62.1"
   }
 }

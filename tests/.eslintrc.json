@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "env": { "browser": true, "es2021": true },
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "script" },
+  "globals": { "Capacitor": "readonly" },
+  "extends": "eslint:recommended",
+  "rules": {
+    "no-unused-vars": "off",
+    "no-empty": "off"
+  }
+}
