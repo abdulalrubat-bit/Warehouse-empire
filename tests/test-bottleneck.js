@@ -28,7 +28,9 @@ const S = global.__sim;
 const netRate = () => S.grossRate() - S.wageBill();
 const action = () => $("bottleneckAction");
 const fresh = () => {
-  s.owned = {}; s.taps = 0; s.contractsDone = 0; s.contractsOffered = 0; s.prestiges = 0;
+  // The site opens with one Casual Picker, so "has bought nothing" is picker 1, and the
+  // fixtures below that mean "has made their first purchase" say picker 2.
+  s.owned = { picker: 1 }; s.taps = 0; s.contractsDone = 0; s.contractsOffered = 0; s.prestiges = 0;
   s.lifetime = 0; s.money = 0; s.contract = null; s.expediteReadyAt = 0;
   s.corp = { hr:0, customs:0, marketing:0, tower:0, training:0, solar:0, depot:0, server:0 };
   s.tree = {}; s.upgrades = {}; s.perks = {}; s.changeoverUntil = 0; s.sku = "fmcg";
@@ -43,7 +45,7 @@ chk("a player with no plant is not given a timed freight target",
     $("contractCard").hidden === true, "contract hidden=" + $("contractCard").hidden);
 chk("nor a bottleneck to fix", card().hidden === true, "card hidden=" + card().hidden);
 
-s.owned.picker = 1; beat(); await settle();
+s.owned.picker = 2; beat(); await settle();
 chk("the first hire brings both in",
     $("contractCard").hidden === false && card().hidden === false,
     "contract hidden=" + $("contractCard").hidden + " card hidden=" + card().hidden);
@@ -54,7 +56,7 @@ chk("and a player who has run contracts keeps them regardless of fleet",
     $("contractCard").hidden === false, "contract hidden=" + $("contractCard").hidden);
 
 // ---- the first contract is sized for the first fleet -------------------------------
-fresh(); s.owned = { picker: 1 }; beat(); await settle();
+fresh(); s.owned = { picker: 2 }; beat(); await settle();
 const first = s.contract;
 chk("the opening contract has a small floor so it can actually close",
     first.goal <= 500, "goal=" + first.goal);
@@ -182,7 +184,7 @@ chk("and it is tagged as a rolling target rather than a numbered task",
   chk("a real zero still prints as zero", S.moneyRate(0) === "$0", S.moneyRate(0));
   chk("and ordinary money is untouched", S.moneyRate(1234) === "$1.23K", S.moneyRate(1234));
 
-  fresh(); s.owned = { picker: 1 }; s.contractsDone = 1;
+  fresh(); s.owned = { picker: 2 }; s.contractsDone = 1;
   beat(); await settle();
   const detail = $("bottleneckDetail").textContent;
   chk("the opening bottleneck card does not quote a rate of zero",

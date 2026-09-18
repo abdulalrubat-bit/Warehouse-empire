@@ -42,7 +42,7 @@ chk("the committed file carries no api secret", sec === "",
 chk("nothing was sent on launch", fetches === 0, fetches + " requests");
 
 // Drive everything that logs, hard, and then check the app is exactly where it was.
-s.taps = 20; s.owned.picker = 1; s.contractsDone = 1; s.prestiges = 1;
+s.taps = 20; s.owned.picker = 2; s.contractsDone = 1; s.prestiges = 1;
 global.render();
 let clock = 1000;
 for (let i=0;i<200;i++){ clock += 16; global.__frame(clock); }
