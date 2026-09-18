@@ -182,19 +182,24 @@
   .plate svg{width:24px; height:24px; display:block;}
 
   .gens{padding:0 14px 8px; display:flex; flex-direction:column; gap:9px;}
-  .gen-card{background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--steel); border-radius:6px; padding:11px 12px; display:flex; flex-direction:column; gap:9px; box-shadow:0 3px 8px rgba(0,0,0,.25);}
+  .gen-card{background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--steel); border-radius:6px; padding:13px 14px; display:flex; flex-direction:column; gap:10px; box-shadow:0 3px 8px rgba(0,0,0,.25);}
   .gen-card.can{border-left-color:var(--cash);}
   .gen-card.locked{opacity:.35; filter:grayscale(.8);}
   .gen-card-header{display:flex; align-items:center; gap:10px;}
   .gen-card-title{flex:1; min-width:0;}
   .gen-card-title .name{font-family:var(--font-cond); font-weight:700; font-size:16px; letter-spacing:1px; text-transform:uppercase; color:var(--ink);}
   .gen-card-title .count{color:var(--ink); font-family:var(--font-cond); font-weight:800; font-size:16px; margin-left:6px;}
-  .gen-card-title .desc{font-size:9.5px; color:var(--dim); margin-top:1px;}
-  .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:8px 10px;}
-  .gen-card-metrics{display:flex; flex-direction:column; gap:3px;}
-  .gen-card-metrics .prod{font-size:11.5px; color:var(--cash); font-weight:600;}
-  .gen-card-metrics .pay{font-size:9.5px; color:var(--dim);}
-  .gen-card-buy{background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-radius:4px; color:var(--dim); font-family:var(--font-cond); font-weight:800; font-size:15px; padding:8px 14px; cursor:pointer; text-align:center; min-width:94px;}
+  .gen-card-title .desc{font-size:11px; color:var(--dim); margin-top:2px;}
+  .gen-card-body{display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:10px 12px;}
+  .gen-card-metrics{display:flex; flex-direction:column; gap:4px; min-width:0;}
+  .gen-card-metrics .prod{font-size:17px; color:var(--cash); font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1;}
+  /* What the button in front of you would actually add. Neither the card nor the reference
+     mock-up carried this, and it is the only number the decision needs: a Sorting Robot at
+     $1.34M reading "$0/s" tells a player nothing about whether to buy one. */
+  .gen-card-metrics .gain{font-size:12px; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .gen-card-metrics .gain b{color:var(--hazard); font-weight:700;}
+  .gen-card-metrics .pay{font-size:10.5px; color:var(--dim);}
+  .gen-card-buy{background:linear-gradient(180deg,var(--raise-1),var(--raise-2)); border:1px solid var(--line); border-radius:4px; color:var(--dim); font-family:var(--font-cond); font-weight:800; font-size:15px; padding:10px 14px; cursor:pointer; text-align:center; min-width:104px; flex:none;}
   .gen-card-buy small{display:block; font-family:var(--font-mono); font-weight:400; font-size:8.5px; letter-spacing:.6px; text-transform:uppercase; opacity:.75;}
   .gen-card-buy.can{border-color:var(--cash); color:var(--cash); background:linear-gradient(180deg,var(--can-1),var(--can-2)); box-shadow:0 0 0 1px rgba(44,132,66,.3);}
   .gen-card-buy:disabled{cursor:default; opacity:.5;}
@@ -2764,11 +2769,12 @@
       card.className = "gen-card locked";
       card.innerHTML =
         '<div class="gen-card-header">'+plate(g.ic)+'<div class="gen-card-title"><div class="name">'+g.name+'<span class="count" data-r="count"></span></div><div class="desc">'+g.desc+'</div></div></div>'+
-        '<div class="gen-card-body"><div class="gen-card-metrics"><div class="prod"><b data-r="prod">$0</b>/s</div><div class="pay" data-r="pay"></div></div><button class="gen-card-buy"><span data-r="cost">$0</span><small data-r="qty">BUY ×1</small></button></div>'+
+        '<div class="gen-card-body"><div class="gen-card-metrics"><div class="prod" data-r="prodrow"><b data-r="prod">$0</b>/s</div><div class="gain" data-r="gain"></div><div class="pay" data-r="pay"></div></div><button class="gen-card-buy"><span data-r="cost">$0</span><small data-r="qty">BUY ×1</small></button></div>'+
         '<div class="gen-card-progress"><i data-r="bar" style="width:0%"></i></div>';
       card.querySelector(".gen-card-buy").addEventListener("click", function(){ buyGen(g); });
       el.gens.appendChild(card);
-      genEls[g.id] = { card: card, count: card.querySelector('[data-r="count"]'), prod: card.querySelector('[data-r="prod"]'), cost: card.querySelector('[data-r="cost"]'), qty: card.querySelector('[data-r="qty"]'), bar: card.querySelector('[data-r="bar"]'), pay: card.querySelector('[data-r="pay"]'), btn: card.querySelector(".gen-card-buy") };
+      genEls[g.id] = { card: card, count: card.querySelector('[data-r="count"]'), prod: card.querySelector('[data-r="prod"]'), cost: card.querySelector('[data-r="cost"]'), qty: card.querySelector('[data-r="qty"]'), bar: card.querySelector('[data-r="bar"]'), pay: card.querySelector('[data-r="pay"]'),
+        gain: card.querySelector('[data-r="gain"]'), prodRow: card.querySelector('[data-r="prodrow"]'), btn: card.querySelector(".gen-card-buy") };
     });
   }
 
@@ -3087,7 +3093,31 @@
     renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderBottleneck(); renderAdButtons();
   }
 
+  // What a purchase adds, asked of the site rather than derived from the generator.
+  //
+  // The first version of this rebuilt the formula -- count x rate x multFor x upMult, less
+  // the wage share -- and was wrong by about 15%, because a generator's output also carries
+  // prestige, rank, market, site, manifest, corporate and tree multipliers that grossRate()
+  // applies and a hand-rolled copy silently omitted. A test that compared the promise
+  // against what actually happened on purchase caught it; one that checked the arithmetic
+  // against itself would not have.
+  //
+  // So it moves the count, asks the real functions, and puts it back. Synchronous and
+  // restored before anything can observe it, and it cannot drift from the thing it predicts
+  // because it IS the thing it predicts.
+  // base is hoisted by the caller: it is the same figure for all eight cards, and this runs
+  // inside the render loop.
+  function marginalRate(g, qty, base){
+    var owned = state.owned[g.id] || 0;
+    var before = base === undefined ? (grossRate() - wageBill()) : base;
+    state.owned[g.id] = owned + qty; invalidateUpMult();
+    var after = grossRate() - wageBill();
+    state.owned[g.id] = owned; invalidateUpMult();
+    return Math.max(0, after - before);
+  }
+
   function renderEquipTab(){
+    var base = grossRate() - wageBill();
     GENS.forEach(function(g){
       var e = genEls[g.id];
       if(!e) return;
@@ -3099,12 +3129,16 @@
       var gross = genRate(g);
       var wRate = WAGE[g.id] || 0;
       e.prod.textContent = money(gross * (1 - wRate));
+      // "$0/s" is the largest figure on an unowned card and it says nothing. Drop the row
+      // there and let the gain line lead instead.
+      e.prodRow.hidden = !(gross > 0);
+      e.gain.innerHTML = "+<b>" + money(marginalRate(g, buyQty, base)) + "</b>/s for \u00d7" + buyQty;
 
       if (gross > 0) {
-        e.pay.textContent = "Wages: -" + money(gross * wRate) + "/s";
+        e.pay.textContent = "Wages -" + money(gross * wRate) + "/s";
         e.pay.style.color = "var(--bad)";
       } else {
-        e.pay.textContent = "Overhead: " + (wRate * 100).toFixed(1) + "%";
+        e.pay.textContent = "Overhead " + (wRate * 100).toFixed(1) + "% of output";
         e.pay.style.color = "var(--dim)";
       }
 
