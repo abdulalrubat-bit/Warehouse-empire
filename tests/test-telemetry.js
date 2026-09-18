@@ -140,7 +140,8 @@ chk("and it is not reported again on every later render",
 // Objectives 2, 3 and 4 at once. The opening gained a Pallet Trolley step between the
 // first hire and the first contract, and leaving it unmet correctly stalls the funnel at
 // 2 -- which is the behaviour under test, so the fixture has to clear the whole run.
-s.owned.picker = 1; s.owned.trolley = 1; s.contractsDone = 1;
+// Two pickers, not one: the site now comes with the first, so the objective is the second.
+s.owned.picker = 2; s.owned.trolley = 1; s.contractsDone = 1;
 global.render(); await settle();
 chk("three objectives cleared at once report as three steps, in order",
     named("objective_done").map(e=>e.params.step).join(",") === "1,2,3,4",

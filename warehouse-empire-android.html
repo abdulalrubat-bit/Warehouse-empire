@@ -1531,7 +1531,13 @@
 
   var OBJECTIVES = [
     { title: "Pick your first order", tab: "floor", hint: "Tap <b>PICK ORDER</b> ten times to start generating capital.", done: function(){ return state.taps >= 10; } },
-    { title: "Hire a Casual Picker", tab: "equip", hint: "Keep picking until you have <b>$15</b>, then hire your first worker in <b>FLEET</b>.", done: function(){ return (state.owned.picker||0) >= 1; } },
+    // The first picker is granted with the site, so the teaching purchase is the second
+    // one. The price is read live rather than written into the string: it moves with the
+    // site's cost multiplier, and a hint that quotes the wrong number is worse than none.
+    { title: "Put a second hand on", tab: "equip",
+      hint: function(){ return "Your first picker came with the site. Keep picking until you have <b>" +
+                               money(costOf(GENS[0], 1)) + "</b>, then hire another in <b>FLEET</b>."; },
+      done: function(){ return (state.owned.picker||0) >= 2; } },
     { title: "Add a Pallet Trolley", tab: "equip", hint: "Reinvest <b>$100</b> in a Pallet Trolley so the first contract can move at a useful pace.", done: function(){ return (state.owned.trolley||0) >= 1; } },
     { title: "Complete Freight Contract", tab: "floor", hint: "Hand picks and automated output both advance the active contract. Fulfil it for cash and pallets.", done: function(){ return state.contractsDone >= 1; } },
     { title: "Sell Up for Reputation", tab: "office", hint: "Reach <b>$20K lifetime</b> and sell in the <b>OFFICE</b> to retire this site into your Network.", done: function(){ return state.prestiges >= 1; } }
@@ -1590,7 +1596,23 @@
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
 
-  GENS.forEach(function(g){ state.owned[g.id] = 0; });
+  // A site opens with one Casual Picker already on. Before this, a new save earned
+  // $0.00/sec until the player bought something -- so offline earnings were zero, the
+  // offline reminder never scheduled (it is gated on totalRate() > 0) and a player who put
+  // the phone down in the first fifteen seconds had nothing waiting and nothing calling
+  // them back. Every hook for a returning player sat behind a purchase that, in the field,
+  // ten of twelve players never made. The first purchase still has to be taught, so the
+  // opening objective moved to the second picker rather than being dropped.
+  //
+  // Both the first site and every one after it come through here, so they cannot drift.
+  // A save loaded from storage replaces state.owned wholesale, so no existing player is
+  // touched by this.
+  var STARTING_CREW = 1;
+  function resetFleet(){
+    GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    state.owned.picker = STARTING_CREW;
+  }
+  resetFleet();
 
   var buyQty = 1, boostUntil = 0, tapBoostUntil = 0, incidentSpeedUntil = 0, expediteUntil = 0;
   var repBonusArmed = false, sellArmed = false, sellArmTimer = null;
@@ -1708,8 +1730,15 @@
      Nothing below is removed. Each thing appears the moment it can mean something, which
      is the only difference between content and clutter. Every predicate is satisfied many
      times over by an existing save, so nobody loses anything they already had.           */
-  function ownsAnyPlant(){
-    for (var i = 0; i < GENS.length; i++) if ((state.owned[GENS[i].id] || 0) > 0) return true;
+  // "Has this player put something on the floor themselves?" -- which stopped being the
+  // same question as "does this player own plant" the moment a site started opening with a
+  // Casual Picker already on. Every gate below is asking about the player's first decision,
+  // not about the inventory, so the crew that came with the site does not count.
+  function ownsBoughtPlant(){
+    for (var i = 0; i < GENS.length; i++){
+      var granted = GENS[i].id === "picker" ? STARTING_CREW : 0;
+      if ((state.owned[GENS[i].id] || 0) > granted) return true;
+    }
     return false;
   }
   // Re-read when a session begins, not while one is running. "Session" here means a
@@ -1721,16 +1750,16 @@
   var GATES = {
     // Overtime Shift multiplies output and Double Payout multiplies a hand pick. Offered
     // at zero plant, the first of those multiplies nothing at all.
-    ads:    function(){ return ownsAnyPlant(); },
+    ads:    function(){ return ownsBoughtPlant(); },
     // A seven-day return streak is a reason to come back, which is not something you can
     // offer someone who has not yet had a first visit.
-    daily:  function(){ return ownsAnyPlant() || state.taps >= 10 || state.dailyStreak > 0; },
+    daily:  function(){ return ownsBoughtPlant() || state.taps >= 10 || state.dailyStreak > 0; },
     // ^ read once at launch into dailyGateOpen, never live. See checkDailyLoginPopup.
     // The Office tab itself stays available because it also holds settings and save
     // controls. Only its advanced operations desk waits for the first contract.
     office: function(){ return state.contractsDone >= 1 || state.prestiges > 0; },
     // A timed freight target is noise until the player owns something that can move it.
-    contract: function(){ return ownsAnyPlant() || state.contractsDone > 0; }
+    contract: function(){ return ownsBoughtPlant() || state.contractsDone > 0; }
   };
 
   /* ---- changeover -----------------------------------------------------------------
@@ -2599,7 +2628,7 @@
   }
 
   function bottleneckState(){
-    if (!ownsAnyPlant()) return null;
+    if (!ownsBoughtPlant()) return null;
     var pressure = contractPressure();
     var action = expediteAction(pressure);
     var changeLeft = changeoverLeft();
@@ -2654,7 +2683,8 @@
     if (!cur){ card.hidden = true; return; }
     card.hidden = false;
     document.getElementById("objTitle").textContent = cur.title;
-    document.getElementById("objHint").innerHTML = cur.hint;
+    document.getElementById("objHint").innerHTML =
+      typeof cur.hint === "function" ? cur.hint() : cur.hint;
     var tag = card.querySelector(".otag");
     if(tag) tag.textContent = onboarding ? "TASK " + idx + "/" + OBJECTIVES.length : "NEXT";
     card.onclick = function(){ switchTab(cur.tab); };
@@ -3310,7 +3340,7 @@
     state.depotFreeUsed = false;              // the Depot's free purchase refreshes per site
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
-    state.upgrades = kept; invalidateUpMult(); GENS.forEach(function(g){ state.owned[g.id] = 0; });
+    state.upgrades = kept; invalidateUpMult(); resetFleet();
 
     sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
 

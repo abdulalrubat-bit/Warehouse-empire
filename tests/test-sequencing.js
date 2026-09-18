@@ -21,7 +21,10 @@ const officeBtn = () => [...document.querySelectorAll('.tabs button')]
 const desk   = () => document.getElementById("officeProgression");
 const locked = () => document.getElementById("officeProgressionLocked");
 const fresh = () => {
-  s.owned = {}; s.taps = 0; s.contractsDone = 0; s.prestiges = 0; s.dailyStreak = 0;
+  // What a new save really holds. A site opens with one Casual Picker, so an empty `owned`
+  // is a state no player is ever in -- and the gates below are precisely the ones that used
+  // to read that picker as "this player has started".
+  s.owned = { picker: 1 }; s.taps = 0; s.contractsDone = 0; s.prestiges = 0; s.dailyStreak = 0;
   s.lifetime = 0; s.corp = { hr:0, customs:0, marketing:0, tower:0, training:0, solar:0, depot:0, server:0 };
   s.tree = {}; s.changeoverUntil = 0; s.changeoverSpan = 0; s.sku = "fmcg";
 };
@@ -51,8 +54,8 @@ chk("and is not consumed by being held back", s.dailyShownFor === beforeShown,
     "dailyShownFor=" + s.dailyShownFor + " (was " + beforeShown + ")");
 
 // ---- each thing arrives the moment it can mean something ---------------------------
-s.owned.picker = 1; global.render(); await settle();
-chk("buying the first picker brings the boosts in", adRow().hidden === false,
+s.owned.picker = 2; global.render(); await settle();
+chk("buying a picker of their own brings the boosts in", adRow().hidden === false,
     "adRow hidden=" + adRow().hidden);
 chk("the operations desk still waits for a contract",
     desk().hidden === true && locked().hidden === false,
