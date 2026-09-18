@@ -625,6 +625,21 @@
     </div>
   </div>
 
+  <div id="modalNotif" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Storage Reminders</div>
+      <div class="modal-sub" id="notifPromptLead"></div>
+      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:14px;">
+        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Storage fills in</div>
+        <b id="notifPromptCap" style="font-family:var(--font-cond); font-size:28px; color:var(--hazard);"></b>
+        <div style="font-size:9px; color:var(--dim); margin-top:4px;">After that, the site stops banking.</div>
+      </div>
+      <div class="modal-sub" style="margin-bottom:12px;">We can tell you when it is full, so a shift's takings are not left sitting on the dock. One reminder, and you can turn it off in the Office.</div>
+      <button class="modal-btn" id="btnNotifYes">TURN ON REMINDERS</button>
+      <button class="renamebtn" id="btnNotifNo" style="margin-top:12px;">Not now</button>
+    </div>
+  </div>
+
   <div id="modalRename" class="modal-screen" hidden>
     <div class="modal-box">
       <div class="modal-title">Rename Company</div>
@@ -738,7 +753,16 @@
 
     var cid = null, queue = [], sending = false, live = false, starting = false;
     var sessionId = 0, sessionStart = 0, seenErrors = null, errorsSent = 0, retryAfter = 0;
-    var flushPending = false, lastEventAt = 0;
+    var flushPending = false, lastEventAt = 0, readyFns = [];
+
+    // Anything logged before start() has settled is dropped by log(), and start() settles
+    // behind two storage reads. Whatever else wants to report at launch is racing that --
+    // notification_state reads a plugin and was winning, so its event went nowhere. This
+    // holds a callback until there is somewhere for it to go.
+    function whenLive(fn){
+      if (live){ try { fn(); } catch(e){} return; }
+      readyFns.push(fn);
+    }
 
     function on(){ return !!(GA_MEASUREMENT_ID && GA_API_SECRET); }
 
@@ -888,6 +912,8 @@
               // them apart, so neither could be counted. Every per-launch measure sat
               // against a denominator of launches plus resumes.
               log("session_begin", { kind: "launch" });
+              var waiting = readyFns; readyFns = [];
+              waiting.forEach(function(fn){ try { fn(); } catch(e){} });
               flush();
             });
         }).catch(function(){});
@@ -926,7 +952,7 @@
       } catch(e){}
     }
 
-    return { start: start, log: log, error: error, flush: flush,
+    return { start: start, log: log, error: error, flush: flush, whenLive: whenLive,
              endSession: endSession, resume: resume,
              enabled: on, device: device, android: androidVer,
              __state: function(){ return { cid: cid, queue: queue, live: live,
@@ -1568,6 +1594,7 @@
     prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
+    launches: 0, notifPrompted: false,
     marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
@@ -1592,6 +1619,11 @@
   // and the difference is read as the thing being measured.
   window.__freightSuspend = function(on){ freightSuspended = !!on; if (on) freight.length = 0; };
   window.__dispatched = function(){ return freightDispatched; };
+  // Same reason as the hooks above. Whether the permission card appears turns on a launch
+  // count and on what Android answers, and a headless test cannot launch the app twice in
+  // one process to reach the second of those.
+  window.__notif = { prompt: function(t){ return maybeAskNotifications(t); },
+                     sync:   function(){ return syncNotifPermission(); } };
   // Same reason as the two above: a yard incident is resolved from a tap at a projected
   // canvas coordinate, which is not a thing a headless test can reasonably synthesise.
   window.incidents = { table: INCIDENTS, roll: rollIncident, clear: clearIncident, live: function(){ return interactiveEvents; } };
@@ -1897,7 +1929,8 @@
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered"].forEach(function(k){
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered",
+       "launches"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -2015,7 +2048,7 @@
             state.money += earned; state.total += earned; state.lifetime += earned;
             Tele.log("offline_claim", { reward:"standard", seconds:Math.round(secs), amount:Math.round(earned) });
             document.getElementById("modalOffline").hidden = true;
-            sfx("buy"); render(); saveGame(); showPendingDaily();
+            sfx("buy"); render(); saveGame(); showPendingDaily(); maybeAskNotifications("offline");
           });
 
           newDouble.addEventListener("click", function(){
@@ -2026,7 +2059,7 @@
               Tele.log("offline_claim", { reward:"double", seconds:Math.round(secs), amount:Math.round(doubled) });
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
-              render(); saveGame(); showPendingDaily();
+              render(); saveGame(); showPendingDaily(); maybeAskNotifications("offline");
             }, function(){
               newDouble.disabled = false;
             });
@@ -2411,7 +2444,8 @@
     // rather than take the app down, and this is exactly the silent death js_error exists
     // to report.
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
-    if (!reward){ document.getElementById("modalDaily").hidden = true; return; }
+    if (!reward){ document.getElementById("modalDaily").hidden = true;
+                  maybeAskNotifications("launch"); return; }
     state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
     Tele.log("daily_claim", { day:state.dailyStreak, pallets:reward.pallets });
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
@@ -2423,6 +2457,10 @@
               (crate ? " and <b>+1 Crate</b>" : "") + "." +
               (built ? " Site works advanced on the <b>" + built.name + "</b>." : ""));
     render(); saveGame();
+    // The calendar opens on the second launch, which is the same launch the permission card
+    // wants -- and modals share a z-index, so the card would have deferred itself every
+    // single time and never appeared at all. It queues behind the calendar instead.
+    maybeAskNotifications("launch");
   });
 
   var crateAdBtnEl = null, crateAdSubEl = null;
@@ -3525,6 +3563,23 @@
       .catch(function(){ return false; });
   }
 
+  // What the OS already permits, which is a different question from what the player has
+  // been asked. checkPermissions() never shows a dialog.
+  //
+  // This exists because the failure it detects is silent. A player who had never been asked
+  // left notifPerm at null; scheduleNotifications() reads null as "has not refused" and
+  // schedules; the plugin resolves happily; and on Android 13 and up the system displays
+  // nothing at all, because permission was never granted. Every reminder this game has sent
+  // since notifications shipped may have gone nowhere, with no error anywhere to say so.
+  // Reading the real state at launch turns that into a number: notification_state below.
+  function syncNotifPermission(){
+    var LN = notifPlugin();
+    if (!LN || !LN.checkPermissions) return Promise.resolve(null);
+    return LN.checkPermissions()
+      .then(function(r){ return (r && r.display) || null; })
+      .catch(function(){ return null; });
+  }
+
   // Everything is scheduled relative to now, so the offline cap and daily reset land at
   // the right wall-clock moment even though the app is not running.
   function scheduleNotifications(){
@@ -3720,7 +3775,7 @@
       e.btn.classList.toggle("lock", !on);
     });
     var permBtn = document.getElementById("notifPermBtn");
-    if (permBtn) permBtn.hidden = !notifPlugin() || state.notifAsked;
+    if (permBtn) permBtn.hidden = !notifPlugin() || state.notifPerm === true;
   }
 
   function ensureNotifPermission(){
@@ -3734,6 +3789,48 @@
       renderNotifs(); saveGame();
     });
   }
+
+  // Android will not deliver a notification it was never given permission for, and until
+  // now the only way to grant it was to open the Office, find the notification settings and
+  // press a button there. One player in twenty-three had ever answered the dialog -- which
+  // means that for an idle game, the half of the loop that calls people back was off.
+  //
+  // Asking cold on first launch spends Android's single system dialog on somebody who does
+  // not yet know what the game is, and a refusal there cannot be taken back from inside the
+  // app. So this asks in our own words first, and only once the player has shown they will
+  // come back at all: on their second launch, or the moment they collect a shift's offline
+  // takings and the reminder has just demonstrated what it is for.
+  function maybeAskNotifications(trigger){
+    if (state.notifPrompted || state.notifAsked) return;
+    if (state.notifPerm === true || state.notifPerm === false) return;  // already settled
+    if (!notifPlugin()) return;
+    if (trigger === "launch" && (state.launches || 0) < 2) return;
+    // Modals share a z-index, so one opened under another is stranded. Leaving notifPrompted
+    // false means this is simply tried again next launch rather than lost.
+    if (!document.getElementById("modalOffline").hidden) return;
+    if (!document.getElementById("modalDaily").hidden) return;
+
+    var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
+    document.getElementById("notifPromptLead").textContent = trigger === "offline"
+      ? "Your site banked that while the app was shut. It keeps going until storage fills."
+      : "Your site keeps earning while the app is shut.";
+    document.getElementById("notifPromptCap").textContent = capHours + "h";
+    document.getElementById("modalNotif").hidden = false;
+    state.notifPrompted = true;
+    Tele.log("notification_prompt", { action:"shown", trigger:trigger, launches:state.launches || 0 });
+    saveGame();
+  }
+
+  document.getElementById("btnNotifYes").addEventListener("click", function(){
+    document.getElementById("modalNotif").hidden = true;
+    Tele.log("notification_prompt", { action:"accept" });
+    ensureNotifPermission();
+  });
+  document.getElementById("btnNotifNo").addEventListener("click", function(){
+    document.getElementById("modalNotif").hidden = true;
+    Tele.log("notification_prompt", { action:"dismiss" });
+    saveGame();
+  });
 
   document.getElementById("notifPermBtn").addEventListener("click", function(){
     state.notifAsked = false; state.notifPerm = null; ensureNotifPermission();
@@ -5246,6 +5343,21 @@
     renderQuality(); render();
     requestAnimationFrame(frame);
     Tele.start();
+    state.launches = (state.launches || 0) + 1;
+    syncNotifPermission().then(function(display){
+      if (display === "granted") state.notifPerm = true;
+      else if (display === "denied") state.notifPerm = false;
+      // "prompt", or no answer at all, leaves it null: nothing has been decided yet, which
+      // is not the same as having been refused.
+      Tele.whenLive(function(){
+        Tele.log("notification_state", { display: display || "unknown",
+                                         asked: state.notifAsked ? 1 : 0,
+                                         launches: state.launches });
+      });
+      renderNotifs();
+      maybeAskNotifications("launch");
+      saveGame();
+    });
     // A minute in is long enough for the auto tier to have found its level and for the
     // averages to mean something, and short enough that most sessions reach it. Reported
     // against the device model, this says which phones this game is actually playable on
