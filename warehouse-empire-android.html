@@ -1178,8 +1178,33 @@
     {id:"telemetry", br:"logi", req:"night", ic:"radio", name:"Yard Telemetry", cost:320, desc:"Yard incidents appear twice as often"}
   ];
 
+  // Instant Dispatch used to cost a flat 5 pallets -- rising to 25 across ten sales -- and
+  // bank a full hour of production. Both halves of that were wrong together.
+  //
+  // Its payout is totalRate() x seconds, and a perk's value is a percentage of the same
+  // rate, so the comparison between them is scale-invariant: whatever was true at the
+  // start was still true at Empire Magnate. And what was true is that 200 pallets bought
+  // forty hours of production now, against Kaizen's +15% forever -- which needs 267 hours
+  // of further play at that rate to catch up. Nobody plays 267 hours between prestiges.
+  // So there was never a point in the game where any perk was the right buy, and the whole
+  // tier-two tree -- 120, 200 and 320 pallets -- was decoration.
+  //
+  // The fix is the price, not a cap. Each use doubles the cost for the rest of the day, so
+  // the first one is cheap and the fourth is a real decision, and the payout is halved to
+  // thirty minutes. 200 pallets now buys about two hours across four uses instead of forty,
+  // which puts Kaizen's break-even at thirteen hours. That is a choice.
+  var DISPATCH_BASE = 10;
+  var DISPATCH_MINUTES = 30;
+  function dispatchUsesToday(){
+    return sameDailyPeriod(state.dispatchDay) ? (state.dispatchesToday || 0) : 0;
+  }
+  function supplyCost(s){
+    if (s.id !== "dispatch") return s.cost;
+    return DISPATCH_BASE * Math.pow(2, dispatchUsesToday());
+  }
   var SUPPLIES = [
-    {id:"dispatch", ic:"box", name:"Instant Dispatch", cost:5, scales:true, desc:"Bank 1 hour of production now"},
+    {id:"dispatch", ic:"box", name:"Instant Dispatch", cost:DISPATCH_BASE,
+     desc:"Bank " + DISPATCH_MINUTES + " minutes of production. Doubles in price each time today."},
     {id:"callrush", ic:"flame", name:"Call a Rush", cost:2, desc:"Trigger a ×8 rush order instantly"}
   ];
 
@@ -1599,6 +1624,7 @@
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
     incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
+    dispatchesToday: 0, dispatchDay: -1,
     tree: {}, repSpent: 0,
     changeoverUntil: 0, changeoverSpan: 0,
     expediteReadyAt: 0,
@@ -1930,7 +1956,7 @@
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
        "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered",
-       "launches"].forEach(function(k){
+       "launches","dispatchesToday"].forEach(function(k){
         var v = Number(state[k]);
         state[k] = (isFinite(v) && v >= 0) ? v : STATE_DEFAULTS[k];
       });
@@ -2817,13 +2843,18 @@
     var sList = document.getElementById("supplyList"); sList.innerHTML = "";
     SUPPLIES.forEach(function(s){
       var b = document.createElement("button"); b.className = "up";
-      var sc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+      var sc = supplyCost(s);
       b.innerHTML = plate(s.ic) + '<div><div class="uname">'+s.name+'</div><div class="udesc">'+s.desc+'</div></div><div class="ucost" data-r="cost">'+sc+' PAL</div>';
       b.addEventListener("click", function(){
-        var currentSc = s.scales ? Math.min(25, s.cost + (state.prestiges || 0) * 2) : s.cost;
+        var currentSc = supplyCost(s);
         if(state.pallets >= currentSc){
           state.pallets -= currentSc;
-          if(s.id === "dispatch"){ var cap = totalRate() * 3600; state.money += cap; state.total += cap; state.lifetime += cap; }
+          if(s.id === "dispatch"){
+            if (!sameDailyPeriod(state.dispatchDay)){ state.dispatchDay = dailyPeriod(); state.dispatchesToday = 0; }
+            state.dispatchesToday = (state.dispatchesToday || 0) + 1;
+            var cap = totalRate() * DISPATCH_MINUTES * 60;
+            state.money += cap; state.total += cap; state.lifetime += cap;
+          }
           else { boostUntil = Date.now() + 30000; }
           sfx("upgrade"); showToast("Supply activated: <b>" + s.name + "</b>."); render(); saveGame();
         }
@@ -3127,7 +3158,7 @@
     SUPPLIES.forEach(function(sp){
       var elObj = supplyBtnEls[sp.id];
       if (elObj && elObj.costElem){
-        var currentSc = sp.scales ? Math.min(25, sp.cost + (state.prestiges || 0) * 2) : sp.cost;
+        var currentSc = supplyCost(sp);
         elObj.costElem.textContent = currentSc + " PAL";
         var can = state.pallets >= currentSc;
         elObj.btn.classList.toggle("can", can); elObj.btn.disabled = !can;
