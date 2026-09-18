@@ -3817,18 +3817,19 @@
     document.getElementById("notifPromptCap").textContent = capHours + "h";
     document.getElementById("modalNotif").hidden = false;
     state.notifPrompted = true;
-    Tele.log("notification_prompt", { action:"shown", trigger:trigger, launches:state.launches || 0 });
+    Tele.log("notification_prompt", { prompt_action:"shown", prompt_trigger:trigger,
+                                      launches:state.launches || 0 });
     saveGame();
   }
 
   document.getElementById("btnNotifYes").addEventListener("click", function(){
     document.getElementById("modalNotif").hidden = true;
-    Tele.log("notification_prompt", { action:"accept" });
+    Tele.log("notification_prompt", { prompt_action:"accept" });
     ensureNotifPermission();
   });
   document.getElementById("btnNotifNo").addEventListener("click", function(){
     document.getElementById("modalNotif").hidden = true;
-    Tele.log("notification_prompt", { action:"dismiss" });
+    Tele.log("notification_prompt", { prompt_action:"dismiss" });
     saveGame();
   });
 
@@ -5349,9 +5350,14 @@
       else if (display === "denied") state.notifPerm = false;
       // "prompt", or no answer at all, leaves it null: nothing has been decided yet, which
       // is not the same as having been refused.
+      // perm_state and perm_asked rather than display and asked: a GA4 custom dimension
+      // binds to a parameter NAME across every event that sends it, not to one event. A
+      // parameter called "display" would quietly pool with any future event that had one,
+      // and by then the dimension would have months of history that renaming would throw
+      // away. These two have never collected anything, so this is the only moment it is free.
       Tele.whenLive(function(){
-        Tele.log("notification_state", { display: display || "unknown",
-                                         asked: state.notifAsked ? 1 : 0,
+        Tele.log("notification_state", { perm_state: display || "unknown",
+                                         perm_asked: state.notifAsked ? 1 : 0,
                                          launches: state.launches });
       });
       renderNotifs();

@@ -64,7 +64,7 @@ chk("the seeded save was the one the game read", (s.launches || 0) === 2,
 chk("launching checks the real permission state", named("notification_state").length === 1,
     named("notification_state").length + " notification_state");
 chk("and reports what Android said",
-    (named("notification_state")[0] || {params:{}}).params.display === "prompt",
+    (named("notification_state")[0] || {params:{}}).params.perm_state === "prompt",
     JSON.stringify((named("notification_state")[0] || {}).params));
 chk("checking does not raise the system dialog", requestCalls === 0, requestCalls + " requests");
 // The bug this replaces: null was read as "has not refused", so every reminder was
@@ -84,7 +84,7 @@ await settle();
 chk("the second launch asks, in the game's own words first", card().hidden === false,
     "hidden=" + card().hidden);
 chk("the card says which trigger raised it",
-    (named("notification_prompt")[0] || {params:{}}).params.trigger === "launch",
+    (named("notification_prompt")[0] || {params:{}}).params.prompt_trigger === "launch",
     JSON.stringify((named("notification_prompt")[0] || {}).params));
 chk("the card quotes a real storage cap", /^\d+h$/.test(document.getElementById("notifPromptCap").textContent),
     document.getElementById("notifPromptCap").textContent);
@@ -118,8 +118,8 @@ reset(1);
 N.prompt("offline"); await settle();
 chk("collecting a shift's offline takings asks on the spot", card().hidden === false,
     "hidden=" + card().hidden);
-chk("and says so", named("notification_prompt").some(e => e.params.trigger === "offline"),
-    named("notification_prompt").map(e=>e.params.trigger).join(","));
+chk("and says so", named("notification_prompt").some(e => e.params.prompt_trigger === "offline"),
+    named("notification_prompt").map(e=>e.params.prompt_trigger).join(","));
 chk("the copy changes to match", /while the app was shut/.test(document.getElementById("notifPromptLead").textContent),
     document.getElementById("notifPromptLead").textContent);
 
@@ -145,8 +145,8 @@ await settle();
 chk("declining closes the card", card().hidden === true, "hidden=" + card().hidden);
 chk("declining does not raise the system dialog", requestCalls === 0, requestCalls + " requests");
 chk("and is not recorded as an OS refusal", s.notifPerm === null, String(s.notifPerm));
-chk("the decline is reported", named("notification_prompt").some(e => e.params.action === "dismiss"),
-    named("notification_prompt").map(e=>e.params.action).join(","));
+chk("the decline is reported", named("notification_prompt").some(e => e.params.prompt_action === "dismiss"),
+    named("notification_prompt").map(e=>e.params.prompt_action).join(","));
 
 // ---- a real refusal is respected ----------------------------------------------------------------
 reset(4); s.notifPerm = false;

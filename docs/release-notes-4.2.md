@@ -1,4 +1,8 @@
-# Warehouse Empire 4.2 (v29)
+# Warehouse Empire 4.2 (v30)
+
+**Version code 30, not 29.** v29 was built and then rejected on upload before it
+went anywhere, and a version code Play has seen cannot be reused. Nothing
+player-facing differs between the two builds.
 
 Play caps the release-notes field at 500 characters; the short version below is
 inside that.
@@ -78,15 +82,22 @@ up when that closes.
 
 ## Release checklist
 
-1. Build and upload v29, version name `4.2`.
+1. Build and upload v30, version name `4.2`.
 2. **Register three custom dimensions in GA4 before this goes out** — none of them
    are retroactive, so every day they are missing is a day that cannot be
    recovered:
-   - `display` — the device's real permission state, on `notification_state`.
+   - `perm_state` — the device's real permission state, on `notification_state`.
      This is the one that turns "reminders might be broken for everyone" into a
      count.
-   - `action` and `trigger` on `notification_prompt` — whether people accept, and
-     which of the two moments they were asked at.
+   - `prompt_action` and `prompt_trigger` on `notification_prompt` — whether people
+     accept, and which of the two moments they were asked at.
+
+   The names carry their event's prefix on purpose. A GA4 custom dimension binds to
+   a parameter *name* across every event that sends it, so a parameter called
+   `action` would silently pool with any future event that had one — and by the time
+   that happened the dimension would have months of history that renaming throws
+   away. These had collected nothing yet, which made this the only free moment to
+   fix it.
 3. The privacy policy was updated for this release and is already live. It now
    covers reading the device's permission state without prompting, and the launch
    count. Neither adds a Play data-safety category; both are app interaction,
