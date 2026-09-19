@@ -3570,19 +3570,38 @@
     // A tap used to give a number and a noise while the site ignored it entirely. It now
     // puts a pallet into the flow and throws a little dust where it entered, so the thing
     // the player is looking at reacts to the thing the player did.
-    pickPulse();
+    pickPulse(v);
   });
 
-  function pickPulse(){
-    try {
-      var u = spawnFreight(true);
-      if (!u) return;
-      var w = freightWaypoint(0);
-      for (var i = 0; i < 7; i++)
-        isoParticles.push({ x:w.x, y:w.y,
-          vx:(Math.random()-0.5)*190, vy:(Math.random()-0.5)*190,
-          color:"#f0c98a", life:0.45 + Math.random()*0.25 });
-    } catch(e){}
+  var tapFeedback = [];
+  function pickPulse(value){
+    // Player feedback must not disappear when ambient freight is disabled or full.
+    if (tapFeedback.length >= 6) tapFeedback.shift();
+    tapFeedback.push({age:0, text:"PICKED +" + money(value || 0)});
+    spawnFreight(true);
+    var w = freightWaypoint(0);
+    for (var i = 0; i < 7; i++)
+      isoParticles.push({ x:w.x, y:w.y,
+        vx:(Math.random()-0.5)*190, vy:(Math.random()-0.5)*190,
+        color:"#f0c98a", life:0.45 + Math.random()*0.25 });
+  }
+  function drawTapFeedback(dt){
+    if (!tapFeedback.length) return;
+    var origin=freightWaypoint(0), screen=toScreen(origin.x,origin.y);
+    var x=Math.max(85,Math.min(CW-85,screen.x));
+    var y=Math.max(45,Math.min(CH-65,screen.y));
+    for(var i=tapFeedback.length-1;i>=0;i--){
+      var f=tapFeedback[i];f.age+=dt;
+      if(f.age>=1.1){tapFeedback.splice(i,1);continue;}
+      ctx.save();ctx.globalAlpha=Math.min(1,(1.1-f.age)*3);
+      var fy=y-f.age*22-i*4;
+      ctx.strokeStyle="#ffe89a";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(x,fy,16+f.age*22,0,Math.PI*2);ctx.stroke();
+      pallet(x-10,fy-10,20,18,false);
+      r(x-82,fy+26,164,23,"#192e41");
+      ctx.font="bold 11px sans-serif";ctx.textAlign="center";ctx.fillStyle="#ffe89a";
+      ctx.fillText(f.text,x,fy+42);ctx.restore();
+    }
   }
 
   // Contract goals are a fraction of what the site produces over the window, so they stay
@@ -4509,7 +4528,7 @@
   function initDocks(key, count){
     var a = [];
     for (var i = 0; i < count; i++)
-      a.push({ phase:"empty", t: Math.random() * 9, livery: (i * 3 + key.length) % LIVERY.length });
+      a.push({ phase:i===0?"docked":"empty", t: Math.random() * 3, livery: (i * 3 + key.length) % LIVERY.length });
     return a;
   }
   function tickDocks(dt){
@@ -4542,7 +4561,8 @@
       if (QUALITY.decals)
         hatch(bx+14, atTop ? z.y+14 : z.y+z.h-64, bw-28, 50, "rgba(" + hexRGB(C.line) + ",0.20)", 14);
       label(prefix + "0" + (i+1), bx + bw/2, atTop ? z.y+z.h-16 : z.y+18, 11, C.ink, "center");
-      if ((state.owned.hub || 0) <= 0 || !d || d.phase === "empty") continue;
+      // Visiting carriers serve the site from the start; they are not owned machinery.
+      if (!d || d.phase === "empty") continue;
 
       // Trucks reverse onto the dock, so they travel outward-to-inward on arrival and
       // the reverse on departure. Outward is up for receiving, down for shipping.
@@ -4552,6 +4572,13 @@
       else if (d.phase === "leaving") off = travel * ease(Math.min(1, d.t / DOCK_OUT));
       drawTrailer(bx+8, z.y+8 + off, bw-16, z.h-16, atTop, d.livery,
                   d.phase === "docked", d.phase !== "docked");
+      if(d.phase==="docked"){
+        var p=(d.t%2.4)/2.4;
+        var transfer=atTop?ease(p):1-ease(p);
+        var cargoX=bx+bw/2+transfer*Math.min(48,bw/2-25);
+        var cargoY=atTop?z.y+z.h-32:z.y+32;
+        pallet(cargoX-10,cargoY-10,20,20,false);
+      }
     }
     label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center");
   }
@@ -4564,7 +4591,7 @@
     var ty = atTop ? by + cabH + gap : by;
     var cy2 = atTop ? by : by + th + gap;
     var body = LIVERY[i % LIVERY.length];
-    if (CANVAS_ASSETS_ENABLED && (state.owned.hub || 0) > 0){
+    if (CANVAS_ASSETS_ENABLED){
       var truckH = Math.max(90, bh - 6);
       shadow(cx2 - truckH * 0.14, by + 3, truckH * 0.28, truckH, 5);
       if (drawCanvasAsset("truck", cx2, by + bh/2, truckH * 0.28, truckH,
@@ -5020,7 +5047,7 @@
      numbers with eighteen digits; density here is log-compressed and capped, so it says
      "busy" and never claims to be a pallet count. A readout that disagreed with the
      picture would be worse than no picture.                                             */
-  var FREIGHT_PATH_IDS = ["receive","sorting","racks","packing","staging","ship"];
+  var FREIGHT_PATH_IDS = ["receive","racks","sorting","packing","staging","ship"];
   var FREIGHT_MAX_SPAWN = 3.0;      // units per second at full tilt, enough to reach the cap
   var FREIGHT_STAGE_MS  = 1900;     // dwell per leg; six legs is roughly ten seconds end to end
   var freight = [], freightSpawnAcc = 0, freightLastDepart = 0, freightFloats = [];
@@ -5032,8 +5059,20 @@
   // Where a leg begins and ends. Recomputed per frame is wasteful and per site is not, so
   // it is derived from ZONE, which only changes when the site does.
   function freightWaypoint(i){
-    var z = ZONE[FREIGHT_PATH_IDS[i]];
-    return { x: z.x + z.w * 0.5, y: z.y + z.h * 0.5 };
+    var points=[[536,270],[477,340],[700,278],[735,765],[864,785],[870,838]];
+    var p=points[Math.max(0,Math.min(points.length-1,i))];
+    return {x:p[0],y:p[1]};
+  }
+  function freightRoute(stage){
+    var routes=[
+      [[536,270],[536,340],[477,340]],
+      [[477,340],[536,340],[536,278],[700,278]],
+      state.owned.conveyor>0 ? [[700,278],[700,765],[735,765]] :
+        [[700,278],[794,278],[794,765],[735,765]],
+      [[735,765],[794,765],[864,765],[864,785]],
+      [[864,785],[870,785],[870,838]]
+    ];
+    return routes[Math.max(0,Math.min(routes.length-1,stage))];
   }
 
   // How busy the site looks, 0..1. The first curve divided by twelve, which put a
@@ -5097,14 +5136,8 @@
     var size = 20;
     for (var i = 0; i < freight.length; i++){
       var u = freight[i];
-      var a = freightWaypoint(u.stage), b = freightWaypoint(u.stage + 1);
       var e = u.t * u.t * (3 - 2 * u.t);                 // ease so a leg does not start jerkily
-      var px = a.x + (b.x - a.x) * e;
-      var py = a.y + (b.y - a.y) * e;
-      // Spread across the width of the leg rather than filing along one line.
-      var dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
-      px += (-dy / len) * u.lane * 96;
-      py += ( dx / len) * u.lane * 96;
+      var pos=factoryRoute(freightRoute(u.stage),e),px=pos.x,py=pos.y;
       // Freight in transit has to be distinguishable from freight in a rack, or the whole
       // animation reads as more decoration. A drop shadow lifts it off the floor -- the
       // same device drawTrailer already uses for a moving vehicle -- and a lit edge picks
@@ -5773,6 +5806,7 @@
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
     drawContractBacklog(dt);
     tickFreight(dt);
+    drawFreight();
     drawFactoryWorkers();
     drawIncidents();
     drawParticles(dt);
@@ -5785,6 +5819,7 @@
 
     ctx.restore();
     drawVignette();
+    drawTapFeedback(dt);
     noteFrameTime(performance.now() - t0);
   }
 
