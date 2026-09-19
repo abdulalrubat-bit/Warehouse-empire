@@ -4037,12 +4037,12 @@
   // Functional zones, laid out the way a real distribution centre is: goods in across the
   // top, sortation under it, storage through the middle, goods out across the bottom.
   var ZONE = {
-    receive: { x: 300, y:  30, w: 830, h: 190, label:"RECEIVING" },
-    sorting: { x: 300, y: 250, w: 830, h: 180, label:"SORTING"   },
-    racks:   { x: 300, y: 455, w: 790, h: 340, label:null        },
-    packing: { x:1130, y: 280, w: 190, h: 300, label:"PACKING"   },
-    staging: { x:1350, y: 280, w: 180, h: 300, label:"STAGING"   },
-    ship:    { x: 380, y: 830, w: 700, h: 180, label:"SHIPPING"  }
+    receive: { x:300,y:30,w:830,h:190,label:"RECEIVING" },
+    racks: { x:300,y:280,w:190,h:500,label:"STORAGE" },
+    sorting: { x:610,y:300,w:160,h:430,label:"SORTING" },
+    packing: { x:610,y:735,w:200,h:75,label:"PACKING" },
+    staging: { x:920,y:280,w:180,h:500,label:"RESERVE / DISPATCH" },
+    ship: { x:380,y:830,w:700,h:180,label:"SHIPPING" }
   };
   // How far outside a zone a tap still counts as meaning it, in plan units. A pallet is 34,
   // so this is under two pallets -- enough to close the gutters, not enough to swallow a
@@ -5305,10 +5305,10 @@
   // Incidents land on working ground -- the dock aprons and the cross aisles -- never
   // inside a rack run, where a marker would sit under stock and be untappable.
   var INCIDENT_SPOTS = [
-    { x: 340, y: 240, w: 750, h: 40 },
-    { x: 300, y: 800, w: 780, h: 34 },
-    { x: 1130, y: 240, w: 400, h: 40 },
-    { x: 250, y: 455, w: 40,  h: 340 }
+    { x: 500, y: 260, w: 65, h: 35 },
+    { x: 820, y: 765, w: 75, h: 35 },
+    { x: 780, y: 300, w: 25, h: 450 },
+    { x: 570, y: 730, w: 75, h: 45 }
   ];
   function tickIncidents(dt){
     nextHotspot -= dt;
@@ -5471,6 +5471,197 @@
   };
   window.__tele = Tele;
 
+  // Factory interior: shared coordinates for floor markings, transfer pads and routes.
+  var FACTORY = { left: 300, top: 250, right: 1100, bottom: 810, beltX: 700 };
+  function factoryPad(x,y,title){
+    ro(x-22,y-22,44,44,"#e6c63c",2);
+    if (QUALITY.decals) label(title,x,y+36,8,"#283442","center");
+  }
+  function factoryRack(x,y,seed){
+    shadow(x,y,125,112,4);
+    r(x,y,125,112,"#294d72");
+    for(var row=0;row<3;row++){
+      r(x+5,y+5+row*36,115,28,"#172f48");
+      for(var col=0;col<4;col++){
+        if(slotNoise(seed+col,row,8)<warehouseFillCached)
+          pallet(x+8+col*28,y+8+row*36,23,22,false);
+      }
+      r(x,y+32+row*36,125,4,"#d2a43a");
+    }
+    ro(x,y,125,112,"#1c3955",3);
+  }
+  function factoryBelt(){
+    var x=FACTORY.beltX;
+    if(!(state.owned.conveyor>0)){
+      ctx.save(); ctx.setLineDash([10,8]); ro(x-38,300,76,430,"#b39126",2); ctx.restore();
+      label("CONVEYOR BAY",x,515,10,"#4b5865","center"); return;
+    }
+    shadow(x-28,300,56,430,4);
+    r(x-28,300,56,430,"#193d65"); r(x-20,304,40,422,"#202c38");
+    var shift=(animT*24)%12;
+    for(var y=305+shift;y<725;y+=12){
+      r(x-18,y,36,3,"#526272");
+    }
+    r(x-30,300,5,430,"#336b9d"); r(x+25,300,5,430,"#336b9d");
+    var count=Math.min(8,Math.max(2,Math.ceil(state.owned.conveyor/4)));
+    for(var i=0;i<count;i++){
+      var py=320+((animT*30+i*380/count)%380);
+      conveyorParcel(x,py);
+    }
+    // Scanner bridge is equipment, not part of the unpurchased floor.
+    r(x-39,496,78,42,"#d2d7dc"); ro(x-39,496,78,42,"#264b70",4);
+    r(x-20,505,40,22,"#203747"); r(x-18,516,36,2,"#ec5c51");
+    if(state.owned.sorter>0){
+      for(var k=0;k<2;k++){
+        var sy=410+k*205, side=k?1:-1, sx=x+side*54;
+        ctx.fillStyle="#263e55"; ctx.beginPath(); ctx.arc(sx,sy,15,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle="#e5b829"; ctx.lineWidth=9; ctx.lineCap="round";
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx-side*22,sy-20);
+        ctx.lineTo(x+side*18,sy+Math.sin(animT*1.6+k)*13); ctx.stroke(); ctx.lineCap="butt";
+        ctx.fillStyle="#374e65";ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(sx-side*22,sy-20,4,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  function drawFactoryFloor(){
+    r(280,240,840,580,"#a5adb4"); ro(280,240,840,580,"#254866",12);
+    if(QUALITY.decals){
+      for(var sx=300;sx<1100;sx+=100) for(var sy=260;sy<800;sy+=100)
+        ro(sx,sy,100,100,"rgba(45,58,70,0.12)",1);
+    }
+    // Loading doors interrupt the wall at the two vehicle aisles.
+    r(501,233,70,16,"#a5adb4"); r(829,813,70,16,"#a5adb4");
+    for(var n=0;n<3;n++){
+      factoryRack(322,286+n*157,n);
+      factoryRack(953,286+n*157,n+3);
+    }
+    for(var lane=0;lane<2;lane++){
+      var lx=lane?864:536;
+      ro(lx-37,256,74,548,"#eed348",3);
+      for(var a=0;a<3;a++){
+        var ay=360+a*150, sign=lane?1:-1;
+        ctx.strokeStyle="#eed348";ctx.lineWidth=4;
+        ctx.beginPath();ctx.moveTo(lx,ay-sign*16);ctx.lineTo(lx,ay+sign*16);
+        ctx.moveTo(lx-9,ay+sign*6);ctx.lineTo(lx,ay+sign*16);ctx.lineTo(lx+9,ay+sign*6);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(lx-22,ay+sign*16);ctx.lineTo(lx-22,ay-sign*16);
+        ctx.moveTo(lx-29,ay-sign*6);ctx.lineTo(lx-22,ay-sign*16);ctx.lineTo(lx-15,ay-sign*6);ctx.stroke();
+      }
+    }
+    // Protected pedestrian corridor, with a marked crossing at the packing exit.
+    r(778,270,32,515,"#7f9d8b"); ro(778,270,32,515,"#e8e8dc",2);
+    crossing(816,755,100,26,true);
+    for(var cross=0;cross<3;cross++) crossing(816,328+cross*157,100,24,true);
+    factoryPad(536,270,"INBOUND"); factoryPad(536,735,"PICK FACE");
+    factoryPad(700,278,"FEED"); factoryPad(700,765,"PACK");
+    factoryPad(864,785,"DISPATCH");
+    factoryDetails();
+    factoryBelt();
+    label("STORAGE",385,268,11,"#263a4c","center");
+    label("RESERVE STOCK",1014,268,11,"#263a4c","center");
+    if(state.owned.crane>0){
+      var hy=300+(Math.sin(animT*.3)*.5+.5)*420;
+      r(310,hy,150,9,"#315d85"); r(380,hy-7,24,24,"#e7bd31");
+    }
+  }
+  function factoryDetails(){
+    // Lighting strips and wall services are building fixtures, not purchasable plant.
+    for(var side=0;side<2;side++){
+      var wx=side?1103:285;
+      for(var light=0;light<5;light++){
+        var ly=276+light*107;
+        r(wx,ly,9,51,"#546b7b");r(wx+2,ly+3,5,43,"#e5f0f5");
+      }
+    }
+    // Impact barriers protect rack corners while leaving the approach faces open.
+    for(var n=0;n<3;n++){
+      var y=286+n*157;
+      for(var side2=0;side2<2;side2++){
+        var rx=side2?953:322;
+        r(rx-5,y-6,135,5,"#dec039");r(rx-5,y+113,135,5,"#dec039");
+        if(QUALITY.decals){
+          for(var bolt=0;bolt<5;bolt++){
+            r(rx+bolt*30,y-6,5,5,"#273746");r(rx+bolt*30,y+113,5,5,"#273746");
+          }
+        }
+      }
+    }
+    // Transfer pads on the rack faces make pickup and drop-off destinations explicit.
+    for(var bay=0;bay<3;bay++){
+      factoryPad(477,340+bay*157,"A"+(bay+1));
+      factoryPad(923,340+bay*157,"B"+(bay+1));
+    }
+    if(QUALITY.detail>=.75){
+      r(309,769,15,29,"#b73e39");r(313,773,7,17,"#e87860");
+      r(1064,771,22,20,"#377657");label("+",1075,785,13,"#fff","center");
+      for(var d=0;d<2;d++){
+        var dx=322+d*36;
+        ctx.fillStyle="#45617a";ctx.beginPath();ctx.arc(dx,782,13,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle="#253c51";ctx.lineWidth=3;ctx.stroke();
+        r(dx-7,780,14,3,"#93a4b2");
+      }
+    }
+    if(QUALITY.detail===1){
+      // Fine floor wear remains confined to travel lanes.
+      ctx.strokeStyle="rgba(47,57,66,.16)";ctx.lineWidth=2;
+      for(var wear=0;wear<14;wear++){
+        var wy=300+wear*33;
+        ctx.beginPath();ctx.moveTo(524,wy);ctx.lineTo(524,wy+17);
+        ctx.moveTo(548,wy);ctx.lineTo(548,wy+17);ctx.stroke();
+      }
+    }
+  }
+  // Position on an orthogonal route, with heading obtained from the same segment.
+  function factoryRoute(points,t){
+    var length=0,i;
+    for(i=1;i<points.length;i++) length+=Math.hypot(points[i][0]-points[i-1][0],points[i][1]-points[i-1][1]);
+    var distance=Math.max(0,Math.min(1,t))*length;
+    for(i=1;i<points.length;i++){
+      var a=points[i-1],b=points[i],dx=b[0]-a[0],dy=b[1]-a[1],part=Math.hypot(dx,dy);
+      if(distance<=part || i===points.length-1){
+        var p=part?distance/part:0;return {x:a[0]+dx*p,y:a[1]+dy*p,angle:Math.atan2(dy,dx)+Math.PI/2};
+      }
+      distance-=part;
+    }
+    return {x:points[0][0],y:points[0][1],angle:0};
+  }
+  function factoryJob(points,kind,phase){
+    var cycle=workCycle(phase,.055),pos=factoryRoute(points,cycle.p);
+    var loaded=cycle.u>=.07 && cycle.u<.54;
+    var start=points[0],end=points[points.length-1];
+    if(cycle.u<.07 || cycle.u>=.9) pallet(start[0]-11,start[1]-11,22,22,false);
+    if(cycle.u>=.54 && cycle.u<.9) pallet(end[0]-11,end[1]-11,22,22,false);
+    // Fork vehicles back out after unloading; keeping forks toward the load avoids
+    // a 180-degree cargo snap during the unloading pause.
+    var angle=pos.angle+(kind==="picker" && cycle.dir<0?Math.PI:0);
+    ctx.save();ctx.translate(pos.x,pos.y);ctx.rotate(angle);
+    if(kind==="picker") crew(0,0,-Math.PI/2,loaded,cycle.moving,phase);
+    else forklift(0,0,true,loaded,kind);
+    ctx.restore();
+  }
+  function drawFactoryWorkers(){
+    var forks=ownedPlantCount(state.owned.forklift||0,12,Math.max(1,Math.floor(QUALITY.plant/3)));
+    var reaches=ownedPlantCount(state.owned.reach||0,12,Math.max(1,Math.floor(QUALITY.plant/3)));
+    for(var i=0;i<forks;i++){
+      var y=340+(i%3)*157;
+      factoryJob([[536,270],[536,y],[477,y]],"forklift",i*.27);
+    }
+    for(var j=0;j<reaches;j++){
+      var ry=340+(j%3)*157;
+      factoryJob([[923,ry],[864,ry],[864,785]],"reach",j*.29+.13);
+    }
+    var hands=ownedPlantCount(Math.max(0,(state.owned.picker||0)-STARTING_CREW),14,QUALITY.plant);
+    for(var k=0;k<hands;k++) factoryJob([[923,340+(k%3)*157],[794,340+(k%3)*157],[794,765],[735,765]],"picker",k*.19);
+    // Trolley representation uses a separate removable pallet, rather than the baked-in
+    // loaded worker sprite, so the empty return is truthful.
+    var trolleys=ownedPlantCount(state.owned.trolley||0,40,3);
+    for(var t=0;t<trolleys;t++){
+      var cycle=workCycle(t*.31,.06),p=factoryRoute([[590,278],[650,278]],cycle.p);
+      crew(p.x,p.y,cycle.dir>0?0:Math.PI,false,cycle.moving,t);
+      r(p.x-14,p.y+10,28,16,"#dbb52e");
+      if(cycle.u>=.07&&cycle.u<.54) pallet(p.x-11,p.y+6,22,20,false);
+    }
+  }
+
   /* ---- frame ---------------------------------------------------------------- */
   var animT = 0, lastFrame = 0, lastSitePainted = null;
   function frame(ts){
@@ -5504,16 +5695,11 @@
     drawNetwork();
     drawCorp();
     drawDockRow(ZONE.receive, RECV_DOCKS, "R", true);
-    drawSorting();
-    drawMarkings();
-    drawStorage();
-    zoneFloor(ZONE.packing); stagedPallets(ZONE.packing, 2);
-    zoneFloor(ZONE.staging); stagedPallets(ZONE.staging, 3);
+    drawFactoryFloor();
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
     drawContractBacklog(dt);
     tickFreight(dt);
-    drawFreight();
-    drawFleet();
+    drawFactoryWorkers();
     drawIncidents();
     drawParticles(dt);
     drawFreightFloats();
