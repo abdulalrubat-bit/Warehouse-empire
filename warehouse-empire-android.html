@@ -5173,9 +5173,18 @@
 
     // Each purchased vehicle class gets its own lane and sprite. Cosine controls both
     // position and facing, so units turn naturally at the ends instead of snapping.
-    var forkN = ownedPlantCount(state.owned.forklift || 0, 8, QUALITY.plant);
-    var reachN = ownedPlantCount(state.owned.reach || 0, 8, QUALITY.plant);
-    var totalPlant = forkN + reachN;
+    var forkOwned = state.owned.forklift || 0, reachOwned = state.owned.reach || 0;
+    var wantedFork = ownedPlantCount(forkOwned, 8, 999);
+    var wantedReach = ownedPlantCount(reachOwned, 8, 999);
+    var wantedPlant = wantedFork + wantedReach;
+    var totalPlant = Math.min(QUALITY.plant, wantedPlant);
+    var forkN = 0, reachN = 0;
+    if (wantedFork > 0 && wantedReach > 0){
+      forkN = Math.max(1, Math.round(totalPlant * wantedFork / wantedPlant));
+      reachN = Math.max(1, totalPlant - forkN);
+      if (forkN + reachN > totalPlant) forkN = Math.max(1, totalPlant - reachN);
+    } else if (wantedFork > 0) forkN = totalPlant;
+    else if (wantedReach > 0) reachN = totalPlant;
     for (var i = 0; i < totalPlant; i++){
       var isReach = i >= forkN;
       var phase = animT * (isReach ? 0.34 : 0.42) + i * 1.9;
