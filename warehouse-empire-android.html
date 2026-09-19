@@ -442,13 +442,6 @@
       <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
     </div>
 
-    <div class="sitepick" id="sitePick" hidden>
-      <div class="sphead">
-        <b>Commission your next site</b>
-        <span>Your old site keeps earning in the background. Pick what you run next.</span>
-      </div>
-      <div class="splist" id="siteList"></div>
-    </div>
   </section>
 
   <section id="tab-equip" hidden>
@@ -627,6 +620,14 @@
       <div class="modal-sub" style="margin-bottom:12px;">Enjoying Warehouse Empire? A rating helps other people find it. Entirely up to you &mdash; the bonus above is yours either way.</div>
       <button class="modal-btn" id="btnReviewNow">RATE ON GOOGLE PLAY</button>
       <button class="renamebtn" id="btnReviewLater" style="margin-top:12px;">No thanks</button>
+    </div>
+  </div>
+
+  <div id="modalSite" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title">Commission Your Next Site</div>
+      <div class="modal-sub">Your old site keeps earning in the background. What you pick sets the costs, output, tap value and wages of everything you build next.</div>
+      <div class="splist" id="siteList"></div>
     </div>
   </div>
 
@@ -1630,7 +1631,7 @@
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
     incidentsCleared: 0, priorityDone: 0, incidentPalletsToday: 0, incidentPalletDay: -1,
-    dispatchesToday: 0, dispatchDay: -1,
+    dispatchesToday: 0, dispatchDay: -1, awaitingSite: false,
     tree: {}, repSpent: 0,
     changeoverUntil: 0, changeoverSpan: 0,
     expediteReadyAt: 0,
@@ -2080,7 +2081,7 @@
             state.money += earned; state.total += earned; state.lifetime += earned;
             Tele.log("offline_claim", { reward:"standard", seconds:Math.round(secs), amount:Math.round(earned) });
             document.getElementById("modalOffline").hidden = true;
-            sfx("buy"); render(); saveGame(); showPendingDaily(); maybeAskNotifications("offline");
+            sfx("buy"); render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
           });
 
           newDouble.addEventListener("click", function(){
@@ -2091,7 +2092,7 @@
               Tele.log("offline_claim", { reward:"double", seconds:Math.round(secs), amount:Math.round(doubled) });
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
-              render(); saveGame(); showPendingDaily(); maybeAskNotifications("offline");
+              render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
             }, function(){
               newDouble.disabled = false;
             });
@@ -2103,6 +2104,7 @@
       // which resolves before startGame does, so a returning player's calendar would have
       // been tested against a gate that had not been read yet.
       openDailyGate();
+      openSitePicker();          // before the calendar, which defers to it
       checkDailyLoginPopup();
     }).catch(function(e){ console.error(e); });
   }
@@ -2445,11 +2447,13 @@
     // Both modals share a z-index, so showing this one under the offline modal would
     // strand it. Wait for the offline claim to close first.
     if (!document.getElementById("modalOffline").hidden){ dailyPending = true; return; }
+    if (!document.getElementById("modalSite").hidden){ dailyPending = true; return; }
     document.getElementById("modalDaily").hidden = false;
   }
 
   function showPendingDaily(){
     if (!dailyPending) return;
+    if (!document.getElementById("modalSite").hidden) return;     // still owed a decision
     dailyPending = false;
     document.getElementById("modalDaily").hidden = false;
   }
@@ -2622,8 +2626,7 @@
 
   function nextProgressTarget(projectedMoney){
     var cash = typeof projectedMoney === "number" ? projectedMoney : state.money;
-    var picker = document.getElementById("sitePick");
-    if (picker && !picker.hidden)
+    if (state.awaitingSite)
       return { title:"Commission your next site", tab:"floor", hint:"Choose the next site your Network will support." };
     if (pendingRep() >= 1)
       return { title:"Sell this site for " + fmt(pendingRep()) + " REP", tab:"office", hint:"Your next permanent gain is ready in the <b>OFFICE</b>." };
@@ -2745,7 +2748,12 @@
 
   function renderObjective(){
     var cur = null, idx = 0;
-    for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
+    // The opening five are onboarding, and onboarding is over the moment you have sold a
+    // business. Selling clears the fleet, so leaving the sequence live told a veteran of
+    // four sales to go and hire a picker -- and, worse, outranked the prompt to commission
+    // the replacement site, which is the one thing they actually had to do next.
+    if (!(state.prestiges > 0))
+      for (var i = 0; i < OBJECTIVES.length; i++){ if (!OBJECTIVES[i].done()){ cur = OBJECTIVES[i]; idx = i + 1; break; } }
     var card = document.getElementById("objective");
     reportProgress(cur ? idx - 1 : OBJECTIVES.length);
     var onboarding = !!cur;
@@ -3000,6 +3008,15 @@
     });
   }
 
+  // Never over the offline claim: they share a z-index, and the claim is a reward while
+  // this is a decision, so the reward goes first and this follows it.
+  function openSitePicker(){
+    if (!state.awaitingSite) return;
+    if (!document.getElementById("modalOffline").hidden) return;
+    buildSiteList();
+    document.getElementById("modalSite").hidden = false;
+  }
+
   function chooseSite(id){
     for (var i = 0; i < SITES.length; i++){
       if (SITES[i].id === id && !siteUnlocked(SITES[i])){
@@ -3008,8 +3025,10 @@
       }
     }
     state.site = id;
-    var sp = document.getElementById("sitePick"); if(sp) sp.hidden = true;
+    state.awaitingSite = false;
+    document.getElementById("modalSite").hidden = true;
     sfx("upgrade"); showToast("New Site Commissioned: <b>" + currentSite().name + "</b>.");
+    showPendingDaily();
     render(); saveGame();
   }
 
@@ -3448,7 +3467,8 @@
 
     sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
 
-    buildSiteList(); document.getElementById("sitePick").hidden = false;
+    state.awaitingSite = true;
+    openSitePicker();
     switchTab("floor"); render(); saveGame();
   });
 
