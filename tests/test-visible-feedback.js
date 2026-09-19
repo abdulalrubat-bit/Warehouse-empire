@@ -1,6 +1,6 @@
 // Exercise the real button and inspect drawing calls and screenshots, not just pool size.
 const fs=require('fs'),path=require('path');
-const P=require('./paths.js'),B=require('./browser.js');
+const P=require('./paths.js'),B=require("./browser.js");
 const source=fs.readFileSync(P.HTML,'utf8');
 const assets=JSON.parse(source.match(/var CANVAS_ASSET_SRC = (\{[^\n]+\});/)[1]);
 const out=path.resolve(__dirname,'visual-evidence');fs.mkdirSync(out,{recursive:true});
