@@ -3576,7 +3576,7 @@
   var tapFeedback = [];
   function pickPulse(value){
     // Player feedback must not disappear when ambient freight is disabled or full.
-    if (tapFeedback.length >= 6) tapFeedback.shift();
+    if (tapFeedback.length) tapFeedback.length = 0;
     tapFeedback.push({age:0, text:"PICKED +" + money(value || 0)});
     spawnFreight(true);
     var w = freightWaypoint(0);
@@ -3592,15 +3592,12 @@
     var y=Math.max(45,Math.min(CH-65,screen.y));
     for(var i=tapFeedback.length-1;i>=0;i--){
       var f=tapFeedback[i];f.age+=dt;
-      if(f.age>=1.1){tapFeedback.splice(i,1);continue;}
-      ctx.save();ctx.globalAlpha=Math.min(1,(1.1-f.age)*3);
-      var fy=y-f.age*22-i*4;
-      ctx.strokeStyle="#ffe89a";ctx.lineWidth=2;
-      ctx.beginPath();ctx.arc(x,fy,16+f.age*22,0,Math.PI*2);ctx.stroke();
-      pallet(x-10,fy-10,20,18,false);
-      r(x-82,fy+26,164,23,"#192e41");
-      ctx.font="bold 11px sans-serif";ctx.textAlign="center";ctx.fillStyle="#ffe89a";
-      ctx.fillText(f.text,x,fy+42);ctx.restore();
+      if(f.age>=0.55){tapFeedback.splice(i,1);continue;}
+      ctx.save();ctx.globalAlpha=0.8*Math.min(1,(0.55-f.age)*5);
+      var fy=y-8-f.age*12;
+      ctx.font="9px sans-serif";ctx.textAlign="center";ctx.fillStyle="#ffe89a";
+      ctx.shadowColor="#192e41";ctx.shadowBlur=2;
+      ctx.fillText(f.text,x,fy);ctx.restore();
     }
   }
 
