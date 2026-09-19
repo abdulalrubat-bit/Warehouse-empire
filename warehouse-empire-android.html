@@ -5478,17 +5478,51 @@
     if (QUALITY.decals) label(title,x,y+36,8,"#283442","center");
   }
   function factoryRack(x,y,seed){
+    if(state.site==="port"){
+      ro(x,y,125,112,"#e3c542",2);
+      for(var cr=0;cr<3;cr++){
+        if(slotNoise(seed,cr,8)>=warehouseFillCached) continue;
+        var cy=y+cr*37;
+        shadow(x+4,cy+3,116,29,4);r(x+4,cy+3,116,29,BOX_LIVERY[(seed+cr)%BOX_LIVERY.length]);
+        ro(x+4,cy+3,116,29,"#263b4b",2);
+        if(QUALITY.decals) for(var rib=0;rib<12;rib++) r(x+10+rib*9,cy+7,2,20,"rgba(0,0,0,.22)");
+      }
+      return;
+    }
+    if(state.site==="hazmat"){
+      r(x,y,125,112,"#7d878e");ro(x,y,125,112,"#e0c439",5);
+      ro(x+7,y+7,111,98,"#455566",3);
+      for(var dr=0;dr<3;dr++)for(var dc=0;dc<4;dc++){
+        if(slotNoise(seed+dc,dr,8)>=warehouseFillCached) continue;
+        var dx=x+21+dc*28,dy=y+20+dr*35;
+        ctx.fillStyle="#304e67";ctx.beginPath();ctx.arc(dx,dy,11,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle="#172e43";ctx.lineWidth=2;ctx.stroke();
+        r(dx-7,dy-2,14,4,"#d8b844");
+      }
+      placard(x+62,y+106);return;
+    }
     shadow(x,y,125,112,4);
     r(x,y,125,112,"#294d72");
-    for(var row=0;row<3;row++){
-      r(x+5,y+5+row*36,115,28,"#172f48");
-      for(var col=0;col<4;col++){
+    var rows=QUALITY.detail>=.75?4:3,cols=QUALITY.detail===1?6:4;
+    var rh=108/rows,cw=112/cols;
+    for(var row=0;row<rows;row++){
+      r(x+5,y+3+row*rh,115,rh-6,"#172f48");
+      for(var col=0;col<cols;col++){
         if(slotNoise(seed+col,row,8)<warehouseFillCached)
-          pallet(x+8+col*28,y+8+row*36,23,22,false);
+          pallet(x+8+col*cw,y+5+row*rh,cw-3,rh-9,false);
       }
-      r(x,y+32+row*36,125,4,"#d2a43a");
+      r(x,y+rh-2+row*rh,125,4,"#d2a43a");
     }
     ro(x,y,125,112,"#1c3955",3);
+    if(state.site==="cold"){
+      ro(x-3,y-3,131,118,"#d9e9ef",6);
+      r(x+36,y-8,52,14,"#c9d6dc");
+      for(var fan=0;fan<2;fan++){
+        ctx.strokeStyle="#567689";ctx.lineWidth=2;ctx.beginPath();
+        ctx.arc(x+49+fan*24,y-1,5,0,Math.PI*2);ctx.stroke();
+      }
+      label("-22°C",x+62,y+110,9,"#224f6c","center");
+    }
   }
   function factoryBelt(){
     var x=FACTORY.beltX;
