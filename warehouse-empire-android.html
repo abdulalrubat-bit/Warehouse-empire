@@ -5111,9 +5111,17 @@
   }
 
   /* ---- moving plant --------------------------------------------------------- */
-  function forklift(x, y, up, carrying, kind){
+  function workCycle(offset, speed){
+    var u = (animT * speed + offset) % 1;
+    if (u < 0.14) return { u:u, p:0, dir:1, moving:false };
+    if (u < 0.46) return { u:u, p:ease((u - 0.14) / 0.32), dir:1, moving:true };
+    if (u < 0.60) return { u:u, p:1, dir:-1, moving:false };
+    return { u:u, p:1 - ease((u - 0.60) / 0.40), dir:-1, moving:true };
+  }
+  function forklift(x, y, facingUp, carrying, kind){
     var asset = kind === "reach" ? "reach" : "forklift";
     var w = asset === "reach" ? 29 : 32, h = asset === "reach" ? 74 : 76;
+    var angle = facingUp ? 0 : Math.PI;
     if (CANVAS_ASSETS_ENABLED){
       shadow(x - w/2, y - h/2 + 4, w, h, 4);
       ctx.save();
@@ -5124,7 +5132,13 @@
       ctx.ellipse(x + w * 0.28, y + 4, 2.2, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-      if (drawCanvasAsset(asset, x, y, w, h, up ? 0 : Math.PI, 1)) return;
+      if (drawCanvasAsset(asset, x, y, w, h, angle, 1)){
+        if (carrying){
+          var cargoY = y + (facingUp ? -h * 0.52 : h * 0.52) + Math.sin(animT * 5 + x) * 1.2;
+          pallet(x - 11, cargoY - 9, 22, 18, false);
+        }
+        return;
+      }
     }
     ctx.save();
     var scale = Math.min(1.65, Math.max(1, 0.35/cam.z));
@@ -5132,9 +5146,9 @@
     r(x-12, y-16, 24, 32, C.fork);
     ro(x-12, y-16, 24, 32, C.forkDark, 1.5);
     r(x-8, y-10, 16, 12, "#2b3037");
-    var fy = up ? y - 28 : y + 16;
+    var fy = facingUp ? y - 28 : y + 16;
     r(x-9, fy, 6, 12, "#4a4f57"); r(x+3, fy, 6, 12, "#4a4f57");
-    if (carrying) pallet(x-11, up ? y-30 : y+14, 22, 18, false);
+    if (carrying) pallet(x-11, facingUp ? y-30 : y+14, 22, 18, false);
     ro(x-12,y-16,24,32,"#ffe29a",1.5);
     ctx.restore();
   }
@@ -5152,17 +5166,23 @@
       ctx.restore();
       if (drawCanvasAsset("worker", x, y, w, h, angle, 1)) return;
     }
-    forklift(x, y, Math.cos(angle) >= 0, true, "forklift");
+    forklift(x, y, angle === Math.PI, true, "forklift");
   }
-  // Staff use the lightweight plan marker; the supplied pallet-jack artwork represents
-  // purchased trolleys and is drawn separately on the receiving apron.
-  function crew(x, y){
+  // Bought pickers carry parcels from the pick face toward packing and return empty.
+  function crew(x, y, angle, carrying, moving, seed){
     ctx.save();
     var scale = Math.min(2, Math.max(1, 0.45/cam.z));
-    ctx.translate(x,y); ctx.scale(scale,scale); ctx.translate(-x,-y);
-    r(x - 4, y - 6, 8, 12, C.fork);
-    r(x - 3, y - 8, 6, 5, "#2b3037");
-    ro(x-4,y-6,8,12,"#ffe29a",1);
+    var bob = moving ? Math.sin(animT * 8 + seed) * 1.2 : 0;
+    ctx.translate(x, y + bob); ctx.rotate(angle); ctx.scale(scale,scale);
+    r(-4, -6, 8, 12, C.fork);
+    r(-3, -8, 6, 5, "#2b3037");
+    r(-5, 5, 3, 5, "#26313a"); r(2, 5, 3, 5, "#26313a");
+    if (carrying){
+      r(6, -5, 9, 10, C.box);
+      ro(6, -5, 9, 10, "rgba(0,0,0,0.45)", 1);
+      r(9, -5, 2, 10, "rgba(255,235,170,0.48)");
+    }
+    ro(-4,-6,8,12,"#ffe29a",1);
     ctx.restore();
   }
   function ownedPlantCount(owned, divisor, cap){
@@ -5171,8 +5191,8 @@
   function drawFleet(){
     var z = ZONE.racks, lanes = siteLanes();
 
-    // Each purchased vehicle class gets its own lane and sprite. Cosine controls both
-    // position and facing, so units turn naturally at the ends instead of snapping.
+    // Purchased forklifts now run an actual receive-store-return cycle. They pause while
+    // loading at receiving, carry the pallet into storage, pause to unload, then return.
     var forkOwned = state.owned.forklift || 0, reachOwned = state.owned.reach || 0;
     var wantedFork = ownedPlantCount(forkOwned, 8, 999);
     var wantedReach = ownedPlantCount(reachOwned, 8, 999);
@@ -5185,32 +5205,45 @@
       if (forkN + reachN > totalPlant) forkN = Math.max(1, totalPlant - reachN);
     } else if (wantedFork > 0) forkN = totalPlant;
     else if (wantedReach > 0) reachN = totalPlant;
+
     for (var i = 0; i < totalPlant; i++){
       var isReach = i >= forkN;
-      var phase = animT * (isReach ? 0.34 : 0.42) + i * 1.9;
+      var localIndex = isReach ? i - forkN : i;
+      var cycle = workCycle(i * 0.17, isReach ? 0.075 : 0.09);
       var lx = lanes[i % lanes.length] + (isReach ? 8 : -8);
-      var ly = z.y + 18 + (Math.sin(phase) * 0.5 + 0.5) * (z.h - 36);
-      forklift(lx, ly, Math.cos(phase) >= 0, !isReach, isReach ? "reach" : "forklift");
+      var startY = isReach ? z.y + 34 : ZONE.receive.y + ZONE.receive.h + 22;
+      var endY = isReach ? z.y + z.h - 34 : z.y + 125 + (localIndex % 3) * 62;
+      var ly = startY + (endY - startY) * cycle.p;
+      var carrying = isReach
+        ? (cycle.u >= 0.52 || cycle.u < 0.07)
+        : (cycle.u >= 0.07 && cycle.u < 0.54);
+      forklift(lx, ly, cycle.dir < 0, carrying, isReach ? "reach" : "forklift");
     }
 
-    // Purchased pallet trolleys shuttle smoothly across receiving and turn at each end.
+    // Trolley workers pause at receiving, move a pallet to sorting, unload, then return.
     var trolleyN = ownedPlantCount(state.owned.trolley || 0, 40, 6);
-    var trolleySpan = Math.max(1, ZONE.receive.w - 150);
     for (var j = 0; j < trolleyN; j++){
-      var trolleyPhase = animT * 0.48 + j * 2.2;
-      var yx = ZONE.receive.x + 75 + (Math.sin(trolleyPhase) * 0.5 + 0.5) * trolleySpan;
-      var trolleyAngle = Math.cos(trolleyPhase) >= 0 ? Math.PI/2 : -Math.PI/2;
-      palletWorker(yx, ZONE.receive.y + ZONE.receive.h + 34, trolleyAngle);
+      var trolleyCycle = workCycle(j * 0.29, 0.10);
+      var routeX = ZONE.receive.x + 100 + j * ((ZONE.receive.w - 200) / Math.max(1, trolleyN - 1 || 1));
+      var trolleyStart = ZONE.receive.y + ZONE.receive.h - 28;
+      var trolleyEnd = ZONE.sorting.y + ZONE.sorting.h/2;
+      var trolleyY = trolleyStart + (trolleyEnd - trolleyStart) * trolleyCycle.p;
+      // This source artwork faces toward its pallet, which is down in its native frame.
+      palletWorker(routeX, trolleyY, trolleyCycle.dir > 0 ? 0 : Math.PI);
     }
 
-    // The first picker is the site's starting crew; extra markers reflect bought staff.
+    // Extra purchased pickers walk boxes from the lower pick face to packing and return.
     var boughtPickers = Math.max(0, (state.owned.picker || 0) - STARTING_CREW);
     var hands = ownedPlantCount(boughtPickers, 14, QUALITY.plant + 4);
     for (var k = 0; k < hands; k++){
-      var pickerPhase = animT * 0.28 + k * 2.3;
-      var kx = lanes[k % lanes.length] + Math.sin(animT * 0.9 + k * 2.3) * 9;
-      var ky = z.y + 20 + (Math.sin(pickerPhase) * 0.5 + 0.5) * (z.h - 40);
-      crew(kx, ky);
+      var pickerCycle = workCycle(k * 0.13, 0.12);
+      var pickerStartX = z.x + z.w - 42 - (k % 3) * 26;
+      var pickerEndX = ZONE.packing.x + 24;
+      var pickerX = pickerStartX + (pickerEndX - pickerStartX) * pickerCycle.p;
+      var pickerY = z.y + 32 + (k % 5) * ((z.h - 64) / 4);
+      var pickerCarrying = pickerCycle.u >= 0.07 && pickerCycle.u < 0.54;
+      crew(pickerX, pickerY, pickerCycle.dir > 0 ? 0 : Math.PI,
+           pickerCarrying, pickerCycle.moving, k);
     }
 
     // Sorting robots hold station on the belts and swing their arms.
@@ -5240,8 +5273,8 @@
     for (var g = 0; g < agvs; g++){
       var laneY = (g % 2) ? z.y + z.h + 40 : z.y - 26;
       var routeW = ZONE.staging.x + ZONE.staging.w - z.x + 40;
-      var hubPhase = animT * 0.25 + g * 1.7;
-      var gx2 = z.x - 40 + (Math.sin(hubPhase) * 0.5 + 0.5) * routeW;
+      var hubCycle = workCycle(g * 0.19, 0.11);
+      var gx2 = z.x - 40 + hubCycle.p * routeW;
       r(gx2 - 11, laneY - 7, 22, 14, hx(C.boxAlt, 1.1));
       ro(gx2 - 11, laneY - 7, 22, 14, "rgba(0,0,0,0.45)", 1.5);
       if (QUALITY.decals) r(gx2 - 3, laneY - 3, 6, 6, C.line);
