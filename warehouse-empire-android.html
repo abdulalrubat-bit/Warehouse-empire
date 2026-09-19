@@ -5119,6 +5119,10 @@
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.18)";
       ctx.beginPath(); ctx.ellipse(x, y + 4, w * 0.54, h * 0.45, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x - w * 0.28, y + 4, 2.2, 5.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + w * 0.28, y + 4, 2.2, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       if (drawCanvasAsset(asset, x, y, w, h, up ? 0 : Math.PI, 1)) return;
     }
@@ -5141,6 +5145,10 @@
       ctx.save();
       ctx.fillStyle = "rgba(0,0,0,0.18)";
       ctx.beginPath(); ctx.ellipse(x, y + 4, w * 0.52, h * 0.45, angle, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x - w * 0.25, y + 4, 2.2, 5, angle, 0, Math.PI * 2);
+      ctx.ellipse(x + w * 0.25, y + 4, 2.2, 5, angle, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       if (drawCanvasAsset("worker", x, y, w, h, angle, 1)) return;
     }
