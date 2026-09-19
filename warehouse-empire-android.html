@@ -4829,9 +4829,35 @@
     var conveyorOwned = state.owned.conveyor || 0;
     if (conveyorOwned <= 0) return;
     if (CANVAS_ASSETS_ENABLED){
-      var conveyorSize = Math.min(z.w - 44, z.h - 28);
-      if (drawCanvasAsset("conveyor", z.x + z.w/2, z.y + z.h/2 + 4,
-                          conveyorSize, conveyorSize, 0, 0.96)) return;
+      // Keep the cross compact like the floor-plan reference, then animate live parcels
+      // along each arm so it reads as working machinery rather than a pasted image.
+      var conveyorSize = Math.min(168, z.w - 80, z.h - 30);
+      var conveyorX = z.x + z.w/2, conveyorY = z.y + z.h/2 + 4;
+      if (drawCanvasAsset("conveyor", conveyorX, conveyorY,
+                          conveyorSize, conveyorSize, 0, 0.96)){
+        var cycle = (animT * 0.42) % 1;
+        var outer = conveyorSize * 0.40, inner = conveyorSize * 0.13;
+        var inbound = outer + (inner - outer) * cycle;
+        var outbound = inner + (outer - inner) * cycle;
+        function parcel(px, py){
+          shadow(px - 8, py - 8, 16, 16, 2);
+          r(px - 8, py - 8, 16, 16, C.box);
+          ro(px - 8, py - 8, 16, 16, "rgba(0,0,0,0.40)", 1);
+          r(px - 2, py - 8, 4, 16, "rgba(255,235,170,0.48)");
+        }
+        parcel(conveyorX - inbound, conveyorY);
+        parcel(conveyorX + outbound, conveyorY);
+        parcel(conveyorX, conveyorY - outbound);
+        parcel(conveyorX, conveyorY + inbound);
+        if (QUALITY.decals){
+          ctx.save();
+          ctx.globalAlpha = 0.22 + Math.abs(Math.sin(animT * 3.6)) * 0.28;
+          ctx.strokeStyle = C.line; ctx.lineWidth = 3;
+          ctx.strokeRect(conveyorX - 20, conveyorY - 20, 40, 40);
+          ctx.restore();
+        }
+        return;
+      }
     }
     var lines = Math.max(1, Math.min(3, 1 + Math.floor(conveyorOwned / 10)));
     for (var l = 0; l < lines; l++){
