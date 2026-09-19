@@ -48,3 +48,12 @@ jobs:
       - name: Run the suite
         working-directory: tests
         run: node run.js
+
+      - name: Upload visual regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvas-visual-evidence
+          path: tests/visual-evidence/
+          if-no-files-found: warn
+          retention-days: 14
