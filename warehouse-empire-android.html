@@ -4041,7 +4041,7 @@
     racks: { x:300,y:280,w:190,h:500,label:"STORAGE" },
     sorting: { x:610,y:300,w:160,h:430,label:"SORTING" },
     packing: { x:610,y:735,w:200,h:75,label:"PACKING" },
-    staging: { x:920,y:280,w:180,h:500,label:"RESERVE / DISPATCH" },
+    staging: { x:1130,y:280,w:400,h:300,label:"FREIGHT STAGING" },
     ship: { x:380,y:830,w:700,h:180,label:"SHIPPING" }
   };
   // How far outside a zone a tap still counts as meaning it, in plan units. A pallet is 34,
@@ -4431,6 +4431,10 @@
 
   /* ---- the plan ------------------------------------------------------------ */
   function drawGround(){
+    // One industrial material palette for the complete site, including its annexes.
+    C.ground="#919ba4"; C.slab="#adb5bc"; C.kerb="#254866";
+    C.bldg="#b9c1c8"; C.bldgLo="#67839c"; C.bldgInk="#294d72";
+    C.line="#e8c93e"; C.lineSoft="#d1b53c"; C.ink="#233b50"; C.inkDim="#354f63";
     r(SITE.x-300, SITE.y-300, SITE.w+600, SITE.h+600, C.grass);
     r(SITE.x-160, SITE.y-160, SITE.w+320, SITE.h+320, C.road);
     r(SITE.x, SITE.y, SITE.w, SITE.h, C.ground);
@@ -4479,6 +4483,10 @@
     }
   }
   function pallet(px, py, pw, ph, alt){
+    // Visible timber runners distinguish a palletised load from a loose cardboard box.
+    r(px-2,py+ph-1,pw+4,5,"#805630");
+    r(px,py+ph,pw*.2,6,"#bd8b50");r(px+pw*.4,py+ph,pw*.2,6,"#bd8b50");
+    r(px+pw*.8,py+ph,pw*.2,6,"#bd8b50");
     r(px, py, pw, ph, alt ? C.boxAlt : C.box);
     ro(px, py, pw, ph, alt ? C.boxAltLo : C.boxLo, 1.5);
     if (cam.z < 0.45) ro(px, py, pw, ph, alt ? "#9bd9ff" : "#f2cf94", 0.7/cam.z);
@@ -4894,13 +4902,17 @@
   // An unbuilt plot is a prepared pad behind hoarding, so it reads as "you can build
   // here" rather than as a hole in the site.
   function unbuiltPad(p){
-    r(p.gx, p.gy, p.gw, p.gd, hx(C.slab, 0.92));
-    if (QUALITY.decals) hatch(p.gx+8, p.gy+8, p.gw-16, p.gd-16, "rgba(" + hexRGB(C.line) + ",0.14)", 22);
+    r(p.gx, p.gy, p.gw, p.gd, "#a5adb4");
+    ro(p.gx,p.gy,p.gw,p.gd,"#294d72",6);
+    if (QUALITY.decals){
+      for(var gy=p.gy+60;gy<p.gy+p.gd;gy+=60) r(p.gx+5,gy,p.gw-10,1,"#939da6");
+      r(p.gx+10,p.gy+10,5,35,"#edf3f6");r(p.gx+p.gw-15,p.gy+10,5,35,"#edf3f6");
+    }
     ctx.save(); ctx.setLineDash([12,9]);
     ro(p.gx+4, p.gy+4, p.gw-8, p.gd-8, C.lineSoft, 2);
     ctx.restore();
     label(p.name, p.gx + p.gw/2, p.gy + p.gd/2 - 9, 11, C.inkDim, "center");
-    label("VACANT PLOT", p.gx + p.gw/2, p.gy + p.gd/2 + 9, 9, C.inkDim, "center");
+    label("RESERVED FOR EXPANSION", p.gx + p.gw/2, p.gy + p.gd/2 + 9, 8, C.inkDim, "center");
   }
   // Days you check in buy down the next level, and that has to be visible on the site or
   // the streak is just a number in a panel: the plot gets hoarding and a rising deck.
@@ -5473,6 +5485,33 @@
 
   // Factory interior: shared coordinates for floor markings, transfer pads and routes.
   var FACTORY = { left: 300, top: 250, right: 1100, bottom: 810, beltX: 700 };
+  function drawFactoryAnnex(){
+    // Restore the floor inventory lost when the old staging renderer was replaced.
+    // Operational stock is illustrative; the separate reserve mirrors the Pallets currency.
+    r(1130,280,400,300,"#a5adb4");ro(1130,280,400,300,"#254866",8);
+    label("FREIGHT STAGING",1330,305,13,"#233b50","center");
+    r(1143,328,374,3,"#e5c43b");r(1143,465,374,3,"#e5c43b");
+    var active=0;GENS.forEach(function(g){active+=state.owned[g.id]||0;});
+    var stock=active>0?Math.max(1,Math.min(10,Math.ceil(warehouseFillCached*10))):0;
+    for(var bay=0;bay<10;bay++){
+      var x=1152+(bay%5)*72,y=342+Math.floor(bay/5)*65;
+      ro(x-4,y-4,54,53,"#d4b536",2);
+      if(bay<stock) pallet(x,y,44,36,bay%4===0);
+    }
+    label("PALLET RESERVE · "+Math.floor(state.pallets||0),1330,490,11,"#233b50","center");
+    var reserve=Math.min(8,Math.max(0,Math.floor(state.pallets||0)));
+    for(var p=0;p<8;p++){
+      var px=1150+p*46;
+      ro(px-3,507,39,48,"#d4b536",1);
+      if(p<reserve) pallet(px,514,31,30,false);
+    }
+    // Keep a clear connection between the hall, annex and dispatch apron.
+    r(1124,477,13,40,"#a5adb4");
+    crossing(1087,484,57,22,true);
+    r(1118,587,421,25,"#829d8b");
+    ro(1118,587,421,25,"#e0e7e5",2);
+    label("KEEP CLEAR",1325,605,10,"#294557","center");
+  }
   function factoryPad(x,y,title){
     ro(x-22,y-22,44,44,"#e6c63c",2);
     if (QUALITY.decals) label(title,x,y+36,8,"#283442","center");
@@ -5730,6 +5769,7 @@
     drawCorp();
     drawDockRow(ZONE.receive, RECV_DOCKS, "R", true);
     drawFactoryFloor();
+    drawFactoryAnnex();
     drawDockRow(ZONE.ship, SHIP_DOCKS, "S", false);
     drawContractBacklog(dt);
     tickFreight(dt);
