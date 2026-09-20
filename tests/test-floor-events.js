@@ -14,7 +14,7 @@ const ok=[],bad=[],chk=(n,c)=>{(c?ok:bad).push(n);};
  await p.evaluate(()=>{
    document.querySelectorAll('.modal-screen').forEach(e=>e.hidden=true);
    Object.keys(state.owned).forEach(k=>state.owned[k]=0);
-   state.automationTrialUsed=1;state.crisisNextAt=1e9;state.shipment_counter=49;state.money=0;state.total=0;
+   state.contractsDone=1;state.automationTrialUsed=1;state.crisisNextAt=1e9;state.shipment_counter=49;state.money=0;state.total=0;
    document.getElementById('qLow').click();window.render();
  });
  await p.locator('#pickBtn').tap();
