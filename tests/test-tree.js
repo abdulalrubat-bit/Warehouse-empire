@@ -189,7 +189,7 @@ const node = id => $("treeList").children.find(b => new RegExp(TREE.find(n=>n.id
   chk("Working Float is measured before the fleet is cleared",
       /var floatCash = hasNode\("float"\)[\s\S]{0,200}state\.money = floatCash/.test(HTML));
   chk("Full Automation picks through the same path a finger does",
-      /if \(hasNode\("singular"\)\)[\s\S]{0,140}doPick\(\)/.test(HTML));
+      /if \(hasNode\("singular"\) \|\| automationTrialActive\(\)\)[\s\S]{0,140}doPick\(\)/.test(HTML));
 }
 
 // ------------------------------------------------------------------ the Network ------
