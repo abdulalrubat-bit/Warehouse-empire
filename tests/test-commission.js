@@ -118,7 +118,6 @@ chk("and the calendar it was holding back comes through", $("modalDaily").hidden
 
 console.log("PASS:"); ok.forEach(x=>console.log("  + " + x));
 if (bad.length){ console.log("FAIL:"); bad.forEach(x=>console.log("  - " + x)); }
-console.log(`
-${ok.length} passed, ${bad.length} failed`);
+console.log(`\n${ok.length} passed, ${bad.length} failed`);
 process.exit(bad.length ? 1 : 0);
 })();
