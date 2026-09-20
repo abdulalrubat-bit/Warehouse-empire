@@ -94,6 +94,29 @@ const ok=[],bad=[];const chk=(n,c,d)=>(c?ok:bad).push(n+(d?' ['+d+']':''));
  await p.waitForTimeout(900);
  chk('rack deliveries still animate on low graphics',await p.evaluate(()=>window.__rackTest.positions.size>6));
  await p.screenshot({path:path.join(out,'09-rack-conveyors-low.png'),fullPage:true});
+ await p.evaluate(()=>{
+   const c=document.getElementById('wcanvas').getContext('2d'),draw=c.drawImage.bind(c);
+   window.__assetTest={crane:0,hub:0,positions:new Set(),inView:false};
+   c.drawImage=function(img,...a){
+     if(img instanceof HTMLCanvasElement&&img.width===1536){
+       const q=window.__assetTest;
+       if(a.length===8){q.crane++;q.positions.add(Math.round(a[5]));}
+       else if(a.length===4){q.hub++;const m=this.getTransform();
+         const left=m.a*a[0]+m.e,top=m.d*a[1]+m.f;
+         q.inView=left>=0&&top>=0&&left+m.a*a[2]<=this.canvas.width&&top+m.d*a[3]<=this.canvas.height;}
+     }return draw(img,...a);
+   };
+ });
+ await p.waitForTimeout(250);
+ chk('new crane and distribution artwork hidden before purchase',await p.evaluate(()=>!window.__assetTest.crane&&!window.__assetTest.hub));
+ await p.evaluate(()=>{window.state.owned.crane=1;window.state.owned.hub=1;window.render();document.getElementById('canvasOverview').click();});
+ await p.waitForTimeout(2200);
+ chk('purchased crane artwork draws and moves',await p.evaluate(()=>window.__assetTest.crane>0&&window.__assetTest.positions.size>8));
+ chk('purchased centre fits entirely within overview',await p.evaluate(()=>window.__assetTest.hub>0&&window.__assetTest.inView));
+ await p.screenshot({path:path.join(out,'10-crane-distribution-overview.png'),fullPage:true});
+ await p.evaluate(()=>{window.state.owned.crane=0;window.state.owned.hub=0;window.__assetTest.crane=0;window.__assetTest.hub=0;window.render();document.getElementById('canvasOverview').click();});
+ await p.waitForTimeout(400);
+ chk('new equipment disappears when ownership resets',await p.evaluate(()=>!window.__assetTest.crane&&!window.__assetTest.hub));
  // Loaded saved games retain the same visuals after a restart.
  await p.reload();await p.waitForTimeout(1500);
  chk('game reloads with the canvas and pick button',await p.locator('#wcanvas').isVisible()&&await p.locator('#pickBtn').count()===1);
