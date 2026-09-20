@@ -6012,7 +6012,7 @@
 
     ctx.save();
     ctx.translate(cam.x, cam.y);
-    if(Date.now()<saleShakeUntil){var shake=(saleShakeUntil-Date.now())/500;ctx.translate((Math.random()-.5)*30*shake/cam.z,(Math.random()-.5)*30*shake/cam.z);}
+    if(Date.now()<saleShakeUntil){var shake=(saleShakeUntil-Date.now())/500;ctx.translate((Math.random()-.5)*30*shake,(Math.random()-.5)*30*shake);}
     ctx.scale(cam.z, cam.z);
 
     drawGround();
