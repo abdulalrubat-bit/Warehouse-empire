@@ -65,6 +65,35 @@ const ok=[],bad=[];const chk=(n,c,d)=>(c?ok:bad).push(n+(d?' ['+d+']':''));
  chk('carriers continue drawing through their dock cycles',await p.evaluate(n=>window.__visibleTest.trucks>n,before));
  chk('carrier positions change as they arrive and leave',movement>10,'positions='+movement);
  await p.screenshot({path:path.join(out,'06-dock-cycle.png'),fullPage:true});
+ // Check all six rack feeds using actual pallet and lift drawing coordinates.
+ await p.evaluate(()=>{
+   const c=document.getElementById('wcanvas').getContext('2d'),fill=c.fillRect.bind(c),stroke=c.strokeRect.bind(c);
+   window.__rackTest={lifts:0,ends:new Set(),positions:new Set()};
+   c.strokeRect=function(x,y,w,h){if(this.strokeStyle==='#dfb936'&&w===32&&h===36)window.__rackTest.lifts++;return stroke(x,y,w,h);};
+   c.fillRect=function(x,y,w,h){
+     if(this.fillStyle==='#805630'&&w===24&&h===5){
+       const px=x+12,py=y-9,q=window.__rackTest;
+       if(px>=477&&px<=923&&py>=278&&py<=654)q.positions.add(Math.round(px)+','+Math.round(py));
+       for(let row=0;row<3;row++)for(const end of [477,923])
+         if(Math.abs(px-end)<2&&Math.abs(py-(340+row*157))<2)q.ends.add(end+':'+row);
+     }return fill(x,y,w,h);
+   };
+ });
+ await p.waitForTimeout(200);
+ chk('rack conveyor branches remain hidden before purchase',await p.evaluate(()=>window.__rackTest.lifts===0));
+ await p.evaluate(()=>{window.state.owned.conveyor=1;window.render();});
+ await p.waitForTimeout(400);
+ chk('all six rack drop-offs receive pallets without handlers',await p.evaluate(()=>window.__rackTest.ends.size===6));
+ await p.screenshot({path:path.join(out,'07-rack-pallets-waiting.png'),fullPage:true});
+ await p.evaluate(()=>{window.state.owned.forklift=1;window.state.owned.reach=1;window.state.owned.picker=2;window.__rackTest.positions.clear();window.__rackTest.ends.clear();window.render();});
+ await p.waitForTimeout(17000);
+ chk('pallets move along purchased conveyor branches',await p.evaluate(()=>window.__rackTest.positions.size>60));
+ chk('every rack receives moving freight during a full cycle',await p.evaluate(()=>window.__rackTest.ends.size===6));
+ await p.screenshot({path:path.join(out,'08-rack-conveyors-active.png'),fullPage:true});
+ await p.evaluate(()=>{document.getElementById('qLow').click();window.__rackTest.positions.clear();});
+ await p.waitForTimeout(900);
+ chk('rack deliveries still animate on low graphics',await p.evaluate(()=>window.__rackTest.positions.size>6));
+ await p.screenshot({path:path.join(out,'09-rack-conveyors-low.png'),fullPage:true});
  // Loaded saved games retain the same visuals after a restart.
  await p.reload();await p.waitForTimeout(1500);
  chk('game reloads with the canvas and pick button',await p.locator('#wcanvas').isVisible()&&await p.locator('#pickBtn').count()===1);
