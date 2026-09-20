@@ -103,7 +103,10 @@ chk("the site just sold is in the Network", (s.network || []).length === 1,
 const ticker = global.__intervals.filter(i => i.ms === 100)[0].fn;
 s.dailyShownFor = -1; s.lastDailyClaim = 0; s.dailyStreak = 0;
 $("modalDaily").hidden = true;
-const beforeFreeze = Date.now;\nDate.now = () => beforeFreeze() + 101; // first-sale hit stop lasts 100ms\nticker(); await tick();\nDate.now = beforeFreeze;
+const beforeFreeze = Date.now;
+Date.now = () => beforeFreeze() + 101; // first-sale hit stop lasts 100ms
+ticker(); await tick();
+Date.now = beforeFreeze;
 chk("the calendar defers to an unanswered picker", $("modalDaily").hidden === true,
     "daily hidden=" + $("modalDaily").hidden);
 
@@ -115,6 +118,7 @@ chk("and the calendar it was holding back comes through", $("modalDaily").hidden
 
 console.log("PASS:"); ok.forEach(x=>console.log("  + " + x));
 if (bad.length){ console.log("FAIL:"); bad.forEach(x=>console.log("  - " + x)); }
-console.log(`\n${ok.length} passed, ${bad.length} failed`);
+console.log(`
+${ok.length} passed, ${bad.length} failed`);
 process.exit(bad.length ? 1 : 0);
 })();
