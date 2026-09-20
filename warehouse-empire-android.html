@@ -685,8 +685,8 @@
           var paint=sheet.getContext("2d");paint.drawImage(img,0,0);
           var pixels=paint.getImageData(0,0,sheet.width,sheet.height),d=pixels.data;
           var seen=new Uint8Array(sheet.width*sheet.height),queue=new Int32Array(seen.length),head=0,tail=0;
-          function visit(n){if(n<0||n>=seen.length||seen[n])return;seen[n]=1;
-            var o=n*4;if(d[o]<22&&d[o+1]<22&&d[o+2]<22){queue[tail++]=n;d[o+3]=0;}}
+          var visit=function(n){if(n<0||n>=seen.length||seen[n])return;seen[n]=1;
+            var o=n*4;if(d[o]<22&&d[o+1]<22&&d[o+2]<22){queue[tail++]=n;d[o+3]=0;}};
           for(var edge=0;edge<sheet.width;edge++){visit(edge);visit(seen.length-1-edge);}
           for(var row=0;row<sheet.height;row++){visit(row*sheet.width);visit((row+1)*sheet.width-1);}
           while(head<tail){var n=queue[head++];if(n%sheet.width)visit(n-1);if(n%sheet.width<sheet.width-1)visit(n+1);visit(n-sheet.width);visit(n+sheet.width);}
