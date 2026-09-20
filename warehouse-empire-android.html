@@ -5599,18 +5599,13 @@
       ctx.save(); ctx.setLineDash([10,8]); ro(x-38,300,76,430,"#b39126",2); ctx.restore();
       label("CONVEYOR BAY",x,515,10,"#4b5865","center"); return;
     }
-    shadow(x-28,300,56,430,4);
-    r(x-28,300,56,430,"#193d65"); r(x-20,304,40,422,"#202c38");
+    shadow(x-28,278,56,452,4);
+    r(x-28,278,56,452,"#193d65"); r(x-20,282,40,444,"#202c38");
     var shift=(animT*24)%12;
-    for(var y=305+shift;y<725;y+=12){
+    for(var y=283+shift;y<725;y+=12){
       r(x-18,y,36,3,"#526272");
     }
-    r(x-30,300,5,430,"#336b9d"); r(x+25,300,5,430,"#336b9d");
-    var count=Math.min(8,Math.max(2,Math.ceil(state.owned.conveyor/4)));
-    for(var i=0;i<count;i++){
-      var py=320+((animT*30+i*380/count)%380);
-      conveyorParcel(x,py);
-    }
+    r(x-30,278,5,452,"#336b9d"); r(x+25,278,5,452,"#336b9d");
     // Scanner bridge is equipment, not part of the unpurchased floor.
     r(x-39,496,78,42,"#d2d7dc"); ro(x-39,496,78,42,"#264b70",4);
     r(x-20,505,40,22,"#203747"); r(x-18,516,36,2,"#ec5c51");
@@ -5623,6 +5618,47 @@
         ctx.lineTo(x+side*18,sy+Math.sin(animT*1.6+k)*13); ctx.stroke(); ctx.lineCap="butt";
         ctx.fillStyle="#374e65";ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
         ctx.beginPath();ctx.arc(sx-side*22,sy-20,4,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  function factoryRackBelts(){
+    if(!(state.owned.conveyor>0)) return;
+    // Raised cross-feed bridges keep the marked vehicle and pedestrian lanes open.
+    for(var row=0;row<3;row++){
+      var y=340+row*157;
+      for(var side=0;side<2;side++){
+        var end=side?923:477, start=side?700:477, width=223;
+        r(start,y+10,width,30,"rgba(24,39,52,.2)");
+        r(start,y-16,width,32,"#193d65");
+        r(start,y-12,width,24,"#202c38");
+        var beltShift=(animT*24)%12;
+        for(var roller=side?beltShift:12-beltShift;roller<width-3;roller+=12)
+          r(start+roller,y-10,3,20,"#526272");
+        r(start,y-17,width,4,"#336b9d");r(start,y+13,width,4,"#336b9d");
+        // Supports stand outside the traffic lanes; yellow end guards mark the lift.
+        var supports=side?[765,915]:[485,600];
+        for(var s=0;s<supports.length;s++){
+          r(supports[s]-3,y+17,6,16,"#264b70");
+          r(supports[s]-6,y+30,12,4,"#dfb936");
+        }
+        r(end-16,y-18,32,36,"#324b5e");ro(end-16,y-18,32,36,"#dfb936",2);
+        var index=row*2+side, length=y-278+223, travel=length/45;
+        var kind=(side?state.owned.reach:state.owned.forklift)>0?(side?"reach":"forklift"):
+          state.owned.picker>STARTING_CREW?"picker":null;
+        var elapsed=Math.max(0,animT-index*.7), phase=kind?elapsed%(travel+4):Math.min(elapsed,travel);
+        var pos=factoryRoute([[700,278],[700,y],[end,y]],Math.min(1,phase/travel));
+        if(phase<travel || !kind) pallet(pos.x-10,pos.y-10,20,20,false);
+        else {
+          // Pause at the lift, carry to the rack face, then return empty.
+          var unload=phase-travel, t=unload<1?0:unload<2?unload-1:unload<3?1:4-unload;
+          var px=end+(side?20:-20)*t;
+          if(unload<2) pallet(px-10,y-10,20,20,false);
+          else pallet(end+(side?20:-20)-10,y-10,20,20,false);
+          ctx.save();ctx.translate(px+(side?-22:22),y);ctx.rotate(side?Math.PI/2:-Math.PI/2);
+          if(kind==="picker") crew(0,0,-Math.PI/2,false,unload>=1,index);
+          else forklift(0,0,true,false,kind);
+          ctx.restore();
+        }
       }
     }
   }
@@ -5805,6 +5841,7 @@
     tickFreight(dt);
     drawFreight();
     drawFactoryWorkers();
+    factoryRackBelts();
     drawIncidents();
     drawParticles(dt);
     drawFreightFloats();
