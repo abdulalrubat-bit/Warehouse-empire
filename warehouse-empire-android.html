@@ -3665,7 +3665,7 @@
     else if(state.eventPlaySeconds>=state.crisisNextAt&&!boostActive()&&!automationTrialActive()){
       is_rush_order=true;rushOrder={remaining:15,tapped:0,items:Array.from({length:10},function(){return false;})};return;
     }
-    if(!megaShipment&&!hasNode("singular")&&!state.automationTrialUsed&&state.eventPlaySeconds>=240)showAutomationTrial();
+    if(!megaShipment&&GATES.office()&&!hasNode("singular")&&!state.automationTrialUsed&&state.eventPlaySeconds>=240)showAutomationTrial();
     if(totalRate()>0){shipmentCarry+=dt;while(shipmentCarry>=1){shipmentCarry--;standardShipment();}}
   }
   function rushCell(i){
