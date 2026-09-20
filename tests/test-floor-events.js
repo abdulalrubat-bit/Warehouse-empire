@@ -62,4 +62,4 @@ const ok=[],bad=[],chk=(n,c)=>{(c?ok:bad).push(n);};
  fs.writeFileSync(path.join(out,'event-results.json'),JSON.stringify({ok,bad,errors},null,2));
  console.log('PASS:');ok.forEach(n=>console.log('  + '+n));if(bad.length){console.log('FAIL:');bad.forEach(n=>console.log('  - '+n));}
  await context.close();await browser.close();process.exitCode=bad.length?1:0;
-})().catch(e=>{console.error(e);process.exitCode=1;});
+})().catch(e=>{console.error(e);process.exit(1);});
