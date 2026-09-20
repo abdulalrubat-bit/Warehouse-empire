@@ -3523,7 +3523,7 @@
 
     state.awaitingSite = true;
     if(firstSale) firstSaleCelebration();
-    else openSitePicker();
+    openSitePicker();
     switchTab("floor"); render(); saveGame();
   });
 
@@ -3720,7 +3720,6 @@
     sheet.style.cssText="position:fixed;inset:0;width:100%;height:100%;z-index:60;pointer-events:none";
     document.body.appendChild(sheet);var paint=sheet.getContext("2d"),coins=[];
     for(var i=0;i<100;i++){var a=Math.random()*Math.PI*2;coins.push({vx:Math.cos(a)*(80+Math.random()*270),vy:Math.sin(a)*230-200});}
-    setTimeout(openSitePicker,600);
     var animate=function(now){
       var elapsed=(now-start-100)/1000;
       paint.clearRect(0,0,sheet.width,sheet.height);
