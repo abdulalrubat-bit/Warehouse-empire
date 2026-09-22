@@ -1,11 +1,14 @@
 name: Build Debug APK
 
+# On demand only. This used to fire on every push that touched the game file, on any
+# branch, and it had run 137 times -- a full Gradle assembleDebug each time, several
+# minutes apiece, for an APK nobody downloaded. It was quietly the largest consumer of the
+# account's Actions allowance, well ahead of the release builds it exists to rehearse.
+#
+# A debug APK is worth building when someone is about to install one. That is a decision,
+# so it gets a button rather than a trigger.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "warehouse-empire-android.html"
-      - ".github/workflows/build-debug.yml"
 
 jobs:
   build:
