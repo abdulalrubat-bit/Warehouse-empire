@@ -1698,6 +1698,9 @@
   // and the difference is read as the thing being measured.
   window.__freightSuspend = function(on){ freightSuspended = !!on; if (on) freight.length = 0; };
   window.__dispatched = function(){ return freightDispatched; };
+  // How long one unit takes end to end. A drain test has to outwait a transit, and hardcoding
+  // that in the test made a slower route read as a frozen one.
+  window.__freightTransitMs = function(){ return FREIGHT_STAGE_MS * (FREIGHT_PATH_IDS.length - 1); };
   // Same reason as the hooks above. Whether the permission card appears turns on a launch
   // count and on what Android answers, and a headless test cannot launch the app twice in
   // one process to reach the second of those.

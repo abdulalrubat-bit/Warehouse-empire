@@ -188,8 +188,14 @@ const node = id => $("treeList").children.find(b => new RegExp(TREE.find(n=>n.id
       /hasNode\("flow"\) \? CHANGEOVER_MS \/ 2 : CHANGEOVER_MS/.test(HTML));
   chk("Working Float is measured before the fleet is cleared",
       /var floatCash = hasNode\("float"\)[\s\S]{0,200}state\.money = floatCash/.test(HTML));
-  chk("Full Automation picks through the same path a finger does",
-      /if \(hasNode\("singular"\)\)[\s\S]{0,140}doPick\(\)/.test(HTML));
+  // Full Automation's behaviour is covered in test-ticker.js, which runs the ticker and
+  // counts the picks. The assertion that used to sit here matched the SHAPE of the branch --
+  // `if (hasNode("singular"))` with the paren closing right there -- and so reported a
+  // failure against a variant that had widened it to `hasNode("singular") || trialActive()`
+  // while still calling doPick(). It described an arrangement of characters, not a promise
+  // the game makes, and it cost a review a false positive.
+  chk("Full Automation still routes through doPick",
+      /hasNode\("singular"\)[\s\S]{0,200}doPick\(\)/.test(HTML));
 }
 
 // ------------------------------------------------------------------ the Network ------
