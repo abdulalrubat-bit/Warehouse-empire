@@ -31,8 +31,23 @@ class El {
     if (node && typeof node === "object") node.parentNode = this;
     return node;
   }
+  // Real positional semantics, for the same reason insertBefore has them: a stub that
+  // no-ops this would let a mis-placed panel pass, and "afterend" on an element with no
+  // parent is a real bug worth surfacing rather than swallowing.
+  insertAdjacentElement(pos, node){
+    const p = this.parentNode;
+    if (pos === "beforeend") return this.appendChild(node);
+    if (pos === "afterbegin") return this.insertBefore(node, this.firstChild);
+    if (!p || !p.children) return node;
+    if (pos === "beforebegin") return p.insertBefore(node, this);
+    if (pos === "afterend"){
+      const i = p.children.indexOf(this);
+      return p.insertBefore(node, i >= 0 ? p.children[i + 1] : null);
+    }
+    return node;
+  }
   get firstChild(){ return this.children[0] || null; }
-  removeChild(){} remove(){}
+  removeChild(){} remove(){} scrollIntoView(){} focus(){} blur(){}
   cloneNode(){ const c = new El(this.tagName); c.id = this.id; c.parentNode = this.parentNode; return c; }
   // Same selector on the same element must return the same node, or a write by the
   // game and a read by a test land on two different throwaway objects and the
@@ -161,6 +176,10 @@ global.__runTimeouts = (minMs, maxMs)=>{
 global.requestAnimationFrame = (fn)=>{ global.__frame = fn; return 0; };
 global.AudioContext = function(){ throw new Error("no audio"); };  // sfx() swallows this
 global.window = global;
+// Teardown listeners. Without these a build that cleans up after itself throws where a
+// build that leaks does not, which is exactly the wrong way round.
+if (!global.removeEventListener) global.removeEventListener = ()=>{};
+if (!global.document.removeEventListener) global.document.removeEventListener = ()=>{};
 
 // No test may touch the network. Once the shipping file carried real GA keys, booting the
 // game under this harness started posting genuine events to the live property on every
