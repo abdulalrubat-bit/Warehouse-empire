@@ -31,7 +31,10 @@ global.Capacitor = { Plugins: {
 
 // A player who has opened the game once already. The prompt is deliberately not shown on a
 // first launch, so a save has to exist for the real boot path to reach it.
-prefs["warehouse-empire-save"] = JSON.stringify({ launches: 1, taps: 40, money: 500, lifetime: 900 });
+// lastTruck complete: the permission card deliberately stands aside for the induction, so a
+// fixture still inside it would be asserting against a guard rather than against the card.
+prefs["warehouse-empire-save"] = JSON.stringify({ launches: 1, taps: 40, money: 500, lifetime: 900,
+                                                  lastTruck: {version:1, status:"complete"} });
 
 const cvEl = document.getElementById("wcanvas"); cvEl._cw = 400; cvEl._ch = 300;
 const sent = [];

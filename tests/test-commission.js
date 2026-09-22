@@ -22,7 +22,12 @@ global.Capacitor = { Plugins: {
 // nothing in a save to represent this state at all.
 prefs["warehouse-empire-save"] = JSON.stringify({
   awaitingSite: true, site: "general", lifetime: 5e6, rep: 0, taps: 40, contractsDone: 3,
-  prestiges: 1     // they have sold a business; that is how they came to owe a choice
+  prestiges: 1,    // they have sold a business; that is how they came to owe a choice
+  // The induction holds back the calendar, the picker handover and the notification card so
+  // that nothing lands on a player in their first ten minutes. A save that owes a site
+  // choice is long past that, and has to say so or the guards fire and the test is
+  // measuring an onboarding it never meant to start.
+  lastTruck: {version:1, status:"complete"}
 });
 
 const cvEl = document.getElementById("wcanvas"); cvEl._cw = 400; cvEl._ch = 300;
@@ -101,6 +106,10 @@ chk("the site just sold is in the Network", (s.network || []).length === 1,
 // decision behind it, which is how the original bug felt from the player's side.
 // checkDailyLoginPopup runs off the 100ms ticker, so drive it there rather than reaching in.
 const ticker = global.__intervals.filter(i => i.ms === 100)[0].fn;
+// Selling freezes the ticker for 100ms so the sale can settle before the site restarts.
+// Harmless in play; in a test every line lands inside that window, so the tick this
+// assertion depends on would return before reaching the daily check. Step past it.
+const realNow = Date.now; Date.now = () => realNow() + 500;
 s.dailyShownFor = -1; s.lastDailyClaim = 0; s.dailyStreak = 0;
 $("modalDaily").hidden = true;
 ticker(); await tick();
@@ -112,6 +121,7 @@ await tick();
 chk("the picker closes on choosing", siteModal().hidden === true, "hidden=" + siteModal().hidden);
 chk("and the calendar it was holding back comes through", $("modalDaily").hidden === false,
     "daily hidden=" + $("modalDaily").hidden);
+Date.now = realNow;
 
 console.log("PASS:"); ok.forEach(x=>console.log("  + " + x));
 if (bad.length){ console.log("FAIL:"); bad.forEach(x=>console.log("  - " + x)); }

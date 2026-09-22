@@ -172,7 +172,11 @@ chk("re-selecting the manifest you already run costs nothing",
 fresh(); s.owned.picker = 40;
 document.getElementById("openSkuBtn").fire("click");
 [...document.getElementById("skuList").children].find(r => /Cold Pharma/i.test(r.innerHTML || "")).fire("click");
+// saveGame queues the snapshot and lets a microtask write it, so storage has to be
+// given a turn before it is read. The old synchronous write is what these lines
+// assumed; the queued one is the better design and the test moves to meet it.
 global.saveGame ? global.saveGame() : null;
+await settle();
 const raw = JSON.parse(global.localStorage.getItem("warehouse-empire-save") || "{}");
 chk("a changeover in progress is written to the save",
     typeof raw.changeoverUntil === "number" && raw.changeoverUntil > 0,
