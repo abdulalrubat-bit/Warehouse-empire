@@ -1007,6 +1007,52 @@
 
   function netCap(){ return hasNode("wide") ? 40 : NETWORK_CAP; }
 
+  // Where each of those actually is. They are real Melbourne freight suburbs -- Dandenong
+  // South, the western corridor through Laverton and Truganina, Somerton and Campbellfield
+  // in the north -- so the Network can be drawn as the city it is named after rather than as
+  // an abstract graph. Lon/lat, approximate centroids: relative position is what a map needs.
+  var SUBURB_XY = {
+    "Werribee":[144.660,-37.900], "Truganina":[144.745,-37.820], "Ravenhall":[144.745,-37.765],
+    "Laverton":[144.770,-37.863], "Derrimut":[144.780,-37.795],  "Altona":[144.830,-37.868],
+    "Sunshine":[144.833,-37.788], "Brooklyn":[144.845,-37.822],  "Tottenham":[144.865,-37.800],
+    "Yarraville":[144.890,-37.815], "Port Melbourne":[144.930,-37.840],
+    "Tullamarine":[144.880,-37.700], "Broadmeadows":[144.920,-37.680], "Coolaroo":[144.930,-37.660],
+    "Craigieburn":[144.940,-37.600], "Somerton":[144.945,-37.640], "Campbellfield":[144.950,-37.675],
+    "Thomastown":[145.015,-37.680], "Epping":[145.020,-37.650],   "Wollert":[145.020,-37.590],
+    "Cheltenham":[145.055,-37.965], "Clayton":[145.120,-37.920],  "Braeside":[145.120,-37.995],
+    "Notting Hill":[145.130,-37.905], "Springvale":[145.155,-37.950], "Keysborough":[145.170,-37.990],
+    "Mulgrave":[145.170,-37.920], "Dandenong":[145.215,-37.985],
+    "Bayswater":[145.270,-37.840], "Kilsyth":[145.330,-37.805],   "Rowville":[145.230,-37.930],
+    "Scoresby":[145.235,-37.900], "Knoxfield":[145.245,-37.890],
+    "Seaford":[145.130,-38.105],  "Carrum Downs":[145.170,-38.090], "Lyndhurst":[145.230,-38.055],
+    "Hallam":[145.275,-38.010],   "Cranbourne":[145.280,-38.110],   "Officer":[145.410,-38.060],
+    "Pakenham":[145.485,-38.075]
+  };
+
+  // Port Phillip, clockwise from Werribee South. The Heads close straight across the
+  // entrance because this is the water, not the coastline of Victoria. Corio Bay is the
+  // western lobe at the Geelong end -- without it the shape reads as a lake rather than as
+  // the bay, which is the whole reason the map says Melbourne.
+  var BAY_RING = [
+    [144.700,-37.980],[144.760,-37.920],[144.830,-37.872],[144.910,-37.866],
+    [144.940,-37.840],[144.975,-37.868],[144.990,-37.912],[145.090,-38.000],
+    [145.120,-38.070],[145.122,-38.140],[145.090,-38.190],[145.040,-38.222],
+    [145.010,-38.270],[144.980,-38.322],[144.900,-38.355],[144.830,-38.375],
+    [144.780,-38.368],[144.740,-38.345],[144.710,-38.320],[144.660,-38.308],
+    [144.610,-38.288],[144.660,-38.268],[144.720,-38.170],[144.735,-38.140],
+    [144.655,-38.110],[144.570,-38.140],[144.365,-38.140],[144.400,-38.075],
+    [144.550,-38.040],[144.620,-38.010]
+  ];
+
+  // Equirectangular, anchored at the middle of the belt. A degree of LONGITUDE is the short
+  // one away from the equator, so that is the axis that gets compressed -- having this the
+  // wrong way round renders Port Phillip, which is roughly square on the ground, at two to
+  // one, and it is not obvious from the numbers that anything is wrong.
+  var GEO_KX = Math.cos(38.0 * Math.PI / 180);
+  var GEO_LON0 = 144.34, GEO_LAT0 = -37.56;
+  function geoX(lon){ return (lon - GEO_LON0) * GEO_KX; }
+  function geoY(lat){ return (GEO_LAT0 - lat); }
+
   // A name is picked from whatever is not already in use, so a Network of forty sites
   // does not read as forty copies of Dandenong.
   function netName(siteId){
