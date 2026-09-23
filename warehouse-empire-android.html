@@ -405,6 +405,14 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
 .lt-actions{display:flex;gap:7px;flex-wrap:wrap;}.lt-actions button{flex:1;min-height:44px;padding:10px;border:1px solid #e2b55b;border-radius:9px;background:#ffcf7c;color:#202a30;font-weight:bold;font-size:12px;}.lt-actions button:disabled{background:#2e4352;color:#b7cbd8;border-color:#567082;}
 .lt-actions button+button{background:#203847;color:#ffe1a0;}.last-truck small{display:block;font-size:10px;color:#bed0db;margin-top:8px;line-height:1.4;}.lt-progress{height:4px;background:#0a1b27;border-radius:8px;margin-top:9px;overflow:hidden;}.lt-progress i{display:block;height:100%;width:0;background:#7ce1b6;transition:width .2s linear;}
 .opening-shift #objective,.opening-shift #adRow {display:none!important;}
+/* Docked in the pick bar for the length of the shift: compact, and never off screen. */
+.last-truck.docked{margin:0 0 9px;padding:10px 12px;border-radius:12px;pointer-events:auto;}
+.last-truck.docked strong{font-size:13.5px;}
+.last-truck.docked p{margin:4px 0 8px;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.last-truck.docked .lt-meta{margin-bottom:3px;}
+.last-truck.docked small{display:none;}
+.last-truck.docked .lt-actions button{min-height:40px;padding:8px;}
+.opening-shift #tab-floor{padding-bottom:calc(380px + env(safe-area-inset-bottom,0px));}
 </style>
 </head>
 <body>
@@ -4257,6 +4265,7 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       var floorTitle=document.querySelector(".floor-heading b");
       if(floorTitle)floorTitle.textContent=active()?"LAST TRUCK · TASK "+(state.lastTruck.index+1):"WAREHOUSE FLOOR";
       document.body.classList.toggle("opening-shift",active());
+      dock();
       var h=state.lastTruck;
       if(!h){card.hidden=false;title.textContent="The Last Truck";copy.textContent="Take charge of a ten-minute opening shift. Existing equipment and earnings are kept.";button.textContent="Start opening shift";alternative.hidden=true;clockLabel.textContent="OPTIONAL SHIFT";status.textContent="One-time rewards · no reset";return;}
       if(!active()){
@@ -4283,6 +4292,16 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       if(!h.done&&((b.kind==="choice"&&h.choice)||b.kind==="finale")){button.textContent=h.picks>=target?"Dispatch load":"Pick orders · "+h.picks+"/"+target;button.disabled=h.picks<target;}
       if(!h.done&&b.kind==="rush"&&h.rushStarted){button.textContent="Tap urgent pallets on the floor";button.disabled=true;}
       status.textContent=h.done?"Task completed · "+money(h.rewards)+" bonuses earned":h.note||"Every purchase uses the normal price. No penalty for a missed departure.";
+    }
+    // While the shift runs, the card lives in the fixed bar above PICK ORDER. In the page
+    // flow its button sat directly behind that bar on a phone, so the one thing a new
+    // player was told to tap next was the one thing they could not see.
+    function dock(){
+      var want=active(),bar=document.querySelector(".pickwrap");
+      if(!card||!bar||card.classList.contains("docked")===want)return;
+      card.classList.toggle("docked",want);
+      if(want)bar.insertBefore(card,bar.firstChild);
+      else document.querySelector(".floorview").insertAdjacentElement("afterend",card);
     }
     function init(){
       ready=true;state.lastTruck=normalize(state.lastTruck);state.inductionStep=tutorialSteps.length;
