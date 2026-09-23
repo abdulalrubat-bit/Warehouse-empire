@@ -120,6 +120,10 @@ s.muted = false; s.haptics = true;
 s.haptics = false;
 document.getElementById("hapticBtn").fire("click");   // on
 document.getElementById("hapticBtn").fire("click");   // off again, and saved
+// saveGame queues the snapshot and lets a microtask write it, so storage has to be
+// given a turn before it is read. The old synchronous write is what these lines
+// assumed; the queued one is the better design and the test moves to meet it.
+await tick();
 const raw = JSON.parse(global.localStorage.getItem("warehouse-empire-save") || "{}");
 chk("the setting is written to the save", raw.haptics === false, "saved haptics=" + raw.haptics);
 

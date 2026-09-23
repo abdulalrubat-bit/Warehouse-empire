@@ -19,6 +19,14 @@ const INSTRUMENT = () => new Promise(res => {
 async function page(b, w, h){
   const ctx = await b.newContext({ viewport:{width:w||412,height:h||915},
                                    deviceScaleFactor:2, isMobile:true, hasTouch:true });
+  // A player with a Network is long past the Last Truck induction, and the induction frames
+  // the camera on the dock -- which leaves the Network band off screen entirely. A fixture
+  // still inside it is measuring the yard in motion, not the plots beyond the fence.
+  await ctx.addInitScript(() => {
+    try { if (!localStorage.getItem("warehouse-empire-save"))
+      localStorage.setItem("warehouse-empire-save", JSON.stringify({ launches: 1, lastTruck: {version:1, status:"complete"} }));
+    } catch(e){}
+  });
   const p = await ctx.newPage();
   p.on("pageerror", e => bad.push("PAGEERROR: " + e.message));
   p.on("console", m => { if (m.type()==="error") bad.push("CONSOLE: " + m.text()); });
@@ -84,6 +92,10 @@ const CORNERS = () => {
 
   // ---- specialisation has to be visible, not just tabulated ----
   { const {ctx,p} = await page(b);
+    // Freight crosses this band too. Left running, it moved the Port Terminal reading
+    // between 2.4% and 3.6% run to run against a 2.5% bar -- the same flake the block
+    // above had, measuring traffic instead of cladding.
+    await p.evaluate(()=>{ if (window.__freightSuspend) window.__freightSuspend(true); });
     const strip = async (id) => {
       await p.evaluate((sid)=>{
         const s=window.state;
@@ -94,9 +106,17 @@ const CORNERS = () => {
         s.network=o; window.render();
       }, id);
       await p.waitForTimeout(800);
+      // Exactly the band the plots are drawn in, from the renderer's own mapping. A fixed
+      // top slice of the canvas stopped meaning "the Network" once the camera changed, and
+      // what it caught instead was the yard in motion.
       return p.evaluate(()=>{
-        const c=document.getElementById("wcanvas"), W=c.width, H=c.height;
-        return Array.from(c.getContext("2d").getImageData(0,0,W,Math.floor(H*0.16)).data);
+        const c=document.getElementById("wcanvas"), P=window.__plan;
+        const k = c.width / c.clientWidth;
+        const a = P.toScreen(P.site.x - 160, P.net.y), z = P.toScreen(P.site.x + P.site.w + 160, P.net.y + P.net.h);
+        const x0 = Math.max(0, Math.floor(a.x*k)), y0 = Math.max(0, Math.floor(a.y*k));
+        const x1 = Math.min(c.width, Math.ceil(z.x*k)), y1 = Math.min(c.height, Math.ceil(z.y*k));
+        if (x1 - x0 < 8 || y1 - y0 < 8) return [];
+        return Array.from(c.getContext("2d").getImageData(x0, y0, x1-x0, y1-y0).data);
       });
     };
     // Averaging the whole strip dilutes the sheds about sevenfold and turns a clear
@@ -110,12 +130,24 @@ const CORNERS = () => {
       }
       return +(100 * n / tot).toFixed(1);
     };
+    // Seeding a late-game site reframes the camera, and the first capture used to land
+    // while it was still easing in. Settle once before anything is compared.
+    await strip("general");
     const g = await strip("general"), c1 = await strip("cold"), h = await strip("hazmat"), pt = await strip("port");
-    chk("a row of Cold Stores does not look like a row of DCs", changed(g,c1) > 2.5,
+    const g2 = await strip("general");
+    chk("the Network band is on screen to be measured", g.length > 0, (g.length/4) + " px");
+    // The bar below only means something against what the band does on its own. When the
+    // fixture sat inside the induction this block compared a DC row with itself and got the
+    // same 4.6% it got against a Port row -- it was measuring traffic, not cladding. So the
+    // noise is measured, and every specialisation has to clear it twice over as well as the
+    // floor. Measured here: ~29-39% between specialisations, 1-2% between identical rows.
+    const noise = changed(g, g2), bar = Math.max(15, noise * 2);
+    chk("the band holds still enough to compare", noise < 6, `${noise}% drift between identical rows`);
+    chk("a row of Cold Stores does not look like a row of DCs", changed(g,c1) > bar,
         `${changed(g,c1)}% of the Network band changes`);
-    chk("a row of DG Yards does not look like a row of DCs", changed(g,h) > 2.5,
+    chk("a row of DG Yards does not look like a row of DCs", changed(g,h) > bar,
         `${changed(g,h)}% of the Network band changes`);
-    chk("a row of Port Terminals does not look like a row of DCs", changed(g,pt) > 2.5,
+    chk("a row of Port Terminals does not look like a row of DCs", changed(g,pt) > bar,
         `${changed(g,pt)}% of the Network band changes`);
     await ctx.close(); }
 

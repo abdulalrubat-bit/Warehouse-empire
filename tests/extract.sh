@@ -11,7 +11,16 @@ HTML=${WE_HTML:-$D/../warehouse-empire-android.html}
 
 sed -n '/^<script>$/,/^<\/script>$/p' "$HTML" | sed '1d;$d' > "$D/game.js"
 
-EXPORT='  window.__sim = { GENS:GENS, UPGRADES:UPGRADES, PERKS:PERKS, CORP_BUILDINGS:CORP_BUILDINGS, costOf:costOf, moneyRate:moneyRate, totalRate:totalRate, grossRate:grossRate, wageBill:wageBill, activeRate:activeRate, networkRate:networkRate, tapValue:tapValue, prestigeMult:prestigeMult, repEarnedByLifetime:repEarnedByLifetime, pendingRep:pendingRep, fmt:fmt, THEMES:THEMES, OFFLINE_CAP_HOURS:OFFLINE_CAP_HOURS, MARKET:MARKET, marketOf:marketOf, marketMult:marketMult, mgrMult:mgrMult, SKUS:SKUS, invalidateUpMult:invalidateUpMult, upMult:upMult, RANKS:RANKS, rankIndex:rankIndex, SITES:SITES, siteUnlocked:siteUnlocked, skuUnlocked:skuUnlocked, INCIDENTS:INCIDENTS, clearIncident:clearIncident, marginalRate:marginalRate, genRate:genRate, multFor:multFor, WAGE:WAGE, SUPPLIES:SUPPLIES, supplyCost:supplyCost, DISPATCH_MINUTES:DISPATCH_MINUTES, dispatchUsesToday:dispatchUsesToday, TREE:TREE, TREE_BY_ID:TREE_BY_ID, hasNode:hasNode, buyNode:buyNode, repAvailable:repAvailable, heldDirectorship:heldDirectorship, nodeBlocked:nodeBlocked, netCap:netCap, netSiteRate:netSiteRate, netSetBonus:netSetBonus, netInvestCost:netInvestCost, netInvest:netInvest, netTypeCounts:netTypeCounts, treeOutput:treeOutput };'
+# The sim export, filtered to what the source actually defines. A fork that predates a
+# symbol -- or a variant built from an older branch -- used to make game-sim.js throw
+# ReferenceError on load, which failed every suite for a reason that had nothing to do
+# with the build under test. The suite is a review tool for any variant, not just HEAD.
+SYMS="GENS UPGRADES PERKS CORP_BUILDINGS costOf moneyRate totalRate grossRate wageBill activeRate networkRate tapValue prestigeMult repEarnedByLifetime pendingRep fmt THEMES OFFLINE_CAP_HOURS MARKET marketOf marketMult mgrMult SKUS invalidateUpMult upMult RANKS rankIndex SITES siteUnlocked skuUnlocked INCIDENTS clearIncident SUBURB_XY BAY_RING NET_SUBURBS geoX geoY marginalRate genRate multFor WAGE SUPPLIES supplyCost DISPATCH_MINUTES dispatchUsesToday TREE TREE_BY_ID hasNode buyNode repAvailable heldDirectorship nodeBlocked netCap netSiteRate netSetBonus netInvestCost netInvest netTypeCounts treeOutput"
+EXPORT='  window.__sim = {'
+for sym in $SYMS; do
+  if grep -qE "(var|function) $sym\\b" "$D/game.js"; then EXPORT="$EXPORT $sym:$sym,"; fi
+done
+EXPORT="$EXPORT };"
 awk -v ex="$EXPORT" '{ print } /^  window.render = render;$/ { print ex }' "$D/game.js" > "$D/game-sim.js"
 
 # Both telemetry paths have to be testable whatever the shipping file happens to hold, so

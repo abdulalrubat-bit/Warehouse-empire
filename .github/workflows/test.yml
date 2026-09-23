@@ -1,12 +1,16 @@
 name: Tests
 
 # The game is one HTML file that several people and agents edit, and until now nothing
-# checked a change before it merged. This runs the suite on every pull request and on
-# every push to main, so a regression is caught at the PR rather than in a release build.
+# checked a change before it merged. This runs the suite on every pull request, so a
+# regression is caught at the PR rather than in a release build.
+#
+# Deliberately NOT on push to main. GitHub tests refs/pull/N/merge -- the merged result,
+# not the branch tip -- so a passing PR has already run the suite against exactly the tree
+# that lands. Running it again on the merge commit spent a second full job, browser
+# download included, to re-answer a question that had just been answered. Every run of this
+# workflow was costing twice what it needed to.
 on:
   pull_request:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # A second push to the same PR makes the first run irrelevant.
@@ -41,9 +45,17 @@ jobs:
         working-directory: tests
         run: npm ci --no-audit --no-fund
 
+      # --with-deps shells out to apt every run, which the browser cache does not cover.
+      # ubuntu-latest already carries what Chromium needs, so the system packages are only
+      # worth installing on the run that also has to download the browser.
       - name: Install Chromium
         working-directory: tests
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run the suite
         working-directory: tests

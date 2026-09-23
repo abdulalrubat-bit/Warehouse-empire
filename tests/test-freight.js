@@ -81,7 +81,13 @@ const fps = p => p.evaluate(()=>new Promise(r=>{let f=0;const t0=performance.now
       s.owned={picker:0,trolley:0,forklift:0,reach:0,conveyor:0,sorter:0,crane:0,hub:0};
       s.network=[]; s.rep=0; window.render(); });
     const dispatchedBefore = await p.evaluate(()=>window.__dispatched());
-    await p.waitForTimeout(14000);
+    // Wait longer than one full transit, read from the build rather than assumed. A fixed
+    // 14s was shorter than a transit on a variant that had slowed the route down, so this
+    // reported freight as frozen when it was merely in flight -- and a stuck pool and a slow
+    // one look identical if you stop watching too early.
+    const transit = await p.evaluate(()=>
+      (window.__freightTransitMs ? window.__freightTransitMs() : 1900 * 5));
+    await p.waitForTimeout(Math.max(14000, transit * 2));
     const drained = await p.evaluate(()=>window.__freightCount());
     const dispatchedAfter = await p.evaluate(()=>window.__dispatched());
     chk("freight drains off the site rather than piling up", drained < full,

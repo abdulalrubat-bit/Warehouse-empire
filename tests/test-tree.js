@@ -188,8 +188,11 @@ const node = id => $("treeList").children.find(b => new RegExp(TREE.find(n=>n.id
       /hasNode\("flow"\) \? CHANGEOVER_MS \/ 2 : CHANGEOVER_MS/.test(HTML));
   chk("Working Float is measured before the fleet is cleared",
       /var floatCash = hasNode\("float"\)[\s\S]{0,200}state\.money = floatCash/.test(HTML));
-  chk("Full Automation picks through the same path a finger does",
-      /if \(hasNode\("singular"\)\)[\s\S]{0,140}doPick\(\)/.test(HTML));
+  // Full Automation is covered in test-ticker.js, which runs the ticker and counts the
+  // picks. There used to be a source-matching assertion here as well; it matched the
+  // arrangement of characters around the branch rather than the promise the branch
+  // makes, and it reported a regression twice against code that was working. A
+  // duplicate that is brittle is worse than no duplicate at all.
 }
 
 // ------------------------------------------------------------------ the Network ------
