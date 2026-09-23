@@ -348,7 +348,7 @@ header:after {content:'OPERATIONS';font-size:8px;letter-spacing:1.5px;color:var(
 .floor-heading b {font-size:11px;letter-spacing:1.5px;}
 .floor-heading span {font-size:9px;letter-spacing:1px;color:var(--ui-mint);}
 .floor-heading span:before {content:'';display:inline-block;width:6px;height:6px;background:var(--ui-mint);border-radius:50%;margin-right:6px;}
-.floorview canvas {height:clamp(235px,35vh,360px);}
+.floorview canvas {height:clamp(260px,44vh,480px);}
 .canvas-controls {background:#162634;font-size:10px;color:#b3c6d3;padding:7px 10px;line-height:1.4;}
 .canvas-controls button {background:#253d50;border-color:#3a566c;border-radius:9px;color:#edf4fa;min-height:36px;font-size:11px;}
 .zone-info {background:#172938;color:#fff;}.zone-info p {color:#b3c6d3;}
@@ -405,6 +405,51 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
 .lt-actions{display:flex;gap:7px;flex-wrap:wrap;}.lt-actions button{flex:1;min-height:44px;padding:10px;border:1px solid #e2b55b;border-radius:9px;background:#ffcf7c;color:#202a30;font-weight:bold;font-size:12px;}.lt-actions button:disabled{background:#2e4352;color:#b7cbd8;border-color:#567082;}
 .lt-actions button+button{background:#203847;color:#ffe1a0;}.last-truck small{display:block;font-size:10px;color:#bed0db;margin-top:8px;line-height:1.4;}.lt-progress{height:4px;background:#0a1b27;border-radius:8px;margin-top:9px;overflow:hidden;}.lt-progress i{display:block;height:100%;width:0;background:#7ce1b6;transition:width .2s linear;}
 .opening-shift #objective,.opening-shift #adRow {display:none!important;}
+/* Docked in the pick bar for the length of the shift: compact, and never off screen. */
+.last-truck.docked{margin:0 0 9px;padding:10px 12px;border-radius:12px;pointer-events:auto;}
+.last-truck.docked strong{font-size:13.5px;}
+.last-truck.docked p{margin:4px 0 8px;font-size:11.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.last-truck.docked .lt-meta{margin-bottom:3px;}
+.last-truck.docked small{display:none;}
+.last-truck.docked .lt-actions button{min-height:40px;padding:8px;}
+.opening-shift #tab-floor{padding-bottom:calc(380px + env(safe-area-inset-bottom,0px));}
+
+/* ---- Floor: one next card, one contracts panel, the rest in a drawer ---- */
+.contracts{margin:12px 14px 0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:linear-gradient(115deg,#1b2c3b,#14212e);overflow:hidden;box-shadow:0 4px 14px #0002;}
+.contracts .cgroup-head{font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#a8c0d2;padding:11px 14px 0;}
+.contracts .contract{margin:0;border:0;border-radius:0;background:none;box-shadow:none;padding:10px 14px 13px;}
+.contracts .contract+.contract{border-top:1px solid #2b3e50;}
+.contracts .contract.priority{border-left:3px solid #a98cf0;}
+.contracts .contract.priority .cbar i{background:linear-gradient(90deg,#8d6fe0,#c9b6ff);}
+.adrow{margin-top:10px;}
+.adbtn{padding:9px 7px;}
+.shiftmore{margin:12px 14px 0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:#121e29;}
+.shiftmore summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 14px;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#a8c0d2;min-height:44px;}
+.shiftmore summary::-webkit-details-marker{display:none;}
+.shiftmore summary:after{content:'';width:7px;height:7px;border-right:2px solid #7f98ab;border-bottom:2px solid #7f98ab;transform:rotate(45deg);margin-left:4px;transition:transform .15s;}
+.shiftmore[open] summary:after{transform:rotate(-135deg);}
+.shiftmore summary em{margin-left:auto;font-style:normal;font-weight:600;letter-spacing:.3px;text-transform:none;color:#8aa2b4;font-size:11px;}
+.shiftmore summary em.hot{color:#20130a;background:var(--hivis);padding:3px 8px;border-radius:20px;}
+.shiftmore>div{margin-left:10px;margin-right:10px;}
+.shiftmore>div:last-child{margin-bottom:12px;}
+
+/* ---- Readout: no title row, and a one-line form when the page needs the room ---- */
+header{display:none;}
+.topbar{padding-top:calc(10px + env(safe-area-inset-top,0px));}
+.terminal{transition:padding .18s ease;}
+.compact-head .terminal{padding:8px 14px;row-gap:0;}
+.compact-head .money{font-size:22px;padding-top:0;}
+.compact-head .money:before{display:none;}
+.compact-head .rate{padding-top:0;}
+.compact-head .rate b{font-size:16px;}
+.compact-head .rate-2,.compact-head .logistics-flow,.compact-head .metrics{display:none;}
+.compact-head .topbar{padding-bottom:8px;}
+
+/* ---- Notices: a slim banner under the readout, not a card over the page ---- */
+#toast{bottom:auto!important;top:90px;left:50%;width:calc(100% - 28px);max-width:572px;border-radius:12px;padding:9px 14px;font-size:12px;
+  transform:translateX(-50%) translateY(-14px);opacity:0;border:1px solid #d9b36d55;border-left:3px solid var(--ui-gold);background:#1a3040f2;
+  box-shadow:0 8px 24px #0006;z-index:9;cursor:pointer;}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -438,7 +483,7 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
         <span id="flowPct" style="color:var(--cash); font-weight:700;">100%</span>
       </div>
       <div class="metrics" id="metricsRow">
-        <span><b id="mDispatched">0</b><i>dispatched</i></span>
+        <span><b id="mDispatched">0</b><i id="mDispatchedLabel">dispatched</i></span>
         <span><b id="mPayroll">0%</b><i>payroll</i></span>
         <span id="mNetWrap" hidden><b id="mNetwork">0%</b><i>network</i></span>
       </div>
@@ -479,12 +524,32 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       <div class="bgo" id="bottleneckGo">FIX →</div>
     </div>
 
-    <div class="skustrip">
-      <div>
-        <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
-        <span id="activeSkuDesc">Standard consumer freight</span>
+    <div class="contracts" id="contractsGroup">
+      <div class="cgroup-head">Contracts</div>
+      <div class="contract" id="contractCard">
+        <div class="crow">
+          <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
+          <span class="ctime" id="contractTime"></span>
+        </div>
+        <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
+        <div class="crow">
+          <span id="contractProg">—</span>
+          <span class="creward" id="contractReward"></span>
+        </div>
+        <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
       </div>
-      <button class="skubtn" id="openSkuBtn">Change SKU</button>
+      <div class="contract priority" id="priorityCard" hidden>
+        <div class="crow">
+          <span class="ctitle">Priority Client<span class="ptag">PRIORITY</span></span>
+          <span class="ctime" id="priorityMkt"></span>
+        </div>
+        <div class="cbar"><i id="priorityBar" style="width:0%"></i></div>
+        <div class="crow">
+          <span id="priorityProg">&mdash;</span>
+          <span class="creward" id="priorityReward"></span>
+        </div>
+        <button class="rerollbtn" id="priorityClaimBtn" hidden>Collect<small id="priorityClaimSub">SIGN FOR THE LOAD</small></button>
+      </div>
     </div>
 
     <div class="adrow" id="adRow">
@@ -492,49 +557,31 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
     </div>
 
-    <div class="contract priority" id="priorityCard" hidden>
-      <div class="crow">
-        <span class="ctitle">Priority Client<span class="ptag">PRIORITY</span></span>
-        <span class="ctime" id="priorityMkt"></span>
+    <details class="shiftmore" id="shiftMore">
+      <summary><span>Shift details</span><em id="shiftMoreSku"></em></summary>
+      <div class="skustrip">
+        <div>
+          <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
+          <span id="activeSkuDesc">Standard consumer freight</span>
+        </div>
+        <button class="skubtn" id="openSkuBtn">Change SKU</button>
       </div>
-      <div class="cbar"><i id="priorityBar" style="width:0%"></i></div>
-      <div class="crow">
-        <span id="priorityProg">&mdash;</span>
-        <span class="creward" id="priorityReward"></span>
+      <div class="shift">
+        <div><b id="shiftEarned">$0</b><span>this session</span></div>
+        <div><b id="shiftTaps">0</b><span>hand picks</span></div>
+        <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
       </div>
-      <button class="rerollbtn" id="priorityClaimBtn" hidden>Collect<small id="priorityClaimSub">SIGN FOR THE LOAD</small></button>
-    </div>
-
-    <div class="contract" id="contractCard">
-      <div class="crow">
-        <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
-        <span class="ctime" id="contractTime"></span>
+      <div class="netbar" id="netBar" hidden>
+        <div class="nsite"><b id="netSiteName">General Distribution</b><span id="netSiteTags"></span></div>
+        <div class="nnet" id="netSummary"></div>
       </div>
-      <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
-      <div class="crow">
-        <span id="contractProg">—</span>
-        <span class="creward" id="contractReward"></span>
+      <div class="scale" id="scaleStrip">
+        <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
+        <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
+        <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
+        <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
       </div>
-      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
-    </div>
-
-    <div class="shift">
-      <div><b id="shiftEarned">$0</b><span>this session</span></div>
-      <div><b id="shiftTaps">0</b><span>hand picks</span></div>
-      <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
-    </div>
-
-    <div class="netbar" id="netBar" hidden>
-      <div class="nsite"><b id="netSiteName">General Distribution</b><span id="netSiteTags"></span></div>
-      <div class="nnet" id="netSummary"></div>
-    </div>
-
-    <div class="scale" id="scaleStrip">
-      <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
-      <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
-      <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
-      <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
-    </div>
+    </details>
 
   </section>
 
@@ -2979,6 +3026,30 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
+  // The folded drawer still says what it holds, and says it loudly when the market for the
+  // freight you are running is hot -- that is a decision with a clock on it, and the one
+  // thing in the drawer worth opening it for.
+  function renderShiftSummary(){
+    var grp = document.getElementById("contractsGroup");
+    if (grp) grp.hidden = document.getElementById("contractCard").hidden && document.getElementById("priorityCard").hidden;
+    var em = document.getElementById("shiftMoreSku"), chip = document.getElementById("activeSkuMkt");
+    if (!em || !chip) return;
+    var hot = chip.classList.contains("hot") || chip.classList.contains("peak");
+    em.textContent = document.getElementById("activeSkuLabel").textContent + " \u00b7 " + chip.textContent;
+    em.className = hot ? "hot" : "";
+  }
+
+  // One card says what to do next, not three. The task card, the bottleneck card and the
+  // "on schedule" status used to stack up together, and the status repeated what the
+  // contract card beneath it already showed. A real bottleneck outranks everything, even
+  // onboarding -- a rush falling behind is costing money now, and its card carries the
+  // Expedite button; otherwise the task or the next purchase speaks.
+  function pickNextCard(){
+    var obj = document.getElementById("objective"), bn = document.getElementById("bottleneck");
+    if (!bn.hidden && bn.classList.contains("good")) bn.hidden = true;
+    if (!bn.hidden) obj.hidden = true;
+  }
+
   var el = { money: document.getElementById("money"), rate: document.getElementById("rate"), tapval: document.getElementById("tapval"), gens: document.getElementById("gens"), toast: document.getElementById("toast"), pick: document.getElementById("pickBtn") };
   var genEls = {};
 
@@ -3278,7 +3349,12 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     // see the commit. "Dispatched" counts actual departures from the flow, so the number
     // and the picture cannot disagree. Payroll and Network are shares of figures the
     // economy already computes, and both are invisible anywhere else in the app.
-    document.getElementById("mDispatched").textContent = fmt(freightDispatched);
+    // A session opens with freight already on the floor and none of it out of the door yet,
+    // so "0 dispatched" beside a four-figure rate read as a stalled site for the first ten
+    // seconds of every launch. Until the first unit leaves, count what is moving instead.
+    var moving = !freightDispatched && freight.length > 0;
+    document.getElementById("mDispatched").textContent = fmt(moving ? freight.length : freightDispatched);
+    document.getElementById("mDispatchedLabel").textContent = moving ? "in transit" : "dispatched";
     // A late site earns millions a second against a wage bill in the tens of thousands, so
     // an integer percentage rounds to 0% and sits there looking broken for the whole late
     // game -- which a store screenshot duly caught. One decimal under ten percent keeps it
@@ -3321,7 +3397,9 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     document.getElementById("shiftEarned").textContent = money(sessionEarned);
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
-    renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderBottleneck(); renderAdButtons();
+    renderNetwork(); renderScaleStrip(); renderPickSub();
+    renderObjective(); renderBottleneck(); pickNextCard();
+    renderAdButtons(); renderShiftSummary();
   }
 
   // What a purchase adds, asked of the site rather than derived from the generator.
@@ -4070,7 +4148,9 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     function showFloor(){
       switchTab("floor");setCanvasExploring(false);
       if(active()&&beats[state.lastTruck.index].kind==="clear"){
-        camTouched=true;cameraTarget=cameraFor({x:760,y:790,w:250,h:330});
+        // Ends at the site edge. The old box ran 80 units past it, which on a phone was a
+        // dark band across the bottom fifth of the view for the whole first task.
+        camTouched=true;cameraTarget=cameraFor({x:720,y:720,w:330,h:320});
       }
       cv.scrollIntoView({block:"center",behavior:"auto"});
     }
@@ -4140,6 +4220,8 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       if(!ready)return;
       if(!state.lastTruck){start("manual");return;}
       if(!active()){
+        // The report has been read; it was a permanent card on the Floor after that.
+        state.lastTruck.reportSeen=true;persist();paint();
         switchTab("equip");if(genEls.conveyor)genEls.conveyor.card.scrollIntoView({block:"center"});return;
       }
       var h=state.lastTruck,b=beats[h.index];
@@ -4257,9 +4339,11 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       var floorTitle=document.querySelector(".floor-heading b");
       if(floorTitle)floorTitle.textContent=active()?"LAST TRUCK · TASK "+(state.lastTruck.index+1):"WAREHOUSE FLOOR";
       document.body.classList.toggle("opening-shift",active());
+      dock();updateHead();
       var h=state.lastTruck;
       if(!h){card.hidden=false;title.textContent="The Last Truck";copy.textContent="Take charge of a ten-minute opening shift. Existing equipment and earnings are kept.";button.textContent="Start opening shift";alternative.hidden=true;clockLabel.textContent="OPTIONAL SHIFT";status.textContent="One-time rewards · no reset";return;}
       if(!active()){
+        card.hidden=!!h.reportSeen;if(card.hidden)return;
         title.textContent=h.status==="complete"?"Shift saved. This is your warehouse.":"Opening shift ended";copy.textContent=h.note||"Your operation continues.";button.textContent="View next expansion";alternative.hidden=true;clockLabel.textContent="SHIFT REPORT";status.textContent="Conveyor Line · "+money(costOf(GENS.find(function(g){return g.id==="conveyor";}),1));bar.style.width="100%";return;
       }
       var b=beats[h.index],remaining=Math.max(0,Math.ceil(60-h.elapsed)),key=[h.index,h.done,remaining,h.note,h.picks,h.cleared,h.choice,h.rushStarted,h.loadIndex,h.depart>0,Math.floor(state.money)].join("|");
@@ -4283,6 +4367,16 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       if(!h.done&&((b.kind==="choice"&&h.choice)||b.kind==="finale")){button.textContent=h.picks>=target?"Dispatch load":"Pick orders · "+h.picks+"/"+target;button.disabled=h.picks<target;}
       if(!h.done&&b.kind==="rush"&&h.rushStarted){button.textContent="Tap urgent pallets on the floor";button.disabled=true;}
       status.textContent=h.done?"Task completed · "+money(h.rewards)+" bonuses earned":h.note||"Every purchase uses the normal price. No penalty for a missed departure.";
+    }
+    // While the shift runs, the card lives in the fixed bar above PICK ORDER. In the page
+    // flow its button sat directly behind that bar on a phone, so the one thing a new
+    // player was told to tap next was the one thing they could not see.
+    function dock(){
+      var want=active(),bar=document.querySelector(".pickwrap");
+      if(!card||!bar||card.classList.contains("docked")===want)return;
+      card.classList.toggle("docked",want);
+      if(want)bar.insertBefore(card,bar.firstChild);
+      else document.querySelector(".floorview").insertAdjacentElement("afterend",card);
     }
     function init(){
       ready=true;state.lastTruck=normalize(state.lastTruck);state.inductionStep=tutorialSteps.length;
@@ -4863,10 +4957,29 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
   function tapBoostActive(){ return Date.now() < tapBoostUntil; }
 
   var toastTimer = null;
+  // A slim banner hung from the bottom of the readout. It used to rise into the middle of
+  // the screen and sit over whatever card was being read for four seconds; up here it
+  // covers nothing you were using, and a tap sends it away sooner.
   function showToast(html){
+    var tb = document.querySelector(".topbar");
+    el.toast.style.top = ((tb ? tb.getBoundingClientRect().bottom : 0) + 8) + "px";
     el.toast.innerHTML = html; el.toast.classList.add("show");
-    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4000);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 3200);
   }
+  el.toast.addEventListener("click", function(){ clearTimeout(toastTimer); el.toast.classList.remove("show"); });
+  window.__toast = showToast;   // for the suite
+
+  // The readout is a third of a phone screen at full size. It folds to one line -- the
+  // balance and the rate, the two numbers that move -- once you scroll into the page, and
+  // for the opening shift, when the site and the task card need the room. Two thresholds,
+  // because folding it moves the page up by its own height and a single one would flicker.
+  var compactHead = false;
+  function updateHead(){
+    var y = window.scrollY || 0;
+    var want = document.body.classList.contains("opening-shift") || (compactHead ? y > 8 : y > 64);
+    if (want !== compactHead){ compactHead = want; document.body.classList.toggle("compact-head", want); }
+  }
+  window.addEventListener("scroll", updateHead, { passive: true });
 
   function switchTab(name){
     curTab = name;
@@ -5152,8 +5265,13 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
   }
   document.getElementById("canvasOverview").addEventListener("click", overviewCamera);
   // Start with the whole site; tapping a zone supplies the closer operational view.
+  // Opening framing: the working building -- inbound docks, racking, sort, pack, outbound
+  // -- rather than the whole estate. On a portrait phone the estate framing came out at
+  // under a quarter scale, which is small enough that the labels had to be dropped and the
+  // largest things on screen were empty expansion plots. Overview still shows everything.
+  var WORK_BOUNDS = { x:270, y:0, w:900, h:1040 };
   function frameCamera(){
-    Object.assign(cam, cameraFor(overviewBounds()));
+    Object.assign(cam, cameraFor(WORK_BOUNDS));
   }
   // Keep some of the site on screen whichever way you drag.
   function clampCam(){
@@ -5266,21 +5384,39 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
   // SORTING. A plan is only as good as its labels, so they go last and they go on a
   // plate -- which also means they stay readable over stock, tarmac or a trailer.
   var labelQueue = [];
-  function label(txt,x,y,size,col,align,plate){
-    labelQueue.push({ t:txt, x:x, y:y, s:size||13, c:col||C.ink, a:align||"left", p:plate !== false });
+  // key marks the names of the zones -- the words that make a plan readable at all. They
+  // hold a minimum size on screen at any zoom; everything else is detail, and drops out
+  // when the site is too small for it to be read.
+  function label(txt,x,y,size,col,align,plate,key){
+    labelQueue.push({ t:txt, x:x, y:y, s:size||13, c:col||C.ink, a:align||"left", p:plate !== false, k:!!key });
   }
+  // Dark ink is lettering painted on the floor, not a sign. It went onto the same dark
+  // plate as everything else and vanished into it.
+  var inkDarkCache = {};
+  function inkIsDark(col){
+    if (inkDarkCache[col] !== undefined) return inkDarkCache[col];
+    var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(col || ""), dark = false;
+    if (m) dark = (0.2126*parseInt(m[1],16) + 0.7152*parseInt(m[2],16) + 0.0722*parseInt(m[3],16)) < 90;
+    return (inkDarkCache[col] = dark);
+  }
+  var LABEL_KEY_PX = 11;             // a zone name is never smaller than this on screen
   function flushLabels(){
     for (var i = 0; i < labelQueue.length; i++){
-      var L = labelQueue[i];
-      if (cam.z < 0.45 && L.s < 14) continue;
-      if (L.s >= 14) L.s = Math.max(L.s, 10 / cam.z);
-      ctx.font = "600 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+      var L = labelQueue[i], dark = inkIsDark(L.c);
+      if (L.k) L.s = Math.max(L.s, LABEL_KEY_PX / cam.z);
+      else if (dark){ if (L.s * cam.z < 6) continue; }
+      else {
+        if (cam.z < 0.45 && L.s < 14) continue;
+        if (L.s >= 14) L.s = Math.max(L.s, 10 / cam.z);
+      }
+      ctx.font = "700 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = L.a; ctx.textBaseline = "middle";
-      if (L.p){
-        var w = ctx.measureText(L.t).width, padx = 5, h = L.s + 6;
+      if (L.p && !dark){
+        var w = ctx.measureText(L.t).width, padx = L.s * 0.45, h = L.s * 1.5;
         var bx = L.a === "center" ? L.x - w/2 : L.x;
-        ctx.fillStyle = "rgba(12,15,19,0.62)";
+        ctx.fillStyle = L.k ? "rgba(8,14,20,0.86)" : "rgba(12,15,19,0.66)";
         ctx.fillRect(bx - padx, L.y - h/2, w + padx*2, h);
+        if (L.k){ ctx.fillStyle = "#ffc665"; ctx.fillRect(bx - padx, L.y - h/2, Math.max(2, L.s*0.18), h); }
       }
       ctx.fillStyle = L.c;
       ctx.fillText(L.t, L.x, L.y);
@@ -5358,7 +5494,7 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     r(z.x, z.y, z.w, z.h, C.slab);
     ro(z.x, z.y, z.w, z.h, C.lineSoft, 2);
     if (hatched && QUALITY.decals) hatch(z.x+10, z.y+10, z.w-20, z.h-20, "rgba(0,0,0,0.10)", 20);
-    if (z.label) label(z.label, z.x + z.w/2, z.y + 20, 13, C.ink, "center");
+    if (z.label) label(z.label, z.x + z.w/2, z.y + 20, 13, C.ink, "center", true, true);
   }
 
   // Stock on the floor: a grid of pallets, as many as the site is carrying.
@@ -5453,7 +5589,7 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
         pallet(cargoX-10,cargoY-10,20,20,false);
       }
     }
-    label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center");
+    label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center", true, true);
   }
 
   var LIVERY = ["#e9edf1", "#3f6ea8", "#e9edf1", "#b8493c", "#e9edf1"];
@@ -6788,7 +6924,9 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     sizeCanvas();
     if (!CW) return;
     var hubVisible=state.owned.hub>0;
-    if(lastHubVisible!==hubVisible){lastHubVisible=hubVisible;if(!camTouched)cameraTarget=cameraFor(overviewBounds());}
+    // Buying the hub widens the estate, so the camera pulls out to show it. The first frame
+    // is not a purchase: it opens on the working building, as frameCamera() does.
+    if(lastHubVisible!==hubVisible){var firstLook=lastHubVisible===null;lastHubVisible=hubVisible;if(!camTouched)cameraTarget=cameraFor(firstLook?WORK_BOUNDS:overviewBounds());}
     tickCamera(dt);
     // Selling the business can land you on a different site, and the palette is built
     // from the theme rather than per frame, so it has to be told.
