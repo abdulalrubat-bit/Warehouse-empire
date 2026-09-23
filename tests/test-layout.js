@@ -27,6 +27,10 @@ async function phone(b, save){
   p.on("pageerror", e => bad.push("PAGEERROR: " + e.message));
   await p.goto("file://" + FILE);
   await p.waitForTimeout(1800);
+  // A returning save may open on the streak calendar; these checks are about the page under it.
+  if (!(await p.evaluate(() => document.getElementById("modalDaily").hidden))) {
+    await p.click("#btnClaimDaily"); await p.waitForTimeout(250);
+  }
   return { ctx, p };
 }
 
@@ -111,6 +115,30 @@ async function phone(b, save){
     });
     chk("the opening shift folds the readout", r.head < 90, r.head + "px");
     chk("leaving most of the site on screen above the task card", r.canvasVisible > 280, r.canvasVisible + "px of canvas visible");
+    await ctx.close(); }
+
+  // ---- the site opens on the working building, and Overview still shows the estate ----
+  { const { ctx, p } = await phone(b, { launches:3, lifetime:5e6, total:5e6, money:2e6, contractsDone:4,
+                                        owned:{ picker:25, trolley:12, forklift:6 },
+                                        lastTruck:{ version:1, status:"complete" } });
+    await p.waitForTimeout(1200);
+    const open = await p.evaluate(() => {
+      const P = window.__plan, c = document.getElementById("wcanvas"), z = P.zones;
+      const a = P.toScreen(z.receive.x, z.receive.y), b2 = P.toScreen(z.ship.x + z.ship.w, z.ship.y);
+      return { z: P.cam().z, recvTop: a.y, shipTop: b2.y, h: c.clientHeight, w: c.clientWidth };
+    });
+    // Under a quarter scale was what the estate framing gave a portrait phone.
+    chk("the site opens at a scale its labels survive", open.z >= 0.35, "z=" + open.z.toFixed(3));
+    chk("with receiving and shipping both in frame",
+        open.recvTop > -40 && open.shipTop < open.h, JSON.stringify(open));
+    await p.click("#canvasOverview"); await p.waitForTimeout(1500);
+    const over = await p.evaluate(() => {
+      const P = window.__plan, a = P.toScreen(P.site.x, P.net.y), b2 = P.toScreen(P.site.x + P.site.w, P.site.y + P.site.h);
+      const c = document.getElementById("wcanvas");
+      return { l: a.x, t: a.y, r: b2.x, b: b2.y, w: c.clientWidth, h: c.clientHeight };
+    });
+    chk("Overview pulls out to the whole estate, Network band included",
+        over.l >= -2 && over.r <= over.w + 2 && over.t >= -2 && over.b <= over.h + 2, JSON.stringify(over));
     await ctx.close(); }
 
   await b.close();

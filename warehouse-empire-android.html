@@ -348,7 +348,7 @@ header:after {content:'OPERATIONS';font-size:8px;letter-spacing:1.5px;color:var(
 .floor-heading b {font-size:11px;letter-spacing:1.5px;}
 .floor-heading span {font-size:9px;letter-spacing:1px;color:var(--ui-mint);}
 .floor-heading span:before {content:'';display:inline-block;width:6px;height:6px;background:var(--ui-mint);border-radius:50%;margin-right:6px;}
-.floorview canvas {height:clamp(235px,35vh,360px);}
+.floorview canvas {height:clamp(260px,44vh,480px);}
 .canvas-controls {background:#162634;font-size:10px;color:#b3c6d3;padding:7px 10px;line-height:1.4;}
 .canvas-controls button {background:#253d50;border-color:#3a566c;border-radius:9px;color:#edf4fa;min-height:36px;font-size:11px;}
 .zone-info {background:#172938;color:#fff;}.zone-info p {color:#b3c6d3;}
@@ -4148,7 +4148,9 @@ header{display:none;}
     function showFloor(){
       switchTab("floor");setCanvasExploring(false);
       if(active()&&beats[state.lastTruck.index].kind==="clear"){
-        camTouched=true;cameraTarget=cameraFor({x:760,y:790,w:250,h:330});
+        // Ends at the site edge. The old box ran 80 units past it, which on a phone was a
+        // dark band across the bottom fifth of the view for the whole first task.
+        camTouched=true;cameraTarget=cameraFor({x:720,y:720,w:330,h:320});
       }
       cv.scrollIntoView({block:"center",behavior:"auto"});
     }
@@ -5263,8 +5265,13 @@ header{display:none;}
   }
   document.getElementById("canvasOverview").addEventListener("click", overviewCamera);
   // Start with the whole site; tapping a zone supplies the closer operational view.
+  // Opening framing: the working building -- inbound docks, racking, sort, pack, outbound
+  // -- rather than the whole estate. On a portrait phone the estate framing came out at
+  // under a quarter scale, which is small enough that the labels had to be dropped and the
+  // largest things on screen were empty expansion plots. Overview still shows everything.
+  var WORK_BOUNDS = { x:270, y:0, w:900, h:1040 };
   function frameCamera(){
-    Object.assign(cam, cameraFor(overviewBounds()));
+    Object.assign(cam, cameraFor(WORK_BOUNDS));
   }
   // Keep some of the site on screen whichever way you drag.
   function clampCam(){
@@ -5377,21 +5384,39 @@ header{display:none;}
   // SORTING. A plan is only as good as its labels, so they go last and they go on a
   // plate -- which also means they stay readable over stock, tarmac or a trailer.
   var labelQueue = [];
-  function label(txt,x,y,size,col,align,plate){
-    labelQueue.push({ t:txt, x:x, y:y, s:size||13, c:col||C.ink, a:align||"left", p:plate !== false });
+  // key marks the names of the zones -- the words that make a plan readable at all. They
+  // hold a minimum size on screen at any zoom; everything else is detail, and drops out
+  // when the site is too small for it to be read.
+  function label(txt,x,y,size,col,align,plate,key){
+    labelQueue.push({ t:txt, x:x, y:y, s:size||13, c:col||C.ink, a:align||"left", p:plate !== false, k:!!key });
   }
+  // Dark ink is lettering painted on the floor, not a sign. It went onto the same dark
+  // plate as everything else and vanished into it.
+  var inkDarkCache = {};
+  function inkIsDark(col){
+    if (inkDarkCache[col] !== undefined) return inkDarkCache[col];
+    var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(col || ""), dark = false;
+    if (m) dark = (0.2126*parseInt(m[1],16) + 0.7152*parseInt(m[2],16) + 0.0722*parseInt(m[3],16)) < 90;
+    return (inkDarkCache[col] = dark);
+  }
+  var LABEL_KEY_PX = 11;             // a zone name is never smaller than this on screen
   function flushLabels(){
     for (var i = 0; i < labelQueue.length; i++){
-      var L = labelQueue[i];
-      if (cam.z < 0.45 && L.s < 14) continue;
-      if (L.s >= 14) L.s = Math.max(L.s, 10 / cam.z);
-      ctx.font = "600 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+      var L = labelQueue[i], dark = inkIsDark(L.c);
+      if (L.k) L.s = Math.max(L.s, LABEL_KEY_PX / cam.z);
+      else if (dark){ if (L.s * cam.z < 6) continue; }
+      else {
+        if (cam.z < 0.45 && L.s < 14) continue;
+        if (L.s >= 14) L.s = Math.max(L.s, 10 / cam.z);
+      }
+      ctx.font = "700 " + L.s + "px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = L.a; ctx.textBaseline = "middle";
-      if (L.p){
-        var w = ctx.measureText(L.t).width, padx = 5, h = L.s + 6;
+      if (L.p && !dark){
+        var w = ctx.measureText(L.t).width, padx = L.s * 0.45, h = L.s * 1.5;
         var bx = L.a === "center" ? L.x - w/2 : L.x;
-        ctx.fillStyle = "rgba(12,15,19,0.62)";
+        ctx.fillStyle = L.k ? "rgba(8,14,20,0.86)" : "rgba(12,15,19,0.66)";
         ctx.fillRect(bx - padx, L.y - h/2, w + padx*2, h);
+        if (L.k){ ctx.fillStyle = "#ffc665"; ctx.fillRect(bx - padx, L.y - h/2, Math.max(2, L.s*0.18), h); }
       }
       ctx.fillStyle = L.c;
       ctx.fillText(L.t, L.x, L.y);
@@ -5469,7 +5494,7 @@ header{display:none;}
     r(z.x, z.y, z.w, z.h, C.slab);
     ro(z.x, z.y, z.w, z.h, C.lineSoft, 2);
     if (hatched && QUALITY.decals) hatch(z.x+10, z.y+10, z.w-20, z.h-20, "rgba(0,0,0,0.10)", 20);
-    if (z.label) label(z.label, z.x + z.w/2, z.y + 20, 13, C.ink, "center");
+    if (z.label) label(z.label, z.x + z.w/2, z.y + 20, 13, C.ink, "center", true, true);
   }
 
   // Stock on the floor: a grid of pallets, as many as the site is carrying.
@@ -5564,7 +5589,7 @@ header{display:none;}
         pallet(cargoX-10,cargoY-10,20,20,false);
       }
     }
-    label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center");
+    label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center", true, true);
   }
 
   var LIVERY = ["#e9edf1", "#3f6ea8", "#e9edf1", "#b8493c", "#e9edf1"];
@@ -6899,7 +6924,9 @@ header{display:none;}
     sizeCanvas();
     if (!CW) return;
     var hubVisible=state.owned.hub>0;
-    if(lastHubVisible!==hubVisible){lastHubVisible=hubVisible;if(!camTouched)cameraTarget=cameraFor(overviewBounds());}
+    // Buying the hub widens the estate, so the camera pulls out to show it. The first frame
+    // is not a purchase: it opens on the working building, as frameCamera() does.
+    if(lastHubVisible!==hubVisible){var firstLook=lastHubVisible===null;lastHubVisible=hubVisible;if(!camTouched)cameraTarget=cameraFor(firstLook?WORK_BOUNDS:overviewBounds());}
     tickCamera(dt);
     // Selling the business can land you on a different site, and the palette is built
     // from the theme rather than per frame, so it has to be told.
