@@ -109,7 +109,7 @@ const CORNERS = () => {
       // Exactly the band the plots are drawn in, from the renderer's own mapping. A fixed
       // top slice of the canvas stopped meaning "the Network" once the camera changed, and
       // what it caught instead was the yard in motion.
-      return p.evaluate(()=>{
+      const grab = () => p.evaluate(()=>{
         const c=document.getElementById("wcanvas"), P=window.__plan;
         const k = c.width / c.clientWidth;
         const a = P.toScreen(P.site.x - 160, P.net.y), z = P.toScreen(P.site.x + P.site.w + 160, P.net.y + P.net.h);
@@ -118,36 +118,41 @@ const CORNERS = () => {
         if (x1 - x0 < 8 || y1 - y0 < 8) return [];
         return Array.from(c.getContext("2d").getImageData(x0, y0, x1-x0, y1-y0).data);
       });
+      // Twice, a beat apart. The site crane swings across this band at overview zoom, so a
+      // single capture compared a DC row with itself at up to 7% -- which on a slow runner
+      // is the whole margin. Whatever moved between the two captures is not cladding.
+      const a1 = await grab(); await p.waitForTimeout(350); const a2 = await grab();
+      return { a: a1, b: a2 };
     };
+    const diff = (u, v, i) => Math.abs(u[i]-v[i]) + Math.abs(u[i+1]-v[i+1]) + Math.abs(u[i+2]-v[i+2]) > 18;
     // Averaging the whole strip dilutes the sheds about sevenfold and turns a clear
     // difference into noise. What the assertion actually means is "swapping the
-    // specialisation changes what you see", so count the pixels that move.
+    // specialisation changes what you see", so count the pixels that move -- among those
+    // that held still in both rows, which is what leaves the crane out.
     const changed = (x, y) => {
       let n = 0, tot = 0;
-      for (let i = 0; i < x.length; i += 4){
+      for (let i = 0; i < x.a.length; i += 4){
         tot++;
-        if (Math.abs(x[i]-y[i]) + Math.abs(x[i+1]-y[i+1]) + Math.abs(x[i+2]-y[i+2]) > 18) n++;
+        if (diff(x.a, x.b, i) || diff(y.a, y.b, i)) continue;
+        if (diff(x.a, y.a, i)) n++;
       }
       return +(100 * n / tot).toFixed(1);
     };
-    // Seeding a late-game site reframes the camera, and the first capture used to land
-    // while it was still easing in. Settle once before anything is compared.
+    // Seeding a late-game site reframes the camera; settle once before comparing.
     await strip("general");
     const g = await strip("general"), c1 = await strip("cold"), h = await strip("hazmat"), pt = await strip("port");
     const g2 = await strip("general");
-    chk("the Network band is on screen to be measured", g.length > 0, (g.length/4) + " px");
-    // The bar below only means something against what the band does on its own. When the
-    // fixture sat inside the induction this block compared a DC row with itself and got the
-    // same 4.6% it got against a Port row -- it was measuring traffic, not cladding. So the
-    // noise is measured, and every specialisation has to clear it twice over as well as the
-    // floor. Measured here: ~29-39% between specialisations, 1-2% between identical rows.
-    const noise = changed(g, g2), bar = Math.max(15, noise * 2);
-    chk("the band holds still enough to compare", noise < 6, `${noise}% drift between identical rows`);
-    chk("a row of Cold Stores does not look like a row of DCs", changed(g,c1) > bar,
+    chk("the Network band is on screen to be measured", g.a.length > 0, (g.a.length/4) + " px");
+    // Measured: 26-39% between specialisations, 0.4-1.8% for the same row twice. The
+    // second number has to stay well under the bar, or the bar is measuring something other
+    // than the sheds -- which is exactly what it was doing when both read ~4.6%.
+    chk("the same Network twice reads the same", changed(g, g2) < 5,
+        `${changed(g, g2)}% between identical rows`);
+    chk("a row of Cold Stores does not look like a row of DCs", changed(g,c1) > 15,
         `${changed(g,c1)}% of the Network band changes`);
-    chk("a row of DG Yards does not look like a row of DCs", changed(g,h) > bar,
+    chk("a row of DG Yards does not look like a row of DCs", changed(g,h) > 15,
         `${changed(g,h)}% of the Network band changes`);
-    chk("a row of Port Terminals does not look like a row of DCs", changed(g,pt) > bar,
+    chk("a row of Port Terminals does not look like a row of DCs", changed(g,pt) > 15,
         `${changed(g,pt)}% of the Network band changes`);
     await ctx.close(); }
 
