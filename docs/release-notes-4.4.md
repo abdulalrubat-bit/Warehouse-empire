@@ -109,9 +109,10 @@ the app no longer loses it.
    dimension binds to a parameter name across every event that sends it.
 3. **Privacy policy and data safety: no change needed.** The new events are app
    interaction, which is already declared, and they carry no new kind of data.
-4. **The store screenshots are out of date.** The readout, the Floor and the
-   default camera have all changed. Recapture before or alongside this release.
-   The listing text does not describe any of the changed UI, so it can stay.
+4. **Upload the new store screenshots**, replacing all eight. They are in
+   `docs/store-screenshots/`, recaptured from this build; that folder's README lists
+   the order and what each one shows. The listing text doesn't describe any of the
+   changed UI, so it can stay.
 5. **Reading the numbers:** the opening is new, so `objective_done` step
    comparisons across 4.2 and 4.4 are comparing two different openings. Read new
    players' first session from `truck_beat` instead.
