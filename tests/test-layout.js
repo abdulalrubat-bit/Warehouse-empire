@@ -55,6 +55,48 @@ async function phone(b, save){
     chk("after the shift the report card is not pinned over the game", docked === false, String(docked));
     await ctx.close(); }
 
+  // ---- the readout gives the page its room back ----
+  { const { ctx, p } = await phone(b, { launches:3, lifetime:5e5, total:5e5, money:1000, contractsDone:2,
+                                        lastTruck:{ version:1, status:"complete" } });
+    const h = () => p.evaluate(() => Math.round(document.querySelector(".topbar").getBoundingClientRect().height));
+    const full = await h();
+    chk("at the top of the page the readout is a panel, not a third of the screen", full < 270, full + "px");
+    await p.evaluate(() => window.scrollTo(0, 500)); await p.waitForTimeout(300);
+    const folded = await h();
+    chk("scrolled into the page it folds to one line", folded < 90, folded + "px");
+    chk("and still shows the balance and the rate", await p.evaluate(() => {
+      const vis = id => { const r = document.getElementById(id).getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      return vis("money") && vis("rate");
+    }));
+    await p.evaluate(() => window.scrollTo(0, 0)); await p.waitForTimeout(300);
+    chk("and unfolds again at the top", await h() === full, (await h()) + "px");
+
+    // A notice hangs under the readout rather than over the middle of the page.
+    await p.evaluate(() => window.scrollTo(0, 500)); await p.waitForTimeout(300);
+    await p.evaluate(() => window.__toast("Award Unlocked: <b>Test</b>")); await p.waitForTimeout(450);
+    const t = await p.evaluate(() => {
+      const r = document.getElementById("toast").getBoundingClientRect();
+      const tb = document.querySelector(".topbar").getBoundingClientRect();
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), under: Math.round(tb.bottom), vh: innerHeight };
+    });
+    chk("a notice sits just under the readout", t.top >= t.under && t.top - t.under < 20, JSON.stringify(t));
+    chk("and stays in the top fifth of the screen", t.bottom < t.vh * 0.2, JSON.stringify(t));
+    await p.click("#toast"); await p.waitForTimeout(400);
+    chk("a tap dismisses it", await p.evaluate(() => !document.getElementById("toast").classList.contains("show")));
+    await ctx.close(); }
+
+  // ---- during the shift the readout is folded, so the site and the task both fit ----
+  { const { ctx, p } = await phone(b);
+    const r = await p.evaluate(() => {
+      const tb = document.querySelector(".topbar").getBoundingClientRect();
+      const cv = document.getElementById("wcanvas").getBoundingClientRect();
+      const dock = document.querySelector(".pickwrap").getBoundingClientRect();
+      return { head: Math.round(tb.height), canvasVisible: Math.round(Math.min(cv.bottom, dock.top) - Math.max(cv.top, tb.bottom)) };
+    });
+    chk("the opening shift folds the readout", r.head < 90, r.head + "px");
+    chk("leaving most of the site on screen above the task card", r.canvasVisible > 280, r.canvasVisible + "px of canvas visible");
+    await ctx.close(); }
+
   await b.close();
   console.log("PASS:"); ok.forEach(l=>console.log("  + "+l));
   if(bad.length){ console.log("FAIL:"); bad.forEach(l=>console.log("  - "+l)); process.exitCode=1; }

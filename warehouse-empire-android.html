@@ -413,6 +413,24 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
 .last-truck.docked small{display:none;}
 .last-truck.docked .lt-actions button{min-height:40px;padding:8px;}
 .opening-shift #tab-floor{padding-bottom:calc(380px + env(safe-area-inset-bottom,0px));}
+
+/* ---- Readout: no title row, and a one-line form when the page needs the room ---- */
+header{display:none;}
+.topbar{padding-top:calc(10px + env(safe-area-inset-top,0px));}
+.terminal{transition:padding .18s ease;}
+.compact-head .terminal{padding:8px 14px;row-gap:0;}
+.compact-head .money{font-size:22px;padding-top:0;}
+.compact-head .money:before{display:none;}
+.compact-head .rate{padding-top:0;}
+.compact-head .rate b{font-size:16px;}
+.compact-head .rate-2,.compact-head .logistics-flow,.compact-head .metrics{display:none;}
+.compact-head .topbar{padding-bottom:8px;}
+
+/* ---- Notices: a slim banner under the readout, not a card over the page ---- */
+#toast{bottom:auto!important;top:90px;left:50%;width:calc(100% - 28px);max-width:572px;border-radius:12px;padding:9px 14px;font-size:12px;
+  transform:translateX(-50%) translateY(-14px);opacity:0;border:1px solid #d9b36d55;border-left:3px solid var(--ui-gold);background:#1a3040f2;
+  box-shadow:0 8px 24px #0006;z-index:9;cursor:pointer;}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -4265,7 +4283,7 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       var floorTitle=document.querySelector(".floor-heading b");
       if(floorTitle)floorTitle.textContent=active()?"LAST TRUCK · TASK "+(state.lastTruck.index+1):"WAREHOUSE FLOOR";
       document.body.classList.toggle("opening-shift",active());
-      dock();
+      dock();updateHead();
       var h=state.lastTruck;
       if(!h){card.hidden=false;title.textContent="The Last Truck";copy.textContent="Take charge of a ten-minute opening shift. Existing equipment and earnings are kept.";button.textContent="Start opening shift";alternative.hidden=true;clockLabel.textContent="OPTIONAL SHIFT";status.textContent="One-time rewards · no reset";return;}
       if(!active()){
@@ -4882,10 +4900,29 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
   function tapBoostActive(){ return Date.now() < tapBoostUntil; }
 
   var toastTimer = null;
+  // A slim banner hung from the bottom of the readout. It used to rise into the middle of
+  // the screen and sit over whatever card was being read for four seconds; up here it
+  // covers nothing you were using, and a tap sends it away sooner.
   function showToast(html){
+    var tb = document.querySelector(".topbar");
+    el.toast.style.top = ((tb ? tb.getBoundingClientRect().bottom : 0) + 8) + "px";
     el.toast.innerHTML = html; el.toast.classList.add("show");
-    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 4000);
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ el.toast.classList.remove("show"); }, 3200);
   }
+  el.toast.addEventListener("click", function(){ clearTimeout(toastTimer); el.toast.classList.remove("show"); });
+  window.__toast = showToast;   // for the suite
+
+  // The readout is a third of a phone screen at full size. It folds to one line -- the
+  // balance and the rate, the two numbers that move -- once you scroll into the page, and
+  // for the opening shift, when the site and the task card need the room. Two thresholds,
+  // because folding it moves the page up by its own height and a single one would flicker.
+  var compactHead = false;
+  function updateHead(){
+    var y = window.scrollY || 0;
+    var want = document.body.classList.contains("opening-shift") || (compactHead ? y > 8 : y > 64);
+    if (want !== compactHead){ compactHead = want; document.body.classList.toggle("compact-head", want); }
+  }
+  window.addEventListener("scroll", updateHead, { passive: true });
 
   function switchTab(name){
     curTab = name;
