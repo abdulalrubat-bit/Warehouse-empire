@@ -2,16 +2,16 @@
 
 A regression suite for `warehouse-empire-android.html`. The game is a single file with one
 inline `<script>` and no build step, so the suite extracts that script and loads it into a
-stubbed DOM under node. Two of the twenty-nine suites drive a real browser instead, for the
+stubbed DOM under node. Four of the suites drive a real browser instead, for the
 things a stub cannot answer — how much the canvas actually draws, and what the Network
 panel looks like at forty sites.
 
 ```sh
 cd tests
 npm install
-npx playwright install chromium      # only needed for the two browser suites
+npx playwright install chromium      # only needed for the browser suites
 node run.js                          # everything
-node run.js --no-browser             # skip the two that need Chromium
+node run.js --no-browser             # skip the ones that need Chromium
 node run.js telemetry                # only suites whose filename matches
 ```
 
