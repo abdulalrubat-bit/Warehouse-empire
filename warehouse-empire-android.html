@@ -4094,8 +4094,17 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       try{buyGen(g);}finally{buyQty=quantity;}
       if((state.owned[id]||0)>=minimum){finishBeat(id==="picker"?"Handler hired. Your crew is growing.":g.name+" installed. Watch its first delivery.");showFloor();}
     }
-    function start(){
+    // The induction replaced the whole opening and reported nothing, so there was no way to
+    // see where new players leave it. One event per beat as it closes gives the funnel;
+    // start and end bracket it. whenLive, because an automatic start lands in the first
+    // second of a first launch -- before telemetry has settled -- and log() drops those.
+    // Parameters carry the event's prefix: a GA4 dimension binds to a name across events.
+    /** @param {string} name @param {object} params */
+    function report(name,params){Tele.whenLive(function(){Tele.log(name,params);});}
+    /** @param {string} source */
+    function start(source){
       if(state.lastTruck)return;
+      report("truck_start",{truck_source:source||"manual"});
       state.lastTruck=fresh();state.inductionStep=tutorialSteps.length;DayOne.stop();clearFloorEvents();interactiveEvents.length=0;
       showFloor();persist();paint();
     }
@@ -4111,6 +4120,9 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       var h=state.lastTruck;
       if(is_rush_order)endRushOrder(false);
       if(!h.done){h.missed++;showToast("Departure rescheduled. Earnings and equipment kept.");}
+      var beat=beats[h.index],picked=beat.kind==="choice"?h.choice:beat.kind==="client"?h.client:"";
+      report("truck_beat",{truck_beat:h.index+1,truck_beat_id:beat.id,truck_result:h.done?"done":"missed",
+        truck_secs:Math.round(h.elapsed),truck_choice:picked||"none"});
       megaShipment=null;
       if(h.index===9){complete();return;}
       h.index++;h.elapsed=0;h.done=false;h.picks=0;h.choice="";h.note="";
@@ -4120,12 +4132,13 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     function complete(){
       var h=state.lastTruck;h.status="complete";h.trialLeft=0;is_rush_order=false;rushOrder=null;megaShipment=null;
       state.automationTrialUntil=0;state.crisisNextAt=state.eventPlaySeconds+180;
+      report("truck_end",{truck_result:"complete",truck_completed:h.completed,truck_secs:Math.round(h.totalSeconds),truck_beat:10});
       h.note=h.completed+" of 10 shift tasks completed · "+money(h.rewards)+" shift bonuses. Your team is yours to keep.";
       persist();paint();showToast("Shift complete. Your operation is ready for the next load.");
     }
     function action(second){
       if(!ready)return;
-      if(!state.lastTruck){start();return;}
+      if(!state.lastTruck){start("manual");return;}
       if(!active()){
         switchTab("equip");if(genEls.conveyor)genEls.conveyor.card.scrollIntoView({block:"center"});return;
       }
@@ -4165,7 +4178,10 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
     /** @param {number} dt */
     function tick(dt){
       if(!active())return;
-      if(state.prestiges>state.lastTruck.basePrestiges||state.awaitingSite){state.lastTruck.status="skipped";clearFloorEvents();persist();paint();return;}
+      if(state.prestiges>state.lastTruck.basePrestiges||state.awaitingSite){
+        report("truck_end",{truck_result:"skipped",truck_completed:state.lastTruck.completed,
+          truck_secs:Math.round(state.lastTruck.totalSeconds),truck_beat:state.lastTruck.index+1});
+        state.lastTruck.status="skipped";clearFloorEvents();persist();paint();return;}
       if(!foreground() || (is_rush_order&&!renderActive))return;
       var h=state.lastTruck;dt=Math.max(0,Math.min(.25,dt));
       h.elapsed+=dt;h.totalSeconds+=dt;
@@ -4275,10 +4291,12 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
       document.querySelector(".floorview").insertAdjacentElement("afterend",card);
       title=card.querySelector("#ltTitle");title.setAttribute("aria-live","polite");copy=card.querySelector("#ltCopy");button=card.querySelector("#ltAction");alternative=card.querySelector("#ltAlternative");status=card.querySelector("#ltStatus");bar=card.querySelector("#ltBar");clockLabel=card.querySelector("#ltClock");
       button.onclick=function(){action(false);};alternative.onclick=function(){action(true);};
-      if(!state.lastTruck&&state.total<20&&state.prestiges===0){start();}
+      if(!state.lastTruck&&state.total<20&&state.prestiges===0){start("auto");}
       else if(active()){clearFloorEvents();resumeEntry();}
       persist();paint();
     }
+    // For the suite: drive the beats without a canvas to tap on.
+    window.__truck={action:action,advance:advance,finish:finishBeat,tick:tick};
     return {init:init,active:active,trial:trial,tick:tick,picked:picked,drum:drum,rushEnded:rushEnded,tap:tap,draw:draw,drawWorld:drawWorld,dockState:dockState,normalize:normalize};
   })();
 
