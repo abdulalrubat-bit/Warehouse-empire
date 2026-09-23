@@ -53,6 +53,22 @@ async function phone(b, save){
       return c ? !!c.closest(".pickwrap") : null;
     });
     chk("after the shift the report card is not pinned over the game", docked === false, String(docked));
+    // Read once, then gone: it was a permanent card at the top of the Floor.
+    await p.evaluate(() => document.getElementById("ltAction").click()); await p.waitForTimeout(200);
+    await p.evaluate(() => document.querySelector('.tabs button[data-tab="floor"]').click()); await p.waitForTimeout(200);
+    chk("and once its button is used the report leaves the Floor",
+        await p.evaluate(() => document.getElementById("lastTruckCard").hidden === true));
+
+    // The Floor is the site, one card saying what next, the contracts, the boosts and a
+    // drawer -- not nine cards stacked end to end.
+    const cards = await p.evaluate(() => {
+      const f = document.getElementById("tab-floor");
+      return [...f.children].filter(c => !c.hidden && getComputedStyle(c).display !== "none" &&
+        !c.classList.contains("pickwrap") && c.getBoundingClientRect().height > 0).map(c => c.id || c.className);
+    });
+    chk("the Floor shows at most six blocks below the site", cards.length <= 7, cards.join(", "));
+    chk("with one card saying what to do next",
+        await p.evaluate(() => ["objective","bottleneck"].filter(id => !document.getElementById(id).hidden).length === 1));
     await ctx.close(); }
 
   // ---- the readout gives the page its room back ----

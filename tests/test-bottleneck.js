@@ -46,9 +46,12 @@ chk("a player with no plant is not given a timed freight target",
 chk("nor a bottleneck to fix", card().hidden === true, "card hidden=" + card().hidden);
 
 s.owned.picker = 2; beat(); await settle();
-chk("the first hire brings both in",
-    $("contractCard").hidden === false && card().hidden === false,
-    "contract hidden=" + $("contractCard").hidden + " card hidden=" + card().hidden);
+// The contract, and exactly one card saying what to do next. The bottleneck card used to
+// stack up under the task card here.
+const nextCards = () => [$("objective"), card()].filter(c => !c.hidden).length;
+chk("the first hire brings in the contract and one card saying what next",
+    $("contractCard").hidden === false && nextCards() === 1,
+    "contract hidden=" + $("contractCard").hidden + " next cards=" + nextCards());
 
 // A player who has already done contracts keeps the card if they sell down to nothing.
 fresh(); s.contractsDone = 3; beat(); await settle();
@@ -101,6 +104,11 @@ global.render(); await settle();
 chk("a contract comfortably on schedule reads as a status",
     card().classList.contains("good") === true && action().hidden === true,
     "good=" + card().classList.contains("good") + " action hidden=" + action().hidden);
+// And a status is not something to act on: the contract card already shows it, so the
+// card steps aside for the next purchase.
+chk("and steps aside for the next purchase rather than repeating the contract",
+    card().hidden === true && $("objective").hidden === false,
+    "bottleneck hidden=" + card().hidden + " objective hidden=" + $("objective").hidden);
 
 // ---- Priority Dispatch --------------------------------------------------------------
 fresh(); s.owned = { picker: 20 }; s.contractsDone = 1;
@@ -111,6 +119,8 @@ chk("a contract running behind offers Priority Dispatch",
     action().hidden === false && action().disabled === false && /EXPEDITE/.test(action().textContent),
     "label=" + action().textContent);
 chk("and the card reads as a problem, not a status", card().classList.contains("good") === false);
+chk("a real bottleneck is the one card shown", card().hidden === false && $("objective").hidden === true,
+    "bottleneck hidden=" + card().hidden + " objective hidden=" + $("objective").hidden);
 
 // Measured around the one clean press in this file -- expediteUntil is a module variable
 // that the fixture reset cannot reach, so every later press is a no-op. A new player is

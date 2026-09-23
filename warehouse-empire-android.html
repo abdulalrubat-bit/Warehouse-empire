@@ -414,6 +414,25 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
 .last-truck.docked .lt-actions button{min-height:40px;padding:8px;}
 .opening-shift #tab-floor{padding-bottom:calc(380px + env(safe-area-inset-bottom,0px));}
 
+/* ---- Floor: one next card, one contracts panel, the rest in a drawer ---- */
+.contracts{margin:12px 14px 0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:linear-gradient(115deg,#1b2c3b,#14212e);overflow:hidden;box-shadow:0 4px 14px #0002;}
+.contracts .cgroup-head{font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#a8c0d2;padding:11px 14px 0;}
+.contracts .contract{margin:0;border:0;border-radius:0;background:none;box-shadow:none;padding:10px 14px 13px;}
+.contracts .contract+.contract{border-top:1px solid #2b3e50;}
+.contracts .contract.priority{border-left:3px solid #a98cf0;}
+.contracts .contract.priority .cbar i{background:linear-gradient(90deg,#8d6fe0,#c9b6ff);}
+.adrow{margin-top:10px;}
+.adbtn{padding:9px 7px;}
+.shiftmore{margin:12px 14px 0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:#121e29;}
+.shiftmore summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:13px 14px;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#a8c0d2;min-height:44px;}
+.shiftmore summary::-webkit-details-marker{display:none;}
+.shiftmore summary:after{content:'';width:7px;height:7px;border-right:2px solid #7f98ab;border-bottom:2px solid #7f98ab;transform:rotate(45deg);margin-left:4px;transition:transform .15s;}
+.shiftmore[open] summary:after{transform:rotate(-135deg);}
+.shiftmore summary em{margin-left:auto;font-style:normal;font-weight:600;letter-spacing:.3px;text-transform:none;color:#8aa2b4;font-size:11px;}
+.shiftmore summary em.hot{color:#20130a;background:var(--hivis);padding:3px 8px;border-radius:20px;}
+.shiftmore>div{margin-left:10px;margin-right:10px;}
+.shiftmore>div:last-child{margin-bottom:12px;}
+
 /* ---- Readout: no title row, and a one-line form when the page needs the room ---- */
 header{display:none;}
 .topbar{padding-top:calc(10px + env(safe-area-inset-top,0px));}
@@ -464,7 +483,7 @@ header{display:none;}
         <span id="flowPct" style="color:var(--cash); font-weight:700;">100%</span>
       </div>
       <div class="metrics" id="metricsRow">
-        <span><b id="mDispatched">0</b><i>dispatched</i></span>
+        <span><b id="mDispatched">0</b><i id="mDispatchedLabel">dispatched</i></span>
         <span><b id="mPayroll">0%</b><i>payroll</i></span>
         <span id="mNetWrap" hidden><b id="mNetwork">0%</b><i>network</i></span>
       </div>
@@ -505,12 +524,32 @@ header{display:none;}
       <div class="bgo" id="bottleneckGo">FIX →</div>
     </div>
 
-    <div class="skustrip">
-      <div>
-        <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
-        <span id="activeSkuDesc">Standard consumer freight</span>
+    <div class="contracts" id="contractsGroup">
+      <div class="cgroup-head">Contracts</div>
+      <div class="contract" id="contractCard">
+        <div class="crow">
+          <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
+          <span class="ctime" id="contractTime"></span>
+        </div>
+        <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
+        <div class="crow">
+          <span id="contractProg">—</span>
+          <span class="creward" id="contractReward"></span>
+        </div>
+        <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
       </div>
-      <button class="skubtn" id="openSkuBtn">Change SKU</button>
+      <div class="contract priority" id="priorityCard" hidden>
+        <div class="crow">
+          <span class="ctitle">Priority Client<span class="ptag">PRIORITY</span></span>
+          <span class="ctime" id="priorityMkt"></span>
+        </div>
+        <div class="cbar"><i id="priorityBar" style="width:0%"></i></div>
+        <div class="crow">
+          <span id="priorityProg">&mdash;</span>
+          <span class="creward" id="priorityReward"></span>
+        </div>
+        <button class="rerollbtn" id="priorityClaimBtn" hidden>Collect<small id="priorityClaimSub">SIGN FOR THE LOAD</small></button>
+      </div>
     </div>
 
     <div class="adrow" id="adRow">
@@ -518,49 +557,31 @@ header{display:none;}
       <button id="dblAdBtn" class="adbtn alt" hidden>Double Payout<small id="dblAdSub">WATCH AD</small></button>
     </div>
 
-    <div class="contract priority" id="priorityCard" hidden>
-      <div class="crow">
-        <span class="ctitle">Priority Client<span class="ptag">PRIORITY</span></span>
-        <span class="ctime" id="priorityMkt"></span>
+    <details class="shiftmore" id="shiftMore">
+      <summary><span>Shift details</span><em id="shiftMoreSku"></em></summary>
+      <div class="skustrip">
+        <div>
+          <b id="activeSkuName"><span id="activeSkuLabel">FMCG Groceries</span><span class="mkt normal" id="activeSkuMkt">Normal</span></b>
+          <span id="activeSkuDesc">Standard consumer freight</span>
+        </div>
+        <button class="skubtn" id="openSkuBtn">Change SKU</button>
       </div>
-      <div class="cbar"><i id="priorityBar" style="width:0%"></i></div>
-      <div class="crow">
-        <span id="priorityProg">&mdash;</span>
-        <span class="creward" id="priorityReward"></span>
+      <div class="shift">
+        <div><b id="shiftEarned">$0</b><span>this session</span></div>
+        <div><b id="shiftTaps">0</b><span>hand picks</span></div>
+        <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
       </div>
-      <button class="rerollbtn" id="priorityClaimBtn" hidden>Collect<small id="priorityClaimSub">SIGN FOR THE LOAD</small></button>
-    </div>
-
-    <div class="contract" id="contractCard">
-      <div class="crow">
-        <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
-        <span class="ctime" id="contractTime"></span>
+      <div class="netbar" id="netBar" hidden>
+        <div class="nsite"><b id="netSiteName">General Distribution</b><span id="netSiteTags"></span></div>
+        <div class="nnet" id="netSummary"></div>
       </div>
-      <div class="cbar"><i id="contractBar" style="width:0%"></i></div>
-      <div class="crow">
-        <span id="contractProg">—</span>
-        <span class="creward" id="contractReward"></span>
+      <div class="scale" id="scaleStrip">
+        <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
+        <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
+        <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
+        <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
       </div>
-      <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
-    </div>
-
-    <div class="shift">
-      <div><b id="shiftEarned">$0</b><span>this session</span></div>
-      <div><b id="shiftTaps">0</b><span>hand picks</span></div>
-      <div><b id="shiftCombo">×1.0</b><span>best combo</span></div>
-    </div>
-
-    <div class="netbar" id="netBar" hidden>
-      <div class="nsite"><b id="netSiteName">General Distribution</b><span id="netSiteTags"></span></div>
-      <div class="nnet" id="netSummary"></div>
-    </div>
-
-    <div class="scale" id="scaleStrip">
-      <div><div class="sv" id="scGen">0<i>/8</i></div><div class="sl">Equipment</div></div>
-      <div><div class="sv" id="scRank">1<i>/10</i></div><div class="sl">Rank</div></div>
-      <div><div class="sv" id="scTask">1<i>/9</i></div><div class="sl">Tasks</div></div>
-      <div><div class="sv" id="scAch">0<i>/44</i></div><div class="sl">Awards</div></div>
-    </div>
+    </details>
 
   </section>
 
@@ -3005,6 +3026,30 @@ header{display:none;}
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
+  // The folded drawer still says what it holds, and says it loudly when the market for the
+  // freight you are running is hot -- that is a decision with a clock on it, and the one
+  // thing in the drawer worth opening it for.
+  function renderShiftSummary(){
+    var grp = document.getElementById("contractsGroup");
+    if (grp) grp.hidden = document.getElementById("contractCard").hidden && document.getElementById("priorityCard").hidden;
+    var em = document.getElementById("shiftMoreSku"), chip = document.getElementById("activeSkuMkt");
+    if (!em || !chip) return;
+    var hot = chip.classList.contains("hot") || chip.classList.contains("peak");
+    em.textContent = document.getElementById("activeSkuLabel").textContent + " \u00b7 " + chip.textContent;
+    em.className = hot ? "hot" : "";
+  }
+
+  // One card says what to do next, not three. The task card, the bottleneck card and the
+  // "on schedule" status used to stack up together, and the status repeated what the
+  // contract card beneath it already showed. A real bottleneck outranks everything, even
+  // onboarding -- a rush falling behind is costing money now, and its card carries the
+  // Expedite button; otherwise the task or the next purchase speaks.
+  function pickNextCard(){
+    var obj = document.getElementById("objective"), bn = document.getElementById("bottleneck");
+    if (!bn.hidden && bn.classList.contains("good")) bn.hidden = true;
+    if (!bn.hidden) obj.hidden = true;
+  }
+
   var el = { money: document.getElementById("money"), rate: document.getElementById("rate"), tapval: document.getElementById("tapval"), gens: document.getElementById("gens"), toast: document.getElementById("toast"), pick: document.getElementById("pickBtn") };
   var genEls = {};
 
@@ -3304,7 +3349,12 @@ header{display:none;}
     // see the commit. "Dispatched" counts actual departures from the flow, so the number
     // and the picture cannot disagree. Payroll and Network are shares of figures the
     // economy already computes, and both are invisible anywhere else in the app.
-    document.getElementById("mDispatched").textContent = fmt(freightDispatched);
+    // A session opens with freight already on the floor and none of it out of the door yet,
+    // so "0 dispatched" beside a four-figure rate read as a stalled site for the first ten
+    // seconds of every launch. Until the first unit leaves, count what is moving instead.
+    var moving = !freightDispatched && freight.length > 0;
+    document.getElementById("mDispatched").textContent = fmt(moving ? freight.length : freightDispatched);
+    document.getElementById("mDispatchedLabel").textContent = moving ? "in transit" : "dispatched";
     // A late site earns millions a second against a wage bill in the tens of thousands, so
     // an integer percentage rounds to 0% and sits there looking broken for the whole late
     // game -- which a store screenshot duly caught. One decimal under ten percent keeps it
@@ -3347,7 +3397,9 @@ header{display:none;}
     document.getElementById("shiftEarned").textContent = money(sessionEarned);
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
-    renderNetwork(); renderScaleStrip(); renderPickSub(); renderObjective(); renderBottleneck(); renderAdButtons();
+    renderNetwork(); renderScaleStrip(); renderPickSub();
+    renderObjective(); renderBottleneck(); pickNextCard();
+    renderAdButtons(); renderShiftSummary();
   }
 
   // What a purchase adds, asked of the site rather than derived from the generator.
@@ -4166,6 +4218,8 @@ header{display:none;}
       if(!ready)return;
       if(!state.lastTruck){start("manual");return;}
       if(!active()){
+        // The report has been read; it was a permanent card on the Floor after that.
+        state.lastTruck.reportSeen=true;persist();paint();
         switchTab("equip");if(genEls.conveyor)genEls.conveyor.card.scrollIntoView({block:"center"});return;
       }
       var h=state.lastTruck,b=beats[h.index];
@@ -4287,6 +4341,7 @@ header{display:none;}
       var h=state.lastTruck;
       if(!h){card.hidden=false;title.textContent="The Last Truck";copy.textContent="Take charge of a ten-minute opening shift. Existing equipment and earnings are kept.";button.textContent="Start opening shift";alternative.hidden=true;clockLabel.textContent="OPTIONAL SHIFT";status.textContent="One-time rewards · no reset";return;}
       if(!active()){
+        card.hidden=!!h.reportSeen;if(card.hidden)return;
         title.textContent=h.status==="complete"?"Shift saved. This is your warehouse.":"Opening shift ended";copy.textContent=h.note||"Your operation continues.";button.textContent="View next expansion";alternative.hidden=true;clockLabel.textContent="SHIFT REPORT";status.textContent="Conveyor Line · "+money(costOf(GENS.find(function(g){return g.id==="conveyor";}),1));bar.style.width="100%";return;
       }
       var b=beats[h.index],remaining=Math.max(0,Math.ceil(60-h.elapsed)),key=[h.index,h.done,remaining,h.note,h.picks,h.cleared,h.choice,h.rushStarted,h.loadIndex,h.depart>0,Math.floor(state.money)].join("|");
