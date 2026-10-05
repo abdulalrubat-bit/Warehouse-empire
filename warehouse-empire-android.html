@@ -4678,8 +4678,10 @@ header{display:none;}
       return loadPallet(nearest);
     }
     /** Draw world freight under the same camera transform as every other pallet. */
+    /** True while the first task draws its "S04 · n/3 LOADED" caption. @returns {boolean} */
+    function labelsDock(){return active()&&state.lastTruck.index===0&&!state.lastTruck.done;}
     function drawWorld(){
-      if(!active()||state.lastTruck.index!==0||state.lastTruck.done)return;
+      if(!labelsDock())return;
       var h=state.lastTruck,d=dockGeometry(),door={x:d.x+d.w/2,y:d.y+23};
       ro(d.x+8,d.y+8,d.w-16,d.h-16,"#e3c26b",2);
       for(var i=0;i<3;i++){
@@ -4765,7 +4767,7 @@ header{display:none;}
     }
     // For the suite: drive the beats without a canvas to tap on.
     window.__truck={action:action,advance:advance,finish:finishBeat,tick:tick};
-    return {init:init,active:active,trial:trial,tick:tick,picked:picked,drum:drum,rushEnded:rushEnded,tap:tap,draw:draw,drawWorld:drawWorld,dockState:dockState,normalize:normalize};
+    return {init:init,active:active,labelsDock:labelsDock,trial:trial,tick:tick,picked:picked,drum:drum,rushEnded:rushEnded,tap:tap,draw:draw,drawWorld:drawWorld,dockState:dockState,normalize:normalize};
   })();
 
   // Day One Induction: retained for compatibility; the opening director supersedes it.
@@ -7044,7 +7046,7 @@ header{display:none;}
   }
   function factoryPad(x,y,title){
     ro(x-22,y-22,44,44,"#e6c63c",2);
-    if (QUALITY.decals) label(title,x,y+36,8,"#283442","center");
+    if (title && QUALITY.decals) label(title,x,y+36,8,"#283442","center");
   }
   function factoryRack(x,y,seed){
     if(state.site==="port"){
@@ -7196,7 +7198,10 @@ header{display:none;}
     for(var cross=0;cross<3;cross++) crossing(816,328+cross*157,100,24,true);
     factoryPad(536,270,"INBOUND"); factoryPad(536,735,"PICK FACE");
     factoryPad(700,278,"FEED"); factoryPad(700,765,"PACK");
-    factoryPad(864,785,"DISPATCH");
+    // The first task labels S04 from this exact spot; the pad's floor lettering gives way
+    // for those few seconds rather than printing under it, half-legible, on the first
+    // screen a new player sees.
+    factoryPad(864,785,LastTruck.labelsDock()?"":"DISPATCH");
     factoryDetails();
     factoryBelt();
     label("STORAGE",385,268,11,"#263a4c","center");
