@@ -697,6 +697,15 @@ header{display:none;}
     </div>
     <div class="office-block"><div class="office-title">STATS</div><div class="office-text" id="statsText"></div></div>
     
+    <div class="office-block">
+      <div class="office-title">SAVE</div>
+      <div class="office-text">Your business is backed up on this phone automatically. To move it to another phone, export a save code there and import it here.</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="exportSaveBtn" class="renamebtn" style="flex:1;">EXPORT SAVE</button>
+        <button id="importSaveBtn" class="renamebtn" style="flex:1;">IMPORT SAVE</button>
+      </div>
+    </div>
+
     <div class="office-block" style="border-left-color: var(--bad); margin-top: 24px;">
       <div class="office-title" style="color: var(--bad);">DANGER ZONE</div>
       <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
@@ -750,6 +759,17 @@ header{display:none;}
       <div class="sku-list" id="skuList"></div>
       <div class="office-text" id="changeoverNote" style="margin-top:12px; border-left:3px solid var(--hazard); padding-left:10px;"></div>
       <button class="renamebtn" id="btnCloseSku" style="margin-top:12px;">Close</button>
+    </div>
+  </div>
+
+  <div id="modalSave" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="saveModalTitle">Save code</div>
+      <div class="modal-sub" id="saveModalSub"></div>
+      <textarea id="saveCodeBox" spellcheck="false" autocomplete="off" style="width:100%; height:120px; padding:10px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); font-size:11px; border-radius:8px; resize:none; word-break:break-all;"></textarea>
+      <div class="modal-sub" id="saveModalMsg" style="min-height:18px; margin:8px 0 0;"></div>
+      <button class="modal-btn" id="btnSaveAction">COPY</button>
+      <button class="renamebtn" id="btnSaveClose" style="margin-top:12px;">Close</button>
     </div>
   </div>
 
@@ -2194,13 +2214,57 @@ header{display:none;}
   function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
   function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
 
+  // --- Save backup, export and import ---------------------------------------------------
+  // One previous generation, kept in its own slot. Written at launch from the save that
+  // loaded, and every half hour after a successful write; read only when the main save
+  // will not parse or has gone missing.
+  var BACKUP_KEY = SAVE_KEY + "-backup", BACKUP_EVERY_MS = 30 * 60000;
+  var lastBackupAt = 0, recoveredFromBackup = false;
+  function parsesAsSave(raw){
+    try { var o = JSON.parse(raw); return !!o && typeof o === "object" && !Array.isArray(o); }
+    catch(e){ return false; }
+  }
+  function writeBackup(raw){
+    lastBackupAt = Date.now();
+    try { Promise.resolve(window.storage.set(BACKUP_KEY, raw)).catch(function(){}); } catch(e){}
+  }
+  // A save code: WE1.<base64 of the JSON>.<FNV-1a of the JSON>. The checksum is there to
+  // catch a paste that lost its end or picked up a stray character, which is how a code
+  // copied between phones actually goes wrong.
+  function fnv1a(str){
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ("0000000" + h.toString(16)).slice(-8);
+  }
+  function exportCode(){
+    var json = JSON.stringify(state);
+    return "WE1." + btoa(unescape(encodeURIComponent(json))) + "." + fnv1a(json);
+  }
+  /** @returns {{ok:boolean, json?:string, why?:string}} */
+  function readCode(code){
+    var parts = String(code || "").replace(/\s+/g, "").split(".");
+    if (parts.length !== 3 || parts[0] !== "WE1") return { ok:false, why:"That isn't a Warehouse Empire save code." };
+    var json;
+    try { json = decodeURIComponent(escape(atob(parts[1]))); }
+    catch(e){ return { ok:false, why:"The code is damaged \u2014 copy it again in full." }; }
+    if (fnv1a(json) !== parts[2]) return { ok:false, why:"The code is incomplete or changed \u2014 copy it again in full." };
+    if (!parsesAsSave(json)) return { ok:false, why:"The code doesn't contain a save." };
+    var o = JSON.parse(json);
+    if (!isFinite(Number(o.lifetime))) return { ok:false, why:"The code doesn't contain a save." };
+    return { ok:true, json:json };
+  }
+  window.__saveCode = { exportCode: exportCode, readCode: readCode, parses: parsesAsSave, BACKUP_KEY: BACKUP_KEY };
+
   // Coalesce checkpoints and reward writes while preserving their order on native storage.
   var pendingSave=null,saveWriting=false,saveRetry=null;
   function flushPendingSave(){
     if(saveWriting||!pendingSave||wiping)return;
     var snapshot=pendingSave;pendingSave=null;saveWriting=true;
     Promise.resolve().then(function(){return window.storage.set(SAVE_KEY,snapshot);}).then(function(){
-      saveWriting=false;flushPendingSave();
+      saveWriting=false;
+      // Refreshed every half hour of play as well as at launch, from a write that succeeded.
+      if(Date.now()-lastBackupAt>BACKUP_EVERY_MS)writeBackup(snapshot);
+      flushPendingSave();
     },function(error){
       saveWriting=false;if(!pendingSave)pendingSave=snapshot;
       console.warn("Save delayed; latest checkpoint retained",error);
@@ -2224,6 +2288,22 @@ header{display:none;}
     return window.storage.ready.then(function(){
       return window.storage.get(SAVE_KEY);
     }).then(function(res){
+      // A save that reads is copied to the backup slot before anything else touches it, so
+      // the backup is always the last business that actually loaded. A save that does not
+      // read -- or is missing while a backup exists -- is answered from the backup rather
+      // than with a fresh site: losing a developed business is the one thing that ends a
+      // player for good.
+      var raw = res && res.value;
+      if (raw && parsesAsSave(raw)){ writeBackup(raw); return res; }
+      if (raw){ try { window.storage.set(SAVE_KEY + "-corrupt", raw); } catch(e){} }
+      return Promise.resolve(window.storage.get(BACKUP_KEY)).then(function(b){
+        if (b && b.value && parsesAsSave(b.value)){ recoveredFromBackup = true; return { value: b.value }; }
+        return res;
+      }, function(){ return res; });
+    }).then(function(res){
+      if (recoveredFromBackup) setTimeout(function(){
+        showToast("Your save couldn't be read, so the <b>backup</b> was restored.");
+      }, 1200);
       if (res && res.value){
         try {
           Object.assign(state, JSON.parse(res.value));
@@ -2305,6 +2385,47 @@ header{display:none;}
         document.getElementById("wipeInput").value = "";
         document.getElementById("modalReset").hidden = false;
       });
+      (function bindSaveCodes(){
+        var mode = "export", armed = false;
+        var box = document.getElementById("saveCodeBox"), msg = document.getElementById("saveModalMsg");
+        var act = document.getElementById("btnSaveAction");
+        function open(m){
+          mode = m; armed = false; msg.textContent = "";
+          document.getElementById("saveModalTitle").textContent = m === "export" ? "Export save" : "Import save";
+          document.getElementById("saveModalSub").textContent = m === "export"
+            ? "Copy this code and keep it somewhere safe, or paste it into the game on another phone."
+            : "Paste a save code from another phone. It replaces the business on this one.";
+          box.value = m === "export" ? exportCode() : "";
+          box.readOnly = m === "export";
+          act.textContent = m === "export" ? "COPY" : "IMPORT";
+          document.getElementById("modalSave").hidden = false;
+        }
+        document.getElementById("exportSaveBtn").addEventListener("click", function(){ saveGame(); open("export"); });
+        document.getElementById("importSaveBtn").addEventListener("click", function(){ open("import"); });
+        document.getElementById("btnSaveClose").addEventListener("click", function(){ document.getElementById("modalSave").hidden = true; });
+        act.addEventListener("click", function(){
+          if (mode === "export"){
+            box.select && box.select();
+            var done = function(){ msg.textContent = "Copied."; };
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(box.value).then(done, function(){ msg.textContent = "Select the code and copy it."; });
+              else msg.textContent = "Select the code and copy it.";
+            } catch(e){ msg.textContent = "Select the code and copy it."; }
+            return;
+          }
+          var r = readCode(box.value);
+          if (!r.ok){ msg.textContent = r.why; armed = false; act.textContent = "IMPORT"; return; }
+          // Two presses: the second is the decision, the first only says what it costs.
+          if (!armed){ armed = true; act.textContent = "REPLACE THIS BUSINESS";
+                       msg.textContent = "This replaces your current business. Press again to confirm."; return; }
+          wiping = true;
+          var reload = function(){ location.reload(); };
+          var current = JSON.stringify(state);
+          try { Promise.all([window.storage.set(SAVE_KEY + "-preimport", current),
+                             window.storage.set(SAVE_KEY, r.json)]).then(reload, reload); }
+          catch(e){ reload(); }
+        });
+      })();
       document.getElementById("btnCancelWipe").addEventListener("click", function(){
         document.getElementById("modalReset").hidden = true;
         showToast("Reset aborted.");
@@ -2314,7 +2435,10 @@ header{display:none;}
           // Stop the autosave/ticker from writing the live state back out before the reload lands.
           wiping = true;
           var reload = function(){ location.reload(); };
-          try { window.storage.remove(SAVE_KEY).then(reload, reload); }
+          // The backup goes with it: left behind, the next launch would read a missing save
+          // as a lost one and restore the business the player just chose to wipe.
+          try { Promise.all([window.storage.remove(SAVE_KEY), window.storage.remove(BACKUP_KEY),
+                             window.storage.remove(SAVE_KEY + "-preimport")]).then(reload, reload); }
           catch(e){ reload(); }
         } else {
           showToast("Type WIPE to confirm.");
