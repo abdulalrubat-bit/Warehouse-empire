@@ -293,6 +293,11 @@
   .dept.top{border-color:var(--ui-gold, #f0c060);}
   .dept-labels{position:absolute; left:0; right:0; pointer-events:none; overflow:hidden;}
   .dept-label{position:absolute; display:flex; align-items:center; gap:6px; padding:4px 8px 4px 5px; border-radius:7px; background:rgba(16,28,38,.86); border:1px solid #3b5466; color:#eef5fb; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 3px 10px #0005;}
+  .dept-labels.iso .dept-label{flex-wrap:wrap; justify-content:center; gap:1px 5px; padding:4px 9px; font-size:10px; text-align:center; translate:-50% -50%; max-width:130px;}
+  .dept-labels.iso .dept-label span{font-size:8.5px;}
+  .dept-labels.iso .dept-label span{flex-basis:100%; text-align:center;}
+  .dept-labels.iso .dept-label:after{content:''; position:absolute; left:calc(50% - 6px); bottom:-7px; border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid #fffdf4;}
+  body:not(.pocket) .dept-labels.iso .dept-label:after{border-top-color:rgba(16,28,38,.86);}
   .dept-label em{font-style:normal; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:5px; background:var(--ui-gold, #f0c060); color:#1b1408; font-size:9px;}
   .dept-label span{font-weight:600; color:#a9c0d0; font-size:9px;}
   .panelhead{padding:18px 16px 4px;}
@@ -6767,7 +6772,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     document.getElementById("canvasGestureHint").textContent = enabled ? "Drag or pinch · Done to scroll" : "Swipe to scroll · tap to inspect";
   }
   exploreButton.addEventListener("click", function(){ setCanvasExploring(!canvasExploring); });
-  document.getElementById("canvasOverview").addEventListener("click", function(){ setCanvasExploring(false); });
+  document.getElementById("canvasOverview").addEventListener("click", function(){ setCanvasExploring(false); Diorama.reset(); });
   document.querySelectorAll(".tabs button").forEach(function(button){
     button.addEventListener("click", function(){ setCanvasExploring(false); });
   });
@@ -6792,6 +6797,11 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     pointers[e.pointerId] = { x:e.clientX, y:e.clientY };
     var ids = Object.keys(pointers);
     if (!canvasExploring) return;
+    if (isoActive()){
+      if (ids.length === 1) Diorama.pan(e.clientX - prev.x, e.clientY - prev.y);
+      else if (ids.length === 2 && pinchFrom){ var nowI = pinchState(ids); Diorama.zoom(nowI.d / (pinchFrom.d || 1), nowI.cx, nowI.cy); pinchFrom = nowI; }
+      return;
+    }
     if (ids.length === 1 && dragFrom){
       cam.x = e.clientX - dragFrom.x; cam.y = e.clientY - dragFrom.y;
       camTouched = true; clampCam();
@@ -6821,6 +6831,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     if (!canvasExploring) return;
     e.preventDefault();
     var r = cv.getBoundingClientRect();
+    if (isoActive()){ Diorama.zoom(e.deltaY < 0 ? 1.12 : 0.89, e.clientX - r.left, e.clientY - r.top); return; }
     zoomAt(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 0.89);
     camTouched = true;
   }, { passive:false });
@@ -7060,6 +7071,344 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     }
     label(z.label, z.x + z.w/2, atTop ? z.y - 18 : z.y + z.h + 20, 14, C.ink, "center", true, true);
   }
+
+  // ==========================================
+  // 3D DIORAMA (5.0)
+  //
+  // The Pocket Tycoon prototype's isometric site, driven by this game. The plan above is
+  // still the source of truth for everything that plays -- incidents, the opening shift,
+  // rush orders -- and is still one tap away in the Office. This draws the same operation
+  // as a model: four department yards in a two-by-two block, the fleet you own standing in
+  // them (more of a tier, more of it on the floor, up to what a yard can hold), lorries at
+  // the docks, the company's buildings around the lot, and pallets carried between yards.
+  //
+  // An earlier isometric view was dropped because dense racking hid itself. This one stays
+  // legible by never drawing more than a yard can show: counts grow with the log of what
+  // you own, not with it, and the camera only ever looks at one 540 x 480 lot.
+  // ==========================================
+  var Diorama = (function(){
+    var MAT = {
+      concrete:{top:"#f7f2da",left:"#c5c9b7",right:"#e0dfc7"}, wall:{top:"#fffcdf",left:"#c1dacf",right:"#deebe0"},
+      teal:{top:"#70d4bf",left:"#289f9f",right:"#46b8aa"}, orange:{top:"#ffc26c",left:"#dd873d",right:"#efa04c"},
+      blue:{top:"#98c8ef",left:"#537cae",right:"#74a6d2"}, purple:{top:"#b9a4ec",left:"#8066bf",right:"#9b80d4"},
+      green:{top:"#ade596",left:"#63b27e",right:"#87cc8c"}, crate:{top:"#f4c478",left:"#bb8648",right:"#dca45f"},
+      dark:{top:"#526d82",left:"#2c425b",right:"#405970"}, cream:{top:"#fffdf0",left:"#cad7d6",right:"#e5eee6"},
+      red:{top:"#f2a08c",left:"#c2553e",right:"#d8725b"}, pink:{top:"#f3c3cf",left:"#c4869a",right:"#dda3b3"},
+      gold:{top:"#ffe08a",left:"#c9a43a",right:"#e3bf55"}
+    };
+    // Department yards, in the order freight moves: receiving, storage, packing, dispatch.
+    var YARD = {
+      receive:  { x:30,  y:280, w:205, h:180, floor:"#f8e1af", stripe:"#eea441" },
+      store:    { x:30,  y:30,  w:205, h:195, floor:"#d2e8e9", stripe:"#5ca8db" },
+      pack:     { x:285, y:35,  w:205, h:190, floor:"#e4dbf2", stripe:"#9d7dd8" },
+      dispatch: { x:285, y:295, w:205, h:165, floor:"#d4e8cc", stripe:"#69b789" }
+    };
+    var ORDER = ["receive","store","pack","dispatch"];
+    var PATHS = {
+      receive:  [{x:180,y:366},{x:253,y:356},{x:253,y:170},{x:180,y:170}],
+      store:    [{x:155,y:185},{x:250,y:255},{x:372,y:255},{x:372,y:172}],
+      pack:     [{x:390,y:180},{x:270,y:260},{x:387,y:360}],
+      dispatch: [{x:405,y:375},{x:440,y:460},{x:445,y:540}]
+    };
+    // Company buildings stand round the lot once owned: three down each side, two behind.
+    var CORP_SPOT = {
+      tower:{x:-118,y:30,w:62,h:62,h3:96,m:"blue"}, hr:{x:-118,y:130,w:62,h:52,h3:44,m:"pink"},
+      training:{x:-118,y:215,w:62,h:52,h3:40,m:"green"}, marketing:{x:-118,y:300,w:62,h:52,h3:48,m:"gold"},
+      customs:{x:568,y:30,w:70,h:70,h3:26,m:"orange"}, server:{x:568,y:135,w:56,h:52,h3:36,m:"purple"},
+      depot:{x:568,y:220,w:62,h:56,h3:34,m:"teal"}, solar:{x:568,y:310,w:70,h:62,h3:6,m:"blue"}
+    };
+    var c = null, base = null, baseKey = "";
+    var view = { z:1, ox:0, oy:0, s:1 };
+    var hits = { incidents:[], corp:[] };
+    var outbound = { t:0, shown:0 };
+
+    function P(x, y, z){ return { x: 540 + (x - y) * 0.82, y: 125 + (x + y) * 0.53 - (z || 0) }; }
+    function inv(p){ var a = (p.x - 540) / 0.82, b = (p.y - 125) / 0.53; return { x:(a + b) / 2, y:(b - a) / 2 }; }
+    function poly(g, pts, fill, stroke, w){
+      g.beginPath(); for (var i = 0; i < pts.length; i++){ if (i) g.lineTo(pts[i].x, pts[i].y); else g.moveTo(pts[i].x, pts[i].y); }
+      g.closePath(); g.fillStyle = fill; g.fill();
+      if (stroke){ g.strokeStyle = stroke; g.lineWidth = w || 1; g.lineJoin = "round"; g.stroke(); }
+    }
+    function plane(g, x, y, w, h, z, fill, stroke){ poly(g, [P(x,y,z),P(x+w,y,z),P(x+w,y+h,z),P(x,y+h,z)], fill, stroke, 2); }
+    function box(g, x, y, w, h, z, ht, m){
+      var a = P(x,y,z+ht), b = P(x+w,y,z+ht), d = P(x,y+h,z+ht), e = P(x+w,y+h,z+ht), f = P(x+w,y+h,z);
+      poly(g, [d,e,f,P(x,y+h,z)], m.left); poly(g, [b,e,f,P(x+w,y,z)], m.right); poly(g, [a,b,e,d], m.top, m.top, 1.5);
+    }
+    function shadow(g, x, y, rx, ry, a){
+      var p = P(x, y); g.fillStyle = "rgba(28,76,80," + (a || 0.12) + ")";
+      g.beginPath(); if (g.ellipse) g.ellipse(p.x + 10, p.y + 8, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    }
+    function line(g, pts, col, w, dash){
+      g.beginPath(); for (var i = 0; i < pts.length; i++){ var p = P(pts[i].x, pts[i].y, pts[i].z); if (i) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }
+      g.strokeStyle = col; g.lineWidth = w || 2; g.lineCap = "round"; if (g.setLineDash) g.setLineDash(dash || []); g.stroke(); if (g.setLineDash) g.setLineDash([]);
+    }
+    function rrect(g, x, y, w, h, r){ g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); }
+    function tree(g, x, y, s){
+      s = s || 1; shadow(g, x, y, 27 * s, 14 * s); box(g, x - 3, y - 3, 6, 6, 0, 30 * s, MAT.crate);
+      var p = P(x, y, 42 * s), leaves = [[-14,0,21,"#58b989"],[12,1,23,"#76cb91"],[0,-20,23,"#91d697"]];
+      for (var i = 0; i < 3; i++){ g.fillStyle = leaves[i][3]; g.beginPath(); g.arc(p.x + leaves[i][0] * s, p.y + leaves[i][1] * s, leaves[i][2] * s, 0, Math.PI * 2); g.fill(); }
+    }
+    function person(g, x, y, col, phase){
+      var p = P(x, y, 5); shadow(g, x, y, 9, 5); var step = Math.sin(phase) * 2.3;
+      g.lineCap = "round"; g.lineWidth = 5; g.strokeStyle = "#314c70";
+      g.beginPath(); g.moveTo(p.x - 3, p.y - 6); g.lineTo(p.x - 4 - step, p.y); g.moveTo(p.x + 3, p.y - 6); g.lineTo(p.x + 4 + step, p.y); g.stroke();
+      g.fillStyle = col; rrect(g, p.x - 7, p.y - 24, 14, 19, 5); g.fill();
+      g.fillStyle = "#f1b68a"; g.beginPath(); g.arc(p.x, p.y - 29, 7, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#ffd573"; g.fillRect(p.x - 6, p.y - 38, 12, 5);
+    }
+    function pallet(g, x, y, col){
+      box(g, x, y, 23, 20, 0, 4, MAT.crate);
+      box(g, x + 2, y + 2, 19, 16, 4, 15, { top:col, left:"#be914f", right:"#d9ad68" });
+      plane(g, x + 10, y + 2, 3, 16, 20, "#fff3c6");
+    }
+    function truck(g, x, y, m, axis){
+      var w = 44, h = 90;
+      var bx = function(u, v, ww, dd, z, ht, mm){ if (axis === "x") box(g, x + v, y + u, dd, ww, z, ht, mm); else box(g, x + u, y + v, ww, dd, z, ht, mm); };
+      shadow(g, x + (axis === "x" ? h : w) / 2, y + (axis === "x" ? w : h) / 2, w, h * 0.35);
+      bx(2, 4, w - 4, h - 4, 3, 7, MAT.dark); bx(0, 24, w, h - 25, 10, 32, MAT.cream); bx(2, 0, w - 4, 25, 10, 23, m);
+      bx(5, 2, w - 10, 9, 33, 3, MAT.blue);
+      [12, h - 17].forEach(function(wy){ bx(-3, wy, 6, 12, 0, 10, MAT.dark); bx(w - 3, wy, 6, 12, 0, 10, MAT.dark); });
+    }
+    function forklift(g, x, y, col, m){
+      m = m || MAT.orange; shadow(g, x, y, 18, 9);
+      box(g, x - 11, y - 12, 23, 26, 4, 10, m); box(g, x - 9, y - 8, 18, 10, 14, 12, MAT.dark);
+      box(g, x - 12, y - 14, 3, 27, 15, 23, m); box(g, x + 10, y - 14, 3, 27, 15, 23, m);
+      box(g, x - 14, y - 16, 29, 30, 38, 3, m);
+      box(g, x - 11, y + 15, 4, 25, 2, 3, MAT.dark); box(g, x + 7, y + 15, 4, 25, 2, 3, MAT.dark);
+      if (col) pallet(g, x - 10, y + 17, col);
+    }
+    function trolley(g, x, y, col){ shadow(g, x, y, 12, 6); box(g, x - 9, y - 7, 18, 14, 2, 5, MAT.dark); box(g, x - 8, y - 6, 16, 12, 7, 10, { top:col, left:"#be914f", right:"#d9ad68" }); box(g, x + 8, y - 7, 3, 14, 7, 16, MAT.teal); }
+    function along(pts, t){
+      var seg = Math.min(pts.length - 1.001, Math.max(0, t) * (pts.length - 1)), i = Math.floor(seg), f = seg - i;
+      return { x: pts[i].x + (pts[i + 1].x - pts[i].x) * f, y: pts[i].y + (pts[i + 1].y - pts[i].y) * f };
+    }
+    // How many of a thing to stand on the floor for N owned: one for the first, then one
+    // more each time the fleet doubles, never more than the yard holds.
+    function shown(n, cap){ return n > 0 ? Math.min(cap, 1 + Math.floor(Math.log(n) / Math.LN2)) : 0; }
+    function skuColor(){ return { fmcg:"#f3b655", pharma:"#65ccde", industrial:"#b6a4f1", bonded:"#e7a07a", semis:"#9fd3a8" }[state.sku] || "#f3b655"; }
+
+    function drawBase(){
+      var key = state.site + "|" + (state.network || []).length;
+      if (base && key === baseKey) return;
+      baseKey = key;
+      if (!base){ base = document.createElement("canvas"); base.width = 1100; base.height = 950; }
+      var g = base.getContext("2d"); if (!g) return;
+      if (g.clearRect) g.clearRect(0, 0, 1100, 950);
+      var port = state.site === "port", cold = state.site === "cold";
+      plane(g, -150, -95, 820, 815, -28, port ? "#9fd0cf" : "#a7dba5");
+      plane(g, -95, 515, 725, 130, -23, "#9aadb1"); plane(g, -95, 525, 725, 105, -22, "#b8c3c2");
+      line(g, [{x:-80,y:577,z:-20},{x:620,y:577,z:-20}], "#edf0cf", 4, [21, 18]);
+      plane(g, -140, 5, 120, 480, -23, "#bdd0c2"); plane(g, 555, -80, 100, 540, -23, "#c4dbc3");
+      if (port) for (var q = 0; q < 6; q++) plane(g, -150 + q * 140, 655, 110, 50, -27, "#7fbcc8");
+      shadow(g, 280, 275, 465, 270, 0.09);
+      box(g, -12, -12, 564, 518, -16, 18, MAT.concrete);
+      plane(g, 0, 0, 540, 480, 3, "#eee8d1");
+      for (var n = 0; n <= 12; n++){
+        var t = n * 43;
+        line(g, [{x:t,y:0,z:4},{x:t,y:480,z:4}], "rgba(220,220,198,.3)", 1);
+        line(g, [{x:0,y:t,z:4},{x:540,y:t,z:4}], "rgba(220,220,198,.3)", 1);
+      }
+      plane(g, 241, 15, 31, 450, 4, "#fff9e6"); plane(g, 15, 240, 510, 30, 4, "#fff9e6");
+      ORDER.forEach(function(d){
+        var y = YARD[d]; plane(g, y.x, y.y, y.w, y.h, 4, cold && d === "store" ? "#c4e2f0" : y.floor);
+        plane(g, y.x, y.y, y.w, 4, 5, y.stripe);
+      });
+      plane(g, 30, 470, 188, 18, 4, "#fec76d"); plane(g, 300, 470, 188, 18, 4, "#a6d8b2");
+      for (var k = 0; k < 7; k++){ plane(g, 34 + k * 27, 471, 12, 15, 5, "#fff0b1"); plane(g, 304 + k * 27, 471, 12, 15, 5, "#def2bd"); }
+      [[-45,-40],[620,-30],[640,420],[-150,420],[-74,500],[592,500],[200,-60]].forEach(function(t){ tree(g, t[0], t[1], 1.2); });
+      [[-40,675],[155,673],[500,675]].forEach(function(b){ box(g, b[0], b[1], 75, 28, -20, 14, MAT.cream); plane(g, b[0] + 3, b[1] + 3, 69, 22, -4, "#73bf91"); });
+    }
+
+    function fit(){
+      view.s = Math.min(CW / 900, CH / 760) * view.z;
+      return view.s;
+    }
+    function toScreen3(x, y, z){ var p = P(x, y, z); return { x: CW / 2 + view.ox + (p.x - 550) * view.s, y: CH / 2 + view.oy + (p.y - 420) * view.s }; }
+    function toWorld3(sx, sy){ return inv({ x:(sx - CW / 2 - view.ox) / view.s + 550, y:(sy - CH / 2 - view.oy) / view.s + 420 }); }
+
+    function draw(dt, t){
+      c = ctx; fit(); drawBase();
+      outbound.t += dt;
+      c.save();
+      c.translate(CW / 2 + view.ox, CH / 2 + view.oy); c.scale(view.s, view.s); c.translate(-550, -420);
+      if (base && c.drawImage) c.drawImage(base, 0, 0);
+      var nodes = [], add = function(depth, fn){ nodes.push({ d:depth, f:fn }); };
+      var o = state.owned, col = skuColor(), phase = t * 7;
+      var flow = flowStats(), limit = flow.raw < FLOW_MAX - 0.005 ? flow.weakest : null;
+
+      // Back walls, with windows and pillars.
+      add(-15, function(){
+        box(c, -8, -8, 548, 10, 3, 66, MAT.wall); box(c, -8, -8, 10, 480, 3, 58, MAT.wall);
+        for (var n = 0; n < 6; n++){ box(c, 45 + n * 91, -7, 6, 12, 3, 78, MAT.teal); box(c, -7, 45 + n * 79, 12, 6, 3, 70, MAT.teal); }
+        for (var w = 0; w < 7; w++) box(c, 28 + w * 72, -6, 54, 3, 25, 22, MAT.blue);
+      });
+
+      // 1 Receiving: the hands who unload, and their trolleys.
+      var R = YARD.receive, pickers = shown(o.picker || 0, 5), trolleys = shown(o.trolley || 0, 4);
+      add(458, function(){ box(c, 62, 299, 137, 18, 4, 24, MAT.orange); for (var n = 0; n < 3; n++){ box(c, 67 + n * 44, 301, 34, 13, 28, 19, MAT.cream); } });
+      for (var i = 0; i < pickers; i++) (function(i){
+        var px = R.x + 30 + (i % 3) * 52 + Math.sin(phase / 9 + i) * 8, py = R.y + 70 + Math.floor(i / 3) * 46 + Math.cos(phase / 11 + i) * 6;
+        add(px + py, function(){ person(c, px, py, "#eea441", phase + i); });
+      })(i);
+      for (var j = 0; j < trolleys; j++) (function(j){
+        var p = along(PATHS.receive, ((t * 0.07) + j / trolleys) % 1);
+        add(p.x + p.y + 10, function(){ trolley(c, p.x, p.y, col); });
+      })(j);
+
+      // 2 Storage: racks rise with reach trucks; forklifts run between rows.
+      var levels = 2 + shown(o.reach || 0, 3), rows = (o.forklift || 0) > 0 ? 2 : 1;
+      for (var r = 0; r < rows; r++) (function(r){
+        var y = 70 + r * 72;
+        add(160 + y, function(){
+          [65, 185].forEach(function(x){ box(c, x, y, 6, 27, 3, 8 + levels * 29, MAT.teal); });
+          for (var l = 0; l < levels; l++){
+            var z = 8 + l * 29; box(c, 60, y, 138, 29, z, 4, MAT.orange);
+            for (var k = 0; k < 4; k++) if ((k + l + r) % 5 !== 4) box(c, 68 + k * 30, y + 3, 23, 22, z + 4, 18, { top:col, left:"#be914f", right:"#d9ad68" });
+          }
+        });
+      })(r);
+      var forks = shown(o.forklift || 0, 3);
+      for (var f = 0; f < forks; f++) (function(f){
+        var p = along(PATHS.store, ((t * 0.05) + f / Math.max(1, forks)) % 1);
+        add(p.x + p.y + 25, function(){ forklift(c, p.x, p.y, f % 2 ? col : null); });
+      })(f);
+
+      // 3 Packing: a conveyor per tier owned, sorting robots beside it.
+      var P3 = YARD.pack;
+      if ((o.conveyor || 0) > 0){
+        add(485, function(){
+          box(c, 321, 100, 135, 43, 4, 28, MAT.purple); plane(c, 324, 103, 129, 37, 33, "#536f86");
+          var off = (t * 22) % 11;
+          for (var k = 0; k < 11; k++) plane(c, 326 + ((k * 11 + off) % 121), 105, 4, 33, 34, "#a4c0c6");
+          box(c, 429, 139, 24, 63, 4, 28, MAT.purple);
+          box(c, 338, 75, 36, 17, 32, 35, MAT.cream); box(c, 343, 72, 25, 3, 48, 13, MAT.blue);
+        });
+        var parcels = 3;
+        for (var pc = 0; pc < parcels; pc++) (function(pc){
+          var u = ((t * 0.25) + pc / parcels) % 1, px = 330 + u * 110;
+          add(470 + px, function(){ box(c, px, 110, 18, 16, 34, 12, MAT.crate); });
+        })(pc);
+      } else {
+        add(485, function(){ box(c, 330, 110, 110, 30, 4, 20, MAT.cream); plane(c, 333, 113, 104, 24, 25, "#efe6cf"); });
+      }
+      var stations = Math.min(4, o.conveyor || 0);
+      for (var s = 0; s < stations; s++) (function(s){ add(565 + s * 10, function(){ box(c, 302 + s * 31, 203, 24, 20, 4, 20, MAT.teal); box(c, 305 + s * 31, 205, 18, 15, 24, 10, MAT.cream); }); })(s);
+      var bots = shown(o.sorter || 0, 3);
+      for (var b = 0; b < bots; b++) (function(b){
+        var bx = 470, by = 70 + b * 48, a = Math.sin(t * 2 + b) * 10;
+        add(bx + by, function(){ shadow(c, bx, by, 14, 7); box(c, bx - 10, by - 10, 20, 20, 4, 14, MAT.teal); box(c, bx - 3 + a * 0.3, by - 3, 6, 6, 18, 22, MAT.cream); box(c, bx - 12 + a, by - 4, 16, 8, 40, 5, MAT.orange); });
+      })(b);
+      if (!(o.conveyor || 0)) add(P3.x + P3.y + 120, function(){ person(c, 380, 160, "#9d7dd8", phase); });
+
+      // 4 Dispatch: the outbound bay, a crane gantry once owned, the hub beside it.
+      add(791, function(){ box(c, 332, 326, 133, 40, 4, 22, MAT.green); box(c, 416, 325, 32, 26, 27, 19, MAT.cream); box(c, 421, 324, 21, 2, 34, 10, MAT.blue); });
+      if ((o.crane || 0) > 0){
+        var cx = 320 + (Math.sin(t * 0.6) + 1) * 70;
+        add(900, function(){
+          box(c, 300, 300, 8, 8, 4, 110, MAT.gold); box(c, 470, 300, 8, 8, 4, 110, MAT.gold);
+          box(c, 300, 300, 178, 8, 112, 8, MAT.gold);
+          box(c, cx, 296, 22, 16, 104, 10, MAT.dark);
+          line(c, [{x:cx + 11,y:304,z:104},{x:cx + 11,y:304,z:56}], "#2c425b", 2);
+          pallet(c, cx, 320, col);
+        });
+      }
+      if ((o.hub || 0) > 0) add(960, function(){ box(c, 420, 380, 66, 70, 4, 70, MAT.blue); box(c, 418, 378, 70, 74, 74, 6, MAT.cream); plane(c, 432, 392, 40, 40, 81, "#73bf91"); });
+      add(380 + 400, function(){ person(c, 380, 400, "#69b789", phase * 0.7); });
+
+      // Lorries: one backing on to receiving, one leaving dispatch with the takings.
+      var cycle = 12, u = (outbound.t % cycle) / cycle;
+      var inX = 65, inY = 490 + Math.max(0, 1 - u * 3) * 120;
+      add(900 + inY, function(){ truck(c, inX, inY, MAT.orange); });
+      var leaving = u > 0.7, outY = 490 + (leaving ? (u - 0.7) / 0.3 * 160 : 0);
+      add(1020 + outY, function(){ truck(c, 355, outY, MAT.teal); });
+      if (outbound.shown <= 0.7 && u > 0.7) outbound.pop = { at:t, amount: totalRate() * cycle };
+      outbound.shown = u;
+
+      // The company's buildings, once owned.
+      hits.corp = [];
+      for (var id in CORP_SPOT){
+        if (!((state.corp && state.corp[id]) > 0)) continue;
+        (function(id, b){
+          add(b.x + b.y + 400, function(){
+            shadow(c, b.x + b.w / 2, b.y + b.h / 2, b.w * 0.7, b.h * 0.35);
+            box(c, b.x, b.y, b.w, b.h, 0, b.h3, MAT[b.m] || MAT.cream);
+            box(c, b.x - 2, b.y - 2, b.w + 4, b.h + 4, b.h3, 5, MAT.cream);
+            if (id === "solar") for (var k = 0; k < 3; k++) box(c, b.x + 6 + k * 21, b.y + 8, 16, b.h - 16, 10, 3, MAT.dark);
+          });
+          hits.corp.push({ id:id, b:b });
+        })(id, CORP_SPOT[id]);
+      }
+
+      // The department holding the site back: outlined, with freight waiting in it.
+      if (limit){
+        var Y = YARD[limit], n = Math.max(1, Math.min(6, Math.round((1 - flow.worst) * 6)));
+        add(-5, function(){ plane(c, Y.x - 3, Y.y - 3, Y.w + 6, Y.h + 6, 6, "rgba(216,114,91,.10)", "#d8725b"); });
+        for (var q = 0; q < n; q++) (function(q){
+          var x = Y.x + 18 + (q % 3) * 30, y = Y.y + Y.h - 50 + Math.floor(q / 3) * 24;
+          add(x + y + 22, function(){ pallet(c, x, y, "#f2a08c"); });
+        })(q);
+      }
+
+      nodes.sort(function(a, b){ return a.d - b.d; });
+      for (var k = 0; k < nodes.length; k++) nodes[k].f();
+
+      // Incidents: the plan's hotspots, carried into the model and kept tappable.
+      hits.incidents = [];
+      for (var e = 0; e < interactiveEvents.length; e++){
+        var h = interactiveEvents[e];
+        var wx = Math.max(20, Math.min(520, (h.gx - 300) / 830 * 540)), wy = Math.max(20, Math.min(460, (h.gy - 30) / 980 * 480));
+        var p = P(wx, wy, 8), left = 1 - h.t / h.ttl, pulse = 1 + Math.sin(h.t * (6 + (1 - left) * 14)) * 0.18, ink = INCIDENT_INK[h.type] || "#4fd97b";
+        c.globalAlpha = 0.25; c.fillStyle = ink; c.beginPath(); c.arc(p.x, p.y, 40 * pulse, 0, Math.PI * 2); c.fill();
+        c.globalAlpha = 1; c.strokeStyle = "#fff"; c.lineWidth = 6; c.beginPath(); c.arc(p.x, p.y, 24 * pulse, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = ink; c.beginPath(); c.arc(p.x, p.y, 18 * pulse, 0, Math.PI * 2); c.fill();
+        c.fillStyle = "#fff"; c.font = "900 20px Trebuchet MS,system-ui"; c.textAlign = "center"; c.fillText("!", p.x, p.y + 7);
+        hits.incidents.push({ i:e, wx:wx, wy:wy });
+      }
+
+      // Takings as the lorry pulls out.
+      if (outbound.pop){
+        var age = t - outbound.pop.at;
+        if (age < 2.3 && outbound.pop.amount > 0){
+          var pp = P(400, 400, 90 + age * 22);
+          c.globalAlpha = Math.min(1, (2.3 - age) * 2); c.fillStyle = "#fff9db";
+          rrect(c, pp.x - 80, pp.y - 24, 160, 44, 22); c.fill();
+          c.font = "900 24px Trebuchet MS,system-ui"; c.textAlign = "center"; c.fillStyle = "#2c986f";
+          c.fillText("+" + money(outbound.pop.amount), pp.x, pp.y + 6); c.globalAlpha = 1;
+        } else outbound.pop = null;
+      }
+      c.restore();
+    }
+
+    function tap(sx, sy){
+      var w = toWorld3(sx, sy);
+      for (var k = hits.incidents.length - 1; k >= 0; k--){
+        var h = hits.incidents[k];
+        if (Math.hypot(w.x - h.wx, w.y - h.wy) < 42 / Math.max(0.5, view.z)){
+          var ev = interactiveEvents[h.i]; if (!ev) return true;
+          interactiveEvents.splice(h.i, 1); sfx("shatter");
+          clearIncident(INCIDENT_BY_ID[ev.type] || INCIDENTS[0]);
+          return true;
+        }
+      }
+      for (var d in YARD){ var y = YARD[d]; if (w.x >= y.x && w.x <= y.x + y.w && w.y >= y.y && w.y <= y.y + y.h){ focusZone(FLOW_ZONE[d]); return true; } }
+      for (var i = 0; i < hits.corp.length; i++){ var b = hits.corp[i].b; if (w.x >= b.x && w.x <= b.x + b.w && w.y >= b.y && w.y <= b.y + b.h){ buyCorpPlot(hits.corp[i].id); return true; } }
+      return false;
+    }
+    function labelAt(d){ var y = YARD[d]; return toScreen3(y.x + y.w / 2, y.y + y.h / 2 - 18, 71); }
+    function pan(dx, dy){ view.ox += dx; view.oy += dy; clamp(); }
+    function zoom(k, sx, sy){
+      var old = view.z; view.z = Math.max(1, Math.min(2.8, view.z * k)); var f = view.z / old;
+      sx = sx == null ? CW / 2 : sx; sy = sy == null ? CH / 2 : sy;
+      view.ox = (view.ox - (sx - CW / 2)) * f + (sx - CW / 2); view.oy = (view.oy - (sy - CH / 2)) * f + (sy - CH / 2); clamp();
+    }
+    function clamp(){ var dx = CW * (view.z - 1) / 2 + 40, dy = CH * (view.z - 1) / 2 + 40; view.ox = Math.max(-dx, Math.min(dx, view.ox)); view.oy = Math.max(-dy, Math.min(dy, view.oy)); }
+    function reset(){ view.z = 1; view.ox = 0; view.oy = 0; }
+    return { draw:draw, tap:tap, labelAt:labelAt, pan:pan, zoom:zoom, reset:reset, toWorld:toWorld3, toScreen:toScreen3, view:view, YARD:YARD };
+  })();
+  // The diorama shows unless the player chose the plan -- or the opening shift is running,
+  // which is choreographed on the plan, pallet by pallet.
+  function isoActive(){ return state.mapView !== "plan" && !LastTruck.active(); }
+  window.__diorama = { active: isoActive, d: Diorama, events: function(){ return interactiveEvents; } };
 
   var LIVERY = ["#e9edf1", "#3f6ea8", "#e9edf1", "#b8493c", "#e9edf1"];
   // Parked in its bay, seen from above: ribbed trailer with the tractor at the outer end.
@@ -7893,6 +8242,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     var rect = cv.getBoundingClientRect();
     if(LastTruck.tap(ev.clientX-rect.left,ev.clientY-rect.top))return;
     if(tapFloorEvent(ev.clientX-rect.left,ev.clientY-rect.top))return;
+    if (isoActive()){ Diorama.tap(ev.clientX - rect.left, ev.clientY - rect.top); return; }
     var w = toWorld(ev.clientX - rect.left, ev.clientY - rect.top);
 
     // Incidents first: they sit on top and they expire.
@@ -8405,7 +8755,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
   function placeDeptLabels(){
     var host = document.getElementById("deptLabels"), cv = document.getElementById("wcanvas");
     if (!host || !cv) return;
-    var show = cam.z >= 0.3 && !LastTruck.active() && document.getElementById("canvasZoneInfo").hidden;
+    var show = (isoActive() || cam.z >= 0.3) && !LastTruck.active() && document.getElementById("canvasZoneInfo").hidden;
     host.hidden = !show;
     if (!show) return;
     if (!deptLabelEls){
@@ -8413,10 +8763,11 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       deptLabelEls = host.querySelectorAll(".dept-label");
     }
     host.style.top = cv.offsetTop + "px"; host.style.height = CH + "px";
-    var stats = deptStats(), text = "";
+    var stats = deptStats(), text = "", iso = isoActive();
+    host.classList.toggle("iso", iso);
     for (var i = 0; i < DEPTS.length && i < deptLabelEls.length; i++){
-      var z = ZONE[DEPTS[i].zone], el = deptLabelEls[i], p = toScreen(z.x, z.y);
-      var x = Math.max(4, Math.min(CW - 120, p.x + 8)), y = p.y + 8;
+      var z = ZONE[DEPTS[i].zone], el = deptLabelEls[i], p = iso ? Diorama.labelAt(DEPTS[i].id) : toScreen(z.x, z.y);
+      var x = iso ? Math.max(60, Math.min(CW - 60, p.x)) : Math.max(4, Math.min(CW - 120, p.x + 8)), y = iso ? p.y : p.y + 8;
       el.style.display = (y < -10 || y > CH - 24) ? "none" : "";
       el.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
       text += stats[i].units + ",";
@@ -8458,6 +8809,16 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     tickIncidents(dt);
 
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (isoActive()){
+      // The model sits on the page's own sky; nothing behind it is painted.
+      if (ctx.clearRect) ctx.clearRect(0, 0, CW, CH);
+      // The plan's freight still runs unseen: it is what the dispatched counter counts.
+      if (!is_rush_order) tickFreight(logisticsDt);
+      Diorama.draw(dt, animT);
+      drawFloorEvents(dt);
+      noteFrameTime(performance.now() - t0);
+      return;
+    }
     ctx.fillStyle = C.pageBg || "#161a20";
     ctx.fillRect(0, 0, CW, CH);
 

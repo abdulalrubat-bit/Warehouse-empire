@@ -7,6 +7,8 @@ require("./harness.js");
 { const cv = document.getElementById("wcanvas"); cv._cw = 400; cv._ch = 300; }
 require("./game.js");
 const s = global.state;
+// These checks read the flat plan's drawing; since 5.0 the 3D view is the default.
+s.mapView = "plan";
 // The streak calendar deliberately stands aside for the induction, so a returning player
 // -- which is the only kind of player a streak test is about -- has to be past it.
 s.lastTruck = { version:1, status:"complete" };
