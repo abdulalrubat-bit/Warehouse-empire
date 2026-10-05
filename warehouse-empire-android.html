@@ -414,6 +414,17 @@ section {padding-bottom:calc(95px + env(safe-area-inset-bottom,0px));}#tab-floor
 .last-truck.docked .lt-actions button{min-height:40px;padding:8px;}
 .opening-shift #tab-floor{padding-bottom:calc(380px + env(safe-area-inset-bottom,0px));}
 
+/* ---- Milestone shipments ---- */
+.milestone-choices{display:flex;flex-direction:column;gap:9px;margin-top:6px;}
+.milestone-choices button{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border-radius:12px;border:1px solid #4a6378;background:#182a39;color:#eef4fa;cursor:pointer;min-height:56px;}
+.milestone-choices button b{display:block;font-size:14px;}
+.milestone-choices button span{display:block;font-size:11.5px;color:#b5c7d3;margin-top:2px;line-height:1.4;}
+.milestone-choices button i{font-style:normal;font-size:9px;letter-spacing:1px;color:var(--ui-gold);border:1px solid #ffc66555;border-radius:20px;padding:3px 7px;margin-left:auto;flex-shrink:0;}
+.milestone-choices button:active{border-color:var(--ui-gold);}
+.milestone-row{display:flex;align-items:center;gap:8px;width:calc(100% - 28px);margin:9px 14px 0;padding:10px 12px;border-radius:10px;border:1px solid #ffc66577;background:linear-gradient(100deg,#3a3427,#1c2b36);color:#fff0cf;font-size:12px;cursor:pointer;text-align:left;}
+.milestone-row b{color:var(--ui-gold);font-size:10px;letter-spacing:1.4px;}
+.milestone-row span{margin-left:auto;color:var(--ui-gold);}
+
 /* ---- Floor: one next card, one contracts panel, the rest in a drawer ---- */
 .contracts{margin:12px 14px 0;border:1px solid var(--ui-border);border-radius:var(--ui-radius);background:linear-gradient(115deg,#1b2c3b,#14212e);overflow:hidden;box-shadow:0 4px 14px #0002;}
 .contracts .cgroup-head{font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:#a8c0d2;padding:11px 14px 0;}
@@ -526,6 +537,7 @@ header{display:none;}
 
     <div class="contracts" id="contractsGroup">
       <div class="cgroup-head">Contracts</div>
+      <button class="milestone-row" id="milestoneRow" type="button" hidden><b>MILESTONE</b> A reward is waiting &mdash; choose it <span>&rarr;</span></button>
       <div class="contract" id="contractCard">
         <div class="crow">
           <span class="ctitle" id="contractTitle">Awaiting dispatch...</span>
@@ -771,6 +783,15 @@ header{display:none;}
       <div class="modal-title">Commission Your Next Site</div>
       <div class="modal-sub">Your old site keeps earning in the background. What you pick sets the costs, output, tap value and wages of everything you build next.</div>
       <div class="splist" id="siteList"></div>
+    </div>
+  </div>
+
+  <div id="modalMilestone" class="modal-screen" hidden>
+    <div class="modal-box" style="border-top-color:var(--hazard);">
+      <div class="modal-title">Milestone Shipment</div>
+      <div class="modal-sub" id="milestoneLead">Head office is pleased. Pick one.</div>
+      <div id="milestoneChoices" class="milestone-choices"></div>
+      <button class="renamebtn" id="btnMilestoneLater" style="margin-top:12px;">Decide later</button>
     </div>
   </div>
 
@@ -1865,7 +1886,7 @@ header{display:none;}
     prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
-    launches: 0, notifPrompted: false,
+    launches: 0, notifPrompted: false, milestoneOffer: null,
     marketState: {}, crates: 0, crateAdsToday: 0, crateAdDay: -1,
     lastDailyClaim: 0, dailyStreak: 0, theme: "hivis",
     priorityClient: null, streakGrace: 1, graceRefilledAt: 0, dailyShownFor: -1,
@@ -2231,6 +2252,7 @@ header{display:none;}
       // A client from an earlier day is simply replaced on the next tick; this only guards
       // a shape that would throw before refreshPriorityClient() gets to run.
       if (state.priorityClient && typeof state.priorityClient !== "object") state.priorityClient = null;
+      state.milestoneOffer = validMilestoneOffer(state.milestoneOffer);
 
       if (!state.owned || typeof state.owned !== "object") state.owned = {};
       GENS.forEach(function(g){
@@ -3048,12 +3070,119 @@ header{display:none;}
     card.onclick = function(){ switchTab(cur.tab); };
   }
 
+  // --- Milestone shipments ---------------------------------------------------------------
+  // Every fifth contract offers a choice of one reward from three. The pool is made of the
+  // game's existing levers -- timed boosts, cash, pallets, crates -- so this adds a decision,
+  // not a currency. The offer is drawn and SAVED the moment the contract completes, seeded
+  // by its number, so closing the app cannot reroll it; timed rewards start on the pick,
+  // not on the offer, so a choice made later is not a choice already half spent.
+  var MILESTONE_EVERY = 5;
+  var MILESTONE_POOL = [
+    { id:"crew",    kind:"timed",   name:"Relief crew",      ic:"hat",
+      desc:function(){ return "+50% speed for 5 minutes"; },
+      apply:function(){ incidentSpeedUntil = Math.max(incidentSpeedUntil, Date.now()) + 300000; } },
+    { id:"rush",    kind:"timed",   name:"Rush hour",        ic:"flame",
+      desc:function(){ return "\u00d78 output for 60 seconds"; },
+      apply:function(){ boostUntil = Math.max(boostUntil, Date.now()) + 60000; } },
+    { id:"hands",   kind:"timed",   name:"Hand-pick frenzy", ic:"glove",
+      desc:function(){ return "\u00d74 hand picks for 2 minutes"; },
+      apply:function(){ tapBoostUntil = Math.max(tapBoostUntil, Date.now()) + 120000; } },
+    { id:"cash",    kind:"instant", name:"Cash advance",     ic:"cash",
+      desc:function(){ return "+" + money(milestoneCash()) + " now \u00b7 ten minutes of income"; },
+      apply:function(){ var c = milestoneCash(); state.money += c; state.total += c; state.lifetime += c; } },
+    { id:"pallets", kind:"instant", name:"Pallet bonus",     ic:"pallet",
+      desc:function(o){ return "+" + milestonePallets(o) + " pallets to spend in the Store"; },
+      // Only worth offering while there is a perk left to spend pallets on.
+      relevant:function(){ return PERKS.some(function(p){ return !state.perks[p.id]; }); },
+      apply:function(o){ state.pallets += milestonePallets(o); } },
+    { id:"crates",  kind:"instant", name:"Crate shipment",   ic:"crate",
+      desc:function(){ return "+2 crates"; },
+      apply:function(){ state.crates += 2; } }
+  ];
+  var MILESTONE_BY_ID = {}; MILESTONE_POOL.forEach(function(m){ MILESTONE_BY_ID[m.id] = m; });
+  function milestoneCash(){ return Math.max(50, totalRate() * 600); }
+  function milestonePallets(o){ return Math.min(15, 3 + Math.floor(((o && o.n) || 1) / 2)); }
+
+  // Small seeded generator: the same contract number always draws the same three.
+  function milestoneRng(seed){
+    var t = (seed >>> 0) || 1;
+    return function(){ t += 0x6D2B79F5; var r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+  }
+  // One instant, one timed, one of anything left -- so there is always both a "now" and a
+  // "for a while" on the table, and nothing offered is something the player cannot use.
+  function drawMilestone(n){
+    var rnd = milestoneRng(n * 2654435761 + (state.prestiges || 0) * 97);
+    var pool = MILESTONE_POOL.filter(function(m){ return !m.relevant || m.relevant(); });
+    function take(list){ var i = Math.floor(rnd() * list.length); var m = list[i];
+      pool = pool.filter(function(x){ return x !== m; }); return m.id; }
+    var picks = [take(pool.filter(function(m){ return m.kind === "instant"; })),
+                 take(pool.filter(function(m){ return m.kind === "timed"; }))];
+    picks.push(take(pool));
+    for (var i = picks.length - 1; i > 0; i--){ var j = Math.floor(rnd() * (i + 1)); var t = picks[i]; picks[i] = picks[j]; picks[j] = t; }
+    return picks;
+  }
+  function validMilestoneOffer(o){
+    if (!o || typeof o !== "object" || !Array.isArray(o.options)) return null;
+    var opts = o.options.filter(function(id){ return MILESTONE_BY_ID[id]; });
+    if (opts.length < 2) return null;
+    return { n: Math.max(1, Math.floor(Number(o.n)) || 1), options: opts.slice(0, 3), later: o.later === true };
+  }
+  function maybeOfferMilestone(){
+    if (state.contractsDone <= 0 || state.contractsDone % MILESTONE_EVERY) return;
+    if (state.milestoneOffer) return;                 // one waiting at a time
+    var n = state.contractsDone / MILESTONE_EVERY;
+    state.milestoneOffer = { n: n, options: drawMilestone(n), later: false };
+    Tele.log("milestone_offer", { milestone_n: n, milestone_options: state.milestoneOffer.options.join(",") });
+    saveGame();
+    openMilestone(false);
+  }
+  // On its own only when nothing else is on screen and the opening shift is not running;
+  // otherwise, and after "Decide later", it waits as a row in the Contracts panel.
+  function openMilestone(asked){
+    var o = state.milestoneOffer; if (!o) return;
+    var busy = Array.prototype.some.call(document.querySelectorAll(".modal-screen"), function(m){ return !m.hidden; });
+    if (!asked && (o.later || LastTruck.active() || busy)) return;
+    var box = document.getElementById("milestoneChoices"); box.innerHTML = "";
+    document.getElementById("milestoneLead").textContent =
+      "Contract " + (o.n * MILESTONE_EVERY) + " delivered. Head office is pleased \u2014 pick one.";
+    o.options.forEach(function(id){
+      var m = MILESTONE_BY_ID[id], b = document.createElement("button");
+      b.type = "button"; b.setAttribute("data-m", id);
+      b.innerHTML = plate(m.ic) + '<div><b>' + m.name + '</b><span>' + m.desc(o) + '</span></div><i>' +
+        (m.kind === "timed" ? "BOOST" : "NOW") + '</i>';
+      b.addEventListener("click", function(){ pickMilestone(id); });
+      box.appendChild(b);
+    });
+    document.getElementById("modalMilestone").hidden = false;
+  }
+  function pickMilestone(id){
+    var o = state.milestoneOffer;
+    if (!o || o.options.indexOf(id) < 0) return false;
+    var m = MILESTONE_BY_ID[id];
+    m.apply(o);
+    state.milestoneOffer = null;                      // settled once
+    document.getElementById("modalMilestone").hidden = true;
+    Tele.log("milestone_pick", { milestone_n: o.n, milestone_choice: id });
+    sfx("upgrade"); showToast("Milestone reward: <b>" + m.name + "</b> \u2014 " + m.desc(o) + ".");
+    render(); saveGame();
+    return true;
+  }
+  document.getElementById("btnMilestoneLater").addEventListener("click", function(){
+    if (state.milestoneOffer){ state.milestoneOffer.later = true; saveGame(); }
+    document.getElementById("modalMilestone").hidden = true;
+    render();
+  });
+  document.getElementById("milestoneRow").addEventListener("click", function(){ openMilestone(true); });
+  window.__milestone = { draw: drawMilestone, offer: maybeOfferMilestone, pick: pickMilestone, open: openMilestone };
+
   // The folded drawer still says what it holds, and says it loudly when the market for the
   // freight you are running is hot -- that is a decision with a clock on it, and the one
   // thing in the drawer worth opening it for.
   function renderShiftSummary(){
-    var grp = document.getElementById("contractsGroup");
-    if (grp) grp.hidden = document.getElementById("contractCard").hidden && document.getElementById("priorityCard").hidden;
+    var grp = document.getElementById("contractsGroup"), row = document.getElementById("milestoneRow");
+    if (row) row.hidden = !state.milestoneOffer;
+    if (grp) grp.hidden = document.getElementById("contractCard").hidden && document.getElementById("priorityCard").hidden && !state.milestoneOffer;
     var em = document.getElementById("shiftMoreSku"), chip = document.getElementById("activeSkuMkt");
     if (!em || !chip) return;
     var hot = chip.classList.contains("hot") || chip.classList.contains("peak");
@@ -7072,6 +7201,7 @@ header{display:none;}
         Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0 });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
+        maybeOfferMilestone();
       }
     }
     checkDailyLoginPopup();
