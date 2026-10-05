@@ -122,6 +122,9 @@
 
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .expressbtn{border-style:solid; border-color:var(--hazard); color:var(--hazard);}
+  .expressbtn.armed{background:var(--hazard); color:#20130a;}
+  .expressbtn.armed small{color:#20130a;}
   .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; font-weight:400;}
 
   .skustrip{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cash); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;}
@@ -553,6 +556,7 @@ header{display:none;}
           <span id="contractProg">—</span>
           <span class="creward" id="contractReward"></span>
         </div>
+        <button class="rerollbtn expressbtn" id="expressBtn" type="button" hidden>Take the express clause</button>
         <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
       </div>
       <div class="contract priority" id="priorityCard" hidden>
@@ -4929,6 +4933,52 @@ header{display:none;}
     };
   }
 
+  // --- Express clause ----------------------------------------------------------------
+  // A standard job can be taken on express terms: half the time it has left, for twice the
+  // cash and two more pallets. Offered only at the start of a job, so it is a bet placed on
+  // the fleet you have rather than a bonus claimed on one already nearly done; and locked
+  // once signed, so it is a commitment rather than a toggle. A standard job asks for 60% of
+  // the window's throughput, so express terms ask for about 120%: a stretch the player can
+  // meet by buying capacity or with Priority Dispatch, and lose the job if they do not.
+  var EXPRESS_CASH = 2, EXPRESS_PALLETS = 2, EXPRESS_OPEN_PROG = 0.2, EXPRESS_OPEN_TIME = 0.8;
+  var expressArmedUntil = 0;
+
+  function expressOffered(c){
+    if (!c || c.rush || c.express || state.contractsDone < 2 || LastTruck.active()) return false;
+    var span = c.mins * 60000, left = c.deadline - Date.now();
+    return c.prog < c.goal * EXPRESS_OPEN_PROG && left > span * EXPRESS_OPEN_TIME;
+  }
+
+  function takeExpress(){
+    var c = state.contract;
+    if (!expressOffered(c)) return false;
+    c.express = true;
+    c.deadline = Date.now() + Math.floor((c.deadline - Date.now()) / 2);
+    c.cash *= EXPRESS_CASH; c.pallets += EXPRESS_PALLETS;
+    c.label = "EXPRESS · " + c.label;
+    expressArmedUntil = 0;
+    Tele.log("express_taken", { express_progress:Math.round(c.prog / c.goal * 100),
+                                express_secs:Math.round((c.deadline - Date.now()) / 1000) });
+    sfx("upgrade");
+    showToast("<b>Express clause signed.</b><br>Deliver by " + clockLeft(c.deadline - Date.now()) + " for " + money(c.cash) + ".");
+    renderContract(); render(); saveGame();
+    return true;
+  }
+
+  function pressExpress(ev){
+    if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+    // Two presses: a signature that cannot be taken back should not be one stray tap.
+    if (Date.now() < expressArmedUntil) takeExpress();
+    else { expressArmedUntil = Date.now() + 4000; renderContract(); }
+  }
+
+  window.__express = { offered: function(){ return expressOffered(state.contract); }, take: takeExpress, press: pressExpress };
+
+  function clockLeft(ms){
+    var t = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(t / 60), sec = t % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
   function renderContract(){
     var card = document.getElementById("contractCard");
     if (!GATES.contract()){ card.hidden = true; return; }
@@ -4939,6 +4989,9 @@ header{display:none;}
       if (c.rush){
         Tele.log("rush_contract_missed", { progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
         showToast("Rush window closed. <b>No penalty.</b>");
+      } else if (c.express){
+        Tele.log("express_missed", { express_progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        showToast("Express clause missed. <b>The job went to another carrier.</b>");
       }
       state.contract = newContract(); c = state.contract;
     }
@@ -4946,7 +4999,18 @@ header{display:none;}
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
-    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : c.express ? "EXPRESS REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractTime").textContent = clockLeft(c.deadline - Date.now()) + " left";
+    var xb = document.getElementById("expressBtn");
+    var offered = expressOffered(c), armed = offered && Date.now() < expressArmedUntil;
+    xb.hidden = !offered;
+    xb.classList.toggle("armed", armed);
+    var html = !offered ? "" : (armed ? "Tap again to sign" : "Take the express clause") + "<small>" + (armed
+      ? "CAN'T BE UNDONE · MISS IT AND THE JOB IS GONE"
+      : "HALF THE TIME · " + money(c.cash * EXPRESS_CASH) + " + " + (c.pallets + EXPRESS_PALLETS) + " PAL") + "</small>";
+    // Rewritten only when it changes: this runs ten times a second, under the player's thumb.
+    if (offered && xb._html !== html){ xb.innerHTML = html; xb._html = html; }
+    xb.onclick = pressExpress;
   }
 
   // --- Local notifications ---------------------------------------------------------
@@ -7367,7 +7431,8 @@ header{display:none;}
       if (state.contract.prog >= state.contract.goal){
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
-        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0 });
+        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
+                                        contract_express:state.contract.express ? 1 : 0 });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
         maybeOfferMilestone();
