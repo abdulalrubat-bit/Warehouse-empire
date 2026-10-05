@@ -1,6 +1,12 @@
 # Play Store phone screenshots
 
-Captured from **4.4 (v31)**. 1080×1920 (9:16), which is Play's phone aspect.
+Captured from **5.0** (the Pocket look and the 3D site view are the defaults).
+**Known gap:** `03-port` now reads much like `01-site` at thumbnail size. The diorama
+draws a port only as water by the road, and the old shot's container stacks are on the
+plan view. Consider replacing 03 with a different site or the Office's Site Setup until
+the diorama gets per-site dressing.
+
+Previously captured from 4.4 (v31). 1080×1920 (9:16), which is Play's phone aspect.
 A 540×960 viewport at deviceScaleFactor 2 hits it exactly.
 
 Play accepts 2–8 phone screenshots. This is eight, and the order matters: Play
@@ -9,7 +15,7 @@ to read as different at thumbnail size.
 
 | | Shows | Listing section |
 |---|---|---|
-| `01-site` | The working building at the new opening zoom, freight in transit | WATCH THE SITE RUN |
+| `01-site` | The 3D site: four department yards, fleet, lorries, company buildings | WATCH THE SITE RUN |
 | `02-last-truck` | The opening shift: S04 two-thirds loaded, the task docked above PICK ORDER | *(new in 4.4)* |
 | `03-port` | Port Terminal in Overview: container stacks in the racking | FOUR SITES |
 | `04-night-livery` | Dangerous Goods on the Night Shift livery: drum cages, dark estate | FOUR SITES |
