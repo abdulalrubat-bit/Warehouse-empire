@@ -549,9 +549,204 @@ header{display:none;}
   transform:translateX(-50%) translateY(-14px);opacity:0;border:1px solid #d9b36d55;border-left:3px solid var(--ui-gold);background:#1a3040f2;
   box-shadow:0 8px 24px #0006;z-index:9;cursor:pointer;}
 #toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto;}
+
+/* ==== POCKET (5.0) ============================================================================
+   The look of the Pocket Tycoon prototype: a light, cosy palette, rounded cards that sit on the
+   page like tiles, chunky buttons with a pressed edge, and a floating tab bar. It is a class on
+   the page rather than a rewrite, so Classic -- the dark command-centre look -- is still one tap
+   away in the Office, and every rule above still describes it. */
+body.pocket{
+  --bg:#d4edda; --panel:#fffdf4; --panel2:#f0f4e9; --line:#dee6dc;
+  --ink:#294657; --dim:#72848a; --steel:#86a092;
+  --hivis:#e9a144; --hivis-d:#c47f2c; --hazard:#e9a144;
+  --cash:#2f9e76; --bad:#d8725b; --corp:#8066bf;
+  --screen:#fffdf3; --screen-2:#f4f4e9; --screen-ink:#294657; --screen-dim:#72848a;
+  --scrim:rgba(62,113,101,.35); --sky-mid:#cfe9d6; --shadow:rgba(84,138,99,.18);
+  --ui-bg:#d4edda; --ui-panel:#fffdf4; --ui-border:#e3e9dd; --ui-text:#294657; --ui-muted:#72848a;
+  --ui-gold:#e9a144; --ui-mint:#36b58b; --ui-radius:20px;
+  --pk-card:#fffdf4; --pk-soft:#f0f4e9; --pk-edge:#c9dccb; --pk-ink2:#3d6469; --pk-muted:#7d8e7d;
+  --font-cond:'Trebuchet MS',ui-rounded,'Nunito','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Trebuchet MS',ui-rounded,'Nunito','Segoe UI',system-ui,sans-serif;
+  background:radial-gradient(ellipse at 40% 0%,#f2f7d9 0,#d4edda 45%,#afe0d3 100%) fixed;
+  color:var(--ink); font-family:var(--font-cond);
+}
+html:has(body.pocket){background:#c9ebdc;}
+body.pocket button{font-family:var(--font-cond);}
+
+/* Readout: three stat tiles -- cash, rate, reputation -- each with its round icon. */
+body.pocket .topbar{background:transparent; border:0; box-shadow:none; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
+body.pocket.compact-head .topbar{background:#e3f3e6e6;}
+body.pocket .terminal{background:transparent; border:0; box-shadow:none; padding:4px 14px 6px; column-gap:10px; row-gap:8px;}
+body.pocket .money, body.pocket .rate{position:relative; top:auto; right:auto; margin:0; align-self:stretch; background:var(--pk-card); border:2px solid #fff; border-radius:17px; box-shadow:0 4px 0 #bbd4c2,0 6px 18px #547a5822;
+  padding:22px 12px 9px 50px; color:#a3712e; font-weight:900; letter-spacing:-.5px;}
+body.pocket .money{font-size:22px; padding-left:48px;}
+body.pocket .terminal{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);}
+body.pocket .logistics-flow.full{display:none;}
+body.pocket .floor-heading span{display:none;}
+body.pocket .money:before{content:'CASH'; top:9px; left:50px; color:#8b9b91; font-size:8px; letter-spacing:.9px; font-weight:800;}
+body.pocket .money:after{content:'$'; position:absolute; left:11px; top:50%; margin-top:-15px; width:30px; height:30px; display:grid; place-items:center; border-radius:50%;
+  background:#ffdb80; color:#bb8435; border:3px solid #ffeeb2; box-shadow:0 3px #dcaf56; font-size:17px; font-weight:900; box-sizing:border-box;}
+body.pocket .rate{text-align:left; align-self:stretch; font-size:11px; color:#72848a; padding-top:22px;}
+body.pocket .rate:before{content:'EARNING'; position:absolute; top:9px; left:50px; color:#8b9b91; font-size:8px; letter-spacing:.9px; font-weight:800;}
+body.pocket .rate:after{content:''; position:absolute; left:11px; top:50%; margin-top:-15px; width:30px; height:30px; border-radius:50%; background:#b4dfe7; box-shadow:0 3px #83bdcd;
+  background-image:linear-gradient(#548a9b,#548a9b),linear-gradient(#548a9b,#548a9b); background-size:12px 12px,6px 2px; background-repeat:no-repeat; background-position:center 8px,center 21px;}
+body.pocket .rate b{color:#2f9e76; font-size:19px; font-weight:900;}
+body.pocket #wageTag{display:block; font-size:10px; color:#c07a5f;}
+body.pocket .rate-2{color:#6d8a7a; font-size:11px; margin-top:0; padding:0 4px;}
+body.pocket .rate-2 b{color:#3d6469;}
+body.pocket .logistics-flow{padding:0 4px; margin-top:0;}
+body.pocket .flow-tag{color:#6e9a7e;}
+body.pocket .flow-bar, body.pocket .combobar, body.pocket .cbar{background:#d5e1cd;}
+body.pocket .flow-bar b{background:linear-gradient(90deg,#65bf8c,#a5da8c)!important;}
+body.pocket .metrics{border:0; margin-top:0; padding:0; gap:8px;}
+body.pocket .metrics span{background:var(--pk-card); border:2px solid #fff; border-radius:15px; padding:7px 10px 7px 12px!important; border-left:2px solid #fff!important; box-shadow:0 3px 0 #c6d9c9;}
+body.pocket .metrics b{color:#385c5c; font-size:16px; font-weight:900;}
+body.pocket .metrics i{color:#8b9b91; font-weight:800;}
+body.pocket .metrics span:last-child b{color:#8066bf;}
+body.pocket.compact-head .money{padding:8px 12px 8px 46px; font-size:20px;}
+body.pocket.compact-head .money:before{display:none;}
+body.pocket.compact-head .rate{padding:8px 12px 8px 46px;}
+body.pocket.compact-head .rate:before{display:none;}
+body.pocket.compact-head .money:after, body.pocket.compact-head .rate:after{width:26px; height:26px; margin-top:-13px; font-size:14px;}
+
+/* The site view and the cards under it: tiles on the page. */
+body.pocket .floorview{background:transparent; border:0; box-shadow:none; border-radius:0; margin:6px 0 0;}
+body.pocket .floor-heading{background:transparent; border:0; padding:8px 18px 4px;}
+body.pocket .floor-heading b{color:#537361; font-size:20px; letter-spacing:-.6px; font-weight:900; text-transform:none; font-variant:normal;}
+body.pocket .floor-heading b{font-size:0;} body.pocket .floor-heading b:after{content:attr(data-name); font-size:21px;}
+body.pocket .floor-heading span{color:#6e9a7e; font-size:8px; font-weight:800;}
+body.pocket .floor-heading span:before{background:#46ad86;}
+body.pocket .help-q{border:2px solid #fff; background:var(--pk-card); color:#5f8a7a; box-shadow:0 3px 0 #c6d9c9; width:28px; height:28px;}
+body.pocket .canvas-controls{background:transparent; color:#6e9a7e; padding:4px 14px;}
+body.pocket .canvas-controls button{background:var(--pk-card); border:2px solid #fff; border-radius:14px; color:#3d6469; font-weight:800; box-shadow:0 3px 0 #a9c8b4;}
+body.pocket #canvasExplore[aria-pressed="true"]{background:#63bd95; color:#fff; box-shadow:0 3px 0 #409e75; border-color:#fff;}
+body.pocket .zone-info{background:var(--pk-card); color:var(--ink); border-radius:18px; margin:6px 14px; border:2px solid #fff; box-shadow:0 4px 0 #c6d9c9;}
+body.pocket .zone-info p{color:#687c82;}
+body.pocket .dept-strip, body.pocket .floor-tags{background:transparent; padding-left:14px; padding-right:14px;}
+body.pocket .dept{background:var(--pk-card); border:2px solid #fff; border-radius:16px; color:var(--ink); box-shadow:0 4px 0 #c6d9c9;}
+body.pocket .dept .dn i{color:#fff; background:#e9a144; border-radius:6px; padding:0 4px; margin-right:4px;}
+body.pocket .dept[data-dept="store"] .dn i{background:#5ca8db;} body.pocket .dept[data-dept="pack"] .dn i{background:#9d7dd8;} body.pocket .dept[data-dept="dispatch"] .dn i{background:#69b789;}
+body.pocket .dept .dv{color:#385c5c;} body.pocket .dept .dv small{color:#8b9b91;}
+body.pocket .dept .ds{color:#8b9b91;} body.pocket .dept.on .ds{color:#2f9e76;}
+body.pocket .dept .db{background:#e1e9dc;} body.pocket .dept .db i{background:linear-gradient(90deg,#65bf8c,#a5da8c);}
+body.pocket .dept.top{box-shadow:0 4px 0 #e9a144; border-color:#fff3d6;}
+body.pocket .dept.limit{box-shadow:0 4px 0 #d8725b; border-color:#ffe3dc;} body.pocket .dept.limit .ds{color:#c2553e;}
+body.pocket .ftag{background:var(--pk-soft); border:0; color:#7a947a; border-radius:9px; padding:6px 9px;}
+body.pocket .ftag.gold{background:#ffe9c4; color:#a3712e;}
+body.pocket .dept-label{background:#fffdf4ed; border:2px solid #fff; border-radius:13px; color:#48616a; box-shadow:0 4px 0 #50676435,0 6px 12px #5774641a;}
+body.pocket .dept-label span{color:#8c9c90;}
+body.pocket .dept-label em{color:#fff;}
+
+body.pocket .objective, body.pocket .bottleneck, body.pocket .contracts, body.pocket .skustrip, body.pocket .sitepick, body.pocket .netbar,
+body.pocket .office-block, body.pocket .palletbar, body.pocket .shiftmore, body.pocket .last-truck, body.pocket .milestone-row{
+  background:var(--pk-card); border:3px solid #fff; border-radius:22px; color:var(--ink); box-shadow:0 4px 0 #b9ceaf,0 12px 25px #5284651c;}
+body.pocket .objective{border-left:3px solid #fff;}
+body.pocket .objective .otag{background:#ffdda3; color:#a3712e; border:0; border-radius:12px; rotate:-6deg;}
+body.pocket .objective .otitle, body.pocket .bottleneck .btitle{color:#294657; font-weight:900;}
+body.pocket .objective .ohint, body.pocket .bottleneck .bdetail{color:#687c82;}
+body.pocket .objective .ohint b{color:#a3712e;}
+body.pocket .objective .ogo, body.pocket .bottleneck .bgo{background:#65be92; color:#fff; padding:9px 11px; border-radius:12px; box-shadow:0 3px #3b9e72;}
+body.pocket .bottleneck .btag{color:#c2553e;} body.pocket .bottleneck.good .btag{color:#2f9e76;}
+body.pocket .bottleneck .baction{border-radius:14px; border:0; box-shadow:0 3px 0 #c47f2c;}
+body.pocket .bottleneck .bbuy{background:#e5f4ea; color:#2f9e76; box-shadow:0 3px 0 #a9d6b9;}
+body.pocket .contracts .cgroup-head{color:#86a092;}
+body.pocket .contracts .contract+.contract{border-top:1px solid #e6ece2;}
+body.pocket .contracts .contract.priority{border-left:3px solid #b9a4ec;}
+body.pocket .crow{color:#687c82;} body.pocket .ctitle{color:#294657;} body.pocket .ctime{color:#86a092;} body.pocket .creward{color:#a3712e;}
+body.pocket .cbar i{background:linear-gradient(90deg,#e9a144,#ffd27d);}
+body.pocket .rerollbtn{border-radius:14px; border:2px dashed #e9a144; color:#a3712e;} body.pocket .rerollbtn small{color:#8c9b84;}
+body.pocket .expressbtn{border-style:solid; background:#fff6e2;} body.pocket .expressbtn.armed{background:#e9a144; color:#fff;}
+body.pocket .contract.priority .rerollbtn{background:#9b80d4; border-color:#9b80d4; color:#fff;}
+body.pocket .ptag{background:#9b80d4; color:#fff;}
+body.pocket .adbtn{background:var(--pk-card); border:3px solid #fff; border-radius:18px; color:#3d6469; font-weight:800; box-shadow:0 4px 0 #c6d9c9;}
+body.pocket .adbtn small{color:#8c9b84;}
+body.pocket .adbtn.alt{color:#a3712e; box-shadow:0 4px 0 #e6c48b;}
+body.pocket .shiftmore summary{color:#86a092;} body.pocket .shiftmore summary em{color:#7d8e7d;}
+body.pocket .shift div, body.pocket .scale div{background:var(--pk-soft); border-color:#e3e9dd;} body.pocket .shift b{color:#2f9e76;} body.pocket .shift span{color:#86a092;}
+body.pocket .milestone-row{color:#a3712e;} body.pocket .milestone-row b{color:#a3712e;}
+body.pocket .last-truck{color:#294657;} body.pocket .last-truck p{color:#687c82;} body.pocket .lt-meta{color:#a3712e;} body.pocket .last-truck small{color:#7d8e7d;}
+body.pocket .lt-actions button{background:linear-gradient(#68cf9d,#45b88b); color:#fff; border:0; border-radius:14px; box-shadow:0 4px 0 #2f9e76;}
+body.pocket .lt-actions button+button{background:#edf1e8; color:#3d6469; box-shadow:0 3px 0 #d7e0d4;}
+body.pocket .lt-progress{background:#d5e1cd;}
+
+/* The pick button sits in a floating tray; the tab bar floats under it. */
+body.pocket .pickwrap{background:transparent; border:0; box-shadow:none; bottom:calc(92px + env(safe-area-inset-bottom,0px));}
+body.pocket #pickBtn{border-radius:20px; background:linear-gradient(#ffce79,#eeab50); color:#5a3a12; box-shadow:0 5px 0 #c2915b,0 10px 22px #4d735033; text-shadow:0 1px #fff6;}
+body.pocket #pickBtn small{color:#7a5520;}
+body.pocket #comboText{color:#6e9a7e;}
+body.pocket .tabs{width:calc(100% - 24px); max-width:576px; bottom:calc(12px + env(safe-area-inset-bottom,0px)); background:#fffdf3f5;
+  border:3px solid #fff; border-radius:25px; padding:6px 8px; box-shadow:0 5px 0 #a8c9b3,0 15px 35px #548a6326;}
+body.pocket .tabs button{color:#8c9c8b; border-radius:16px; background:transparent;}
+body.pocket .tabs button svg{filter:drop-shadow(0 2px #fff);}
+body.pocket .tabs button:nth-child(1) svg{color:#ddac58;} body.pocket .tabs button:nth-child(2) svg{color:#cf9eaa;}
+body.pocket .tabs button:nth-child(3) svg{color:#8ebca0;} body.pocket .tabs button:nth-child(4) svg{color:#a796cc;}
+body.pocket .tabs button:nth-child(5) svg{color:#7eaabb;}
+body.pocket .tabs button.on{background:#e5eedc; color:#5f8a68; box-shadow:inset 0 -3px #d4e3ca;}
+body.pocket section{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px));}
+body.pocket #tab-floor{padding-bottom:calc(215px + env(safe-area-inset-bottom,0px));}
+
+/* Screens other than the Floor: a heading, then tiles. */
+body.pocket .panelhead .eyebrow, body.pocket #modalHelp .eyebrow{color:#a0ad9c;}
+body.pocket .panelhead h2{color:#3d6469; font-weight:900; letter-spacing:-.6px;}
+body.pocket .panelhead p{color:#687c82;}
+body.pocket .panel-help{color:#509d96;}
+body.pocket .toolbar .label{color:#557060; border-left-color:#e9a144; font-weight:900;}
+body.pocket .qty button{background:#edf1e8; border:0; border-radius:12px; color:#3d6469; box-shadow:0 3px 0 #d7e0d4; font-weight:800;}
+body.pocket .qty button.on{background:#63bd95; color:#fff; box-shadow:0 3px 0 #409e75;}
+body.pocket .gen-card{background:var(--pk-card); border:3px solid #fff; border-radius:22px; box-shadow:0 4px 0 #c6d9c9,0 10px 22px #5284651a;}
+body.pocket .gen-card.can{box-shadow:0 4px 0 #8fd0ad,0 10px 22px #5284651a;}
+body.pocket .gen-card.locked{opacity:.6;}
+body.pocket .plate{background:#ffe9c4; border:2px solid #fff; color:#c47f2c; border-radius:15px; box-shadow:0 3px 0 #e6c48b;}
+body.pocket .gen-card-title .name{color:#294657; font-weight:900;} body.pocket .gen-card-title .count{color:#a3712e;} body.pocket .gen-card-title .desc{color:#7d8e7d;}
+body.pocket .gen-card-body{background:var(--pk-soft); border:0; border-radius:16px;}
+body.pocket .gen-card-metrics .prod{color:#2f9e76; font-weight:900;} body.pocket .gen-card-metrics .gain{color:#3d6469;} body.pocket .gen-card-metrics .pay{color:#c07a5f;}
+body.pocket .gen-card-buy{background:#edf1e8; color:#8c9b84; border:0; border-radius:16px; box-shadow:0 3px 0 #d7e0d4;}
+body.pocket .gen-card.can .gen-card-buy{background:linear-gradient(#68cf9d,#45b88b); color:#fff; box-shadow:0 4px 0 #2f9e76; text-shadow:0 1px #329167;}
+body.pocket .gen-card-buy small{color:inherit; opacity:.85;}
+body.pocket .gen-card-progress{background:#e1e9dc;} body.pocket .gen-card-progress i{background:linear-gradient(90deg,#65bf8c,#a5da8c);}
+body.pocket .up, body.pocket .sitecard, body.pocket .sku-card, body.pocket .netrow{background:var(--pk-card); border:3px solid #fff; border-radius:18px; color:#294657; box-shadow:0 4px 0 #c6d9c9;}
+body.pocket .up .udesc{color:#7d8e7d;} body.pocket .up .ucost{color:#a3712e;}
+body.pocket .up.can{box-shadow:0 4px 0 #8fd0ad;}
+body.pocket .office-title{color:#557060; font-weight:900;} body.pocket .office-text, body.pocket .palletnote{color:#687c82;} body.pocket .office-text b{color:#3d6469;}
+body.pocket .renamebtn, body.pocket #sellBtn{background:#edf1e8; border:0; border-radius:14px; color:#3d6469; font-weight:800; box-shadow:0 3px 0 #d7e0d4;}
+body.pocket #sellBtn{background:linear-gradient(#68cf9d,#45b88b); color:#fff; box-shadow:0 4px 0 #2f9e76;}
+body.pocket .badge{background:var(--pk-soft); border-color:#e3e9dd; color:#86a092;}
+body.pocket .badge.got{background:#ffe9c4; border-color:#f3cf8d; color:#a3712e;}
+body.pocket .policy-opt{background:#fffdf4; border:2px solid #fff; border-radius:16px; color:#294657; box-shadow:0 3px 0 #d5e0cf;}
+body.pocket .policy-opt span{color:#8c9b84;} body.pocket .policy-opt em{color:#3d6469;}
+body.pocket .policy-opt.on{background:#def0dd; box-shadow:0 3px 0 #aed8b1;} body.pocket .policy-opt.on b{color:#4c8a5a;}
+body.pocket .setup-h{color:#86a092;} body.pocket .setup-h small{color:#a0ad9c;}
+body.pocket .lrow .lt{color:#294657;} body.pocket .lrow .lt span{color:#86a092;} body.pocket .lrow .ln{color:#8c9b84;}
+body.pocket .lrow .lb{background:#e1e9dc;} body.pocket .lrow .lb i{background:#e9a144;}
+body.pocket .lrow.got .lt{color:#2f9e76;} body.pocket .lrow.got .lb i{background:#65bf8c;}
+body.pocket .jrow{border-top-color:#e6ece2; color:#4c6470;} body.pocket .jrow em{color:#a0ad9c;}
+body.pocket .specrow{color:#7d8e7d;} body.pocket .specrow b{color:#86a092;} body.pocket .specrow.on b{color:#2f9e76;} body.pocket .specrow.on span{color:#3d6469;}
+body.pocket .crew-card{background:var(--pk-card); border:3px solid #fff; border-radius:20px; box-shadow:0 4px 0 #c6d9c9;}
+body.pocket .crew-head b{color:#294657;} body.pocket .crew-role{color:#7d8e7d;} body.pocket .crew-line, body.pocket .crew-assign{color:#3d6469;}
+body.pocket .crew-badge{border:0; background:#ffe9c4; color:#a3712e;}
+body.pocket .crew-assign select{background:#fffefa; border:2px solid #e1e8dd; color:#294657; border-radius:12px;}
+body.pocket .crew-btn{background:#edf1e8; border:0; color:#3d6469; border-radius:14px; box-shadow:0 3px 0 #d7e0d4;}
+body.pocket .crew-btn.primary{background:linear-gradient(#68cf9d,#45b88b); color:#fff; box-shadow:0 4px 0 #2f9e76;}
+body.pocket .netmap{border-radius:18px;}
+
+/* Dialogs: a soft sheet. */
+body.pocket .modal-screen{background:#3e716555; backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);}
+body.pocket .modal-box{background:#fffdf3; color:#294657; border:4px solid #fff; border-top:4px solid #fff; border-radius:29px; box-shadow:0 12px 0 #588a7130,0 25px 100px #2d565740;}
+body.pocket .modal-title{color:#4b7665;} body.pocket .modal-sub{color:#687c82;}
+body.pocket .modal-btn{background:linear-gradient(#68cf9d,#45b88b); color:#fff; border:0; border-radius:16px; box-shadow:0 4px 0 #2f9e76;}
+body.pocket .away-eyebrow{color:#36b58b;}
+body.pocket .away-grid div{background:#fffdf1; border:0; box-shadow:0 3px 0 #dbe7d5;} body.pocket .away-grid b{color:#6d9479;} body.pocket .away-grid div:first-child b{color:#a3712e;} body.pocket .away-grid small{color:#96a28e;}
+body.pocket .help-item{border:0; background:#f0f4e9; color:#4c6470;} body.pocket .help-item b{color:#c47f2c;}
+body.pocket .milestone-choices button{background:#fffdf4; border:2px solid #fff; color:#294657; box-shadow:0 3px 0 #d5e0cf;}
+body.pocket .milestone-choices button span{color:#7d8e7d;}
+body.pocket .cal-day{background:var(--pk-soft); border-color:#e3e9dd; color:#3d6469;}
+body.pocket #toast{background:#fffbedf5; color:#4c7a5a; border:2px solid #fff; border-left:2px solid #fff; border-radius:17px; box-shadow:0 5px 15px #53795535;}
+body.pocket #toast b{color:#a3712e;}
+body.pocket #splash{background:radial-gradient(ellipse at 50% 30%,#f2f7d9,#c9ebdc 70%);}
+body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #splashTag{color:#708b7d;}
 </style>
 </head>
-<body>
+<body class="pocket">
   <div id="splash">
     <div class="splashwrap">
       <svg id="splashMark" viewBox="0 0 120 120">
@@ -592,7 +787,7 @@ header{display:none;}
 
   <section id="tab-floor">
     <div class="floorview">
-      <div class="floor-heading"><b>WAREHOUSE FLOOR</b><span>LIVE OPERATIONS</span><button class="help-q" type="button" data-help="floor" aria-label="How this screen works">?</button></div>
+      <div class="floor-heading"><b id="floorName" data-name="General Distribution">WAREHOUSE FLOOR</b><span>LIVE OPERATIONS</span><button class="help-q" type="button" data-help="floor" aria-label="How this screen works">?</button></div>
       <canvas id="wcanvas"></canvas>
       <div class="canvas-controls"><span id="canvasGestureHint">Swipe to scroll · tap to inspect</span><button id="canvasExplore" type="button" aria-pressed="false">Explore</button><button id="canvasOverview" type="button">Overview</button></div>
       <div class="dept-labels" id="deptLabels" aria-hidden="true"></div>
@@ -755,6 +950,13 @@ header{display:none;}
       <button id="notifPermBtn" class="renamebtn" hidden>ALLOW NOTIFICATIONS</button>
     </div>
 
+    <div class="office-block">
+      <div class="office-title">LOOK</div>
+      <div class="office-text">Pocket is the bright look from 5.0. Classic is the dark command centre it replaced.</div>
+      <div class="qty" style="margin-top:10px;"><button id="lookPocket" type="button">POCKET</button><button id="lookClassic" type="button">CLASSIC</button></div>
+      <div class="office-text" style="margin-top:12px;">Site view</div>
+      <div class="qty" style="margin-top:6px;"><button id="viewIso" type="button">3D</button><button id="viewPlan" type="button">PLAN</button></div>
+    </div>
     <div class="office-block">
       <div class="office-title">GRAPHICS</div>
       <div class="office-text">Detail level for the site view. <b>Auto</b> measures your device and adjusts on the fly.</div>
@@ -2052,7 +2254,8 @@ header{display:none;}
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
     prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], knowledge: 0, licences: {}, kindDone: {}, expressDone: 0,
-    focus: "balanced", attachment: "standard", packSpec: "flexible", flowGraceUntil: -1, bestCombo: 1,
+    focus: "balanced", attachment: "standard", packSpec: "flexible", flowGraceUntil: -1,
+    uiTheme: "pocket", mapView: "iso", bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -4355,6 +4558,8 @@ header{display:none;}
     var left = changeoverLeft();
     var tag = document.querySelector(".logistics-flow .flow-tag");
     if (tag) tag.textContent = left > 0 ? "Changeover" : "Throughput Flow";
+    // The bar only has something to say during a changeover; at full flow Pocket hides it.
+    var lf = document.querySelector(".logistics-flow"); if (lf) lf.classList.toggle("full", left <= 0);
     document.getElementById("flowPct").textContent = left > 0
       ? Math.round(flow * 100) + "% · " + Math.ceil(left / 1000) + "s"
       : Math.round(flow * 100) + "%";
@@ -4369,6 +4574,7 @@ header{display:none;}
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
     renderNetwork(); renderScaleStrip(); renderPickSub();
     renderObjective(); renderBottleneck(); pickNextCard(); renderDeptStrip(); renderPolicy();
+    var fnm = document.getElementById("floorName"); if (fnm && fnm.getAttribute("data-name") !== currentSite().name) fnm.setAttribute("data-name", currentSite().name);
     renderAdButtons(); renderShiftSummary();
   }
 
@@ -4906,6 +5112,26 @@ header{display:none;}
   });
   window.__flow = { stats: flowStats, balance: flowBalance, setFocus: setFocus, fit: fitAttachment, setPack: setPackSpec,
                     attachCost: attachCost, renderSetup: renderSetup, setupMult: setupMult, MIN: FLOW_MIN, MAX: FLOW_MAX };
+
+  // --- Look -------------------------------------------------------------------------------
+  // Pocket is the default from 5.0; Classic keeps the dark command centre for anyone who
+  // prefers it. The site view is separate: the 3D diorama, or the flat plan.
+  function applyLook(){
+    var pocket = state.uiTheme !== "classic";
+    document.body.classList.toggle("pocket", pocket);
+    var tc = document.querySelector('meta[name="theme-color"]'); if (tc) tc.setAttribute("content", pocket ? "#c9ebdc" : "#0b121b");
+    var a = document.getElementById("lookPocket"), b = document.getElementById("lookClassic");
+    if (a){ a.classList.toggle("on", pocket); b.classList.toggle("on", !pocket); }
+    var iso = state.mapView !== "plan", c = document.getElementById("viewIso"), d = document.getElementById("viewPlan");
+    if (c){ c.classList.toggle("on", iso); d.classList.toggle("on", !iso); }
+  }
+  function setLook(id){ if (state.uiTheme === id) return; state.uiTheme = id; applyLook(); update3DPalette(); Tele.log("look_set", { look_choice:id }); saveGame(); }
+  function setView(id){ if (state.mapView === id) return; state.mapView = id; applyLook(); Tele.log("look_set", { look_choice:"view_" + id }); render(); saveGame(); }
+  document.getElementById("lookPocket").addEventListener("click", function(){ setLook("pocket"); });
+  document.getElementById("lookClassic").addEventListener("click", function(){ setLook("classic"); });
+  document.getElementById("viewIso").addEventListener("click", function(){ setView("iso"); });
+  document.getElementById("viewPlan").addEventListener("click", function(){ setView("plan"); });
+  window.__look = { apply: applyLook, setLook: setLook, setView: setView };
 
   function renderOffice(){
     renderPolicy(); renderJournal(); renderKnowledge(); renderLicences(); renderSetup();
@@ -8334,6 +8560,7 @@ header{display:none;}
     var bl = document.getElementById("buildLine");
     if (bl) bl.textContent = "WAREHOUSE EMPIRE \u00b7 BUILD " + APP_VERSION.toUpperCase();
     openDailyGate();
+    applyLook();
     // The first launch under the department rule: a business that already existed is held
     // harmless for a week (it can only gain), so nobody wakes to a site earning less than it
     // did yesterday. A new install has nothing to protect.
