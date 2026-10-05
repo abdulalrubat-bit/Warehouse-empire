@@ -16,15 +16,23 @@ const BIZ = (money) => JSON.stringify({ launches: 5, money, lifetime: money * 3,
 async function boot(b, seed){
   const ctx = await b.newContext({ viewport:{ width:412, height:915 } });
   await ctx.route(/google-analytics/, r => r.fulfill({ status: 204, body: "" }));
+  // Served from an http origin, not file://. Headless Chromium's localStorage for a file://
+  // page now and then came back after a reload as it stood before the page's own writes, so
+  // a wipe or an import looked as if it had not happened -- about one run in twenty. On the
+  // phone the save is in Capacitor Preferences and none of this applies.
+  const html = require("fs").readFileSync(FILE, "utf8");
+  await ctx.route("http://game.test/**", r => r.fulfill({ status: 200, contentType: "text/html", body: html }));
   // Seeded before the game's own script runs, and only on the first load: seeding after a
-  // load let the fresh game autosave over the seed as the page unloaded.
+  // load let the fresh game autosave over the seed as the page unloaded. The once-only flag
+  // lives in localStorage under a key the game never touches.
   await ctx.addInitScript(sd => {
-    try { if (sessionStorage.getItem("__seeded")) return; sessionStorage.setItem("__seeded", "1");
-          localStorage.clear(); for (const k in sd) localStorage.setItem(k, sd[k]); } catch(e){}
+    try { if (localStorage.getItem("__test_seeded")) return;
+          localStorage.clear(); for (const k in sd) localStorage.setItem(k, sd[k]);
+          localStorage.setItem("__test_seeded", "1"); } catch(e){}
   }, seed);
   const p = await ctx.newPage();
   p.on("pageerror", e => bad.push("PAGEERROR: " + e.message));
-  await p.goto("file://" + FILE);
+  await p.goto("http://game.test/index.html");
   // Waited on, not timed: a fixed 1.8s was usually enough and on a loaded runner was not.
   await p.waitForFunction(() => window.state && typeof window.state.money === "number" && window.__saveCode, null, { timeout: 15000 });
   await p.waitForTimeout(600);
