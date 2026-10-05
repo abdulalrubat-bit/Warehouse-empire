@@ -4,7 +4,8 @@ The first pieces of the Autonomous Operations prototype, brought into the main g
 - its look on the Floor and on every screen;
 - its return screen;
 - its operating policy;
-- its named crew.
+- its named crew;
+- company knowledge, licences and an operations journal.
 
 Nothing here resets or rebalances an existing save. The crew and the policies are new
 choices, and Reliable service is the default.
@@ -22,6 +23,8 @@ Hire Big Mick, Shazza and Elena, and assign them to the departments that need th
 Choose how your site runs: Reliable, High throughput or Premium service.
 
 Coming back now shows what your business did while you were away.
+
+New in the Office: company knowledge, licences you earn by delivering, and a journal.
 
 ---
 
@@ -101,6 +104,44 @@ is free.
 - The crew belong to the company, so they stay when you sell a site.
 - The section appears after your first finished contract.
 
+### Company knowledge (Office)
+
+- **Document a procedure:** +8% output at every site, up to 12 levels (+96%).
+- Payroll doesn't rise with it: it's the same crew working smarter.
+- The price is 2% of your lifetime earnings, ×1.9 per level, at least $2,500. Lifetime
+  earnings never fall, so knowledge can't be bought cheaply right after a sale.
+- Knowledge belongs to the company and is kept when you sell.
+
+### Licences (Office)
+
+Six licences, each earned by what you deliver:
+
+| Licence | Earned by | Pallets |
+|---|---|---|
+| Local operator | 10 contracts | 5 |
+| Express carrier | 5 jobs on express terms | 8 |
+| Heavy haulage | 5 oversized loads | 8 |
+| Medical accreditation | 5 refrigerated jobs | 10 |
+| Dangerous goods | 5 dangerous goods jobs | 10 |
+| Regional | 3 sites in your Network | 12 |
+
+Each licence is also **+2% output for good**. The prototype paid REP instead. Here, a
+sale pays out lifetime REP minus the REP you already hold, so any REP granted now would
+just come off your next sale.
+
+### Operations journal (Office)
+
+The last 30 things the business did, newest first, saved with the game:
+
+- contracts delivered, and what kind;
+- missed rush and express jobs;
+- express clauses signed;
+- hires and training;
+- policy changes;
+- sales;
+- offline takings;
+- licences and knowledge.
+
 ---
 
 ## Release checklist
@@ -112,6 +153,9 @@ is free.
    - `crew_member` on `crew_hire`, `crew_train` and `crew_assign`
    - `crew_level` on `crew_train`
    - `crew_dept` on `crew_assign`
+   - `knowledge_level` on `knowledge_level`
+   - `licence_id` on `licence_earned`
+   - `contract_kind` already covers specialist jobs; no new dimension is needed for the journal
 3. **Store screenshots:** the Floor looks different now. Recapture with
    `node tools/storeshots.js` if you want the listing to match. The icon test is still
    running, so you may want to wait until it ends.
