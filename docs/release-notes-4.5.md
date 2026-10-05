@@ -1,7 +1,7 @@
 # Warehouse Empire 4.5 (v32)
 
-4.4 (v31) is live. This release is two fixes to the first session, both found in
-4.4's own data.
+4.4 (v31) is live. This release is two fixes to the first session and one new
+rewarded-ad option, all found in 4.4's own data.
 
 ---
 
@@ -12,6 +12,8 @@ the pallets for you, and the pallets you can tap are highlighted.
 
 Finishing the opening shift now offers to remind you when your storage is full, so
 your crew's work isn't wasted while you're away.
+
+The daily stipend can now be doubled by watching a short ad.
 
 ---
 
@@ -36,13 +38,26 @@ the Last Truck finishes, which is the moment every new player who stays reaches 
 their first session. Android's system dialog is still only raised after the player
 says yes on the card.
 
+### Double the daily stipend
+
+The daily calendar was the most-seen screen in the game with no ad: 30 of 69 active
+players claimed it in a month, while only 14 had ever watched an ad anywhere. A
+second button under Clock In & Claim, "Claim ×2", doubles the day's pallets for a
+rewarded ad. A bonus-day crate stays at one, or crates would become an ad farm.
+Skipping or failing the ad leaves the normal claim as it was.
+
+It has its own ad unit, `daily` (`.../2661942413`), so it reports separately in
+AdMob.
+
 ---
 
 ## Release checklist
 
 1. Build and upload **v32**, version name **4.5**.
-2. **No new events or parameters.** `notification_prompt` gains a new
-   `prompt_trigger` value, `shift`, on a dimension already registered in 4.2.
+2. **Register one custom dimension in GA4:** `daily_reward` (Event scope) on
+   `daily_claim`. Its values are `standard` or `double`, so it shows how many players
+   take the doubled claim. `notification_prompt` also gains a `prompt_trigger` value,
+   `shift`, on a dimension already registered in 4.2.
 3. Store listing and screenshots unchanged. Don't change them while the icon
    before/after comparison is running.
 4. **What to watch:**
@@ -50,3 +65,5 @@ says yes on the card.
    - `equipment_bought` users ÷ active users, from about 52% in 4.4.
    - `notification_prompt` shown with `prompt_trigger` = `shift`, and its
      accept rate.
+   - AdMob: impressions on the **Double Stipend** unit, and `rewarded_ad` users ÷
+     active users, from about 20% in 4.4.
