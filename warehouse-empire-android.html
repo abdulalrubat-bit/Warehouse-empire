@@ -328,6 +328,12 @@
   .crew-btn{display:block; width:100%; margin-top:10px; min-height:42px; border-radius:10px; border:1px solid #3b5466; background:#1d2f3c; color:#eef5fb; font-weight:800; font-size:13px; cursor:pointer;}
   .crew-btn.primary{background:var(--ui-gold, #ffc665); border-color:var(--ui-gold, #ffc665); color:#1b1408;}
   .crew-btn:disabled{opacity:.45; cursor:default;}
+  .jrow{display:flex; gap:9px; align-items:flex-start; padding:7px 0; border-top:1px solid #24384a; font-size:11.5px; line-height:1.45; color:#cfe0ec;}
+  .jrow:first-child{border-top:0;}
+  .jrow i{flex:0 0 7px; height:7px; border-radius:50%; margin-top:5px; background:#6b8396;}
+  .jrow.contract i{background:var(--cash);} .jrow.missed i{background:var(--bad);} .jrow.crew i{background:var(--ui-gold, #ffc665);}
+  .jrow.milestone i{background:var(--corp);} .jrow.away i{background:var(--ui-mint, #65e0b0);}
+  .jrow span{flex:1;} .jrow em{font-style:normal; color:#7f98ab; font-size:10px; white-space:nowrap;}
   .help-item{border:1px solid #33495a; border-radius:10px; padding:9px 11px; margin-top:8px; font-size:12px; line-height:1.5; color:#cfe0ec; text-align:left;}
   .help-item b{color:var(--ui-gold, #f0c060); margin-right:4px;}
   .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
@@ -784,6 +790,11 @@ header{display:none;}
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
+    </div>
+    <div class="office-block" id="journalBlock">
+      <div class="office-title">OPERATIONS JOURNAL</div>
+      <div class="office-text">What the business has done lately, newest first.</div>
+      <div id="journalList"></div>
     </div>
     <div class="office-block" id="specialistBlock">
       <div class="office-title">SPECIALIST WORK</div>
@@ -2010,7 +2021,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2310,6 +2321,25 @@ header{display:none;}
                   desc:"New contracts pay 50% more per load. Output \u221215%." }
   };
   function policy(){ return POLICIES[state.policy] || POLICIES.reliable; }
+
+  // --- Operations journal -----------------------------------------------------------------
+  // From the autonomous prototype: a short running record of what the business did, newest
+  // first, kept with the save. It is what a returning player reads to find out what happened
+  // -- which contracts landed, which were missed, who was hired -- without it all having
+  // been a stack of toasts they never saw.
+  var JOURNAL_MAX = 30;
+  function jot(text, kind){
+    if (!Array.isArray(state.journal)) state.journal = [];
+    state.journal.unshift({ at: Date.now(), text: String(text), kind: kind || "info" });
+    if (state.journal.length > JOURNAL_MAX) state.journal.length = JOURNAL_MAX;
+  }
+  function ago(t){
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
@@ -2641,6 +2671,7 @@ header{display:none;}
           newClaim.addEventListener("click", function(){
             state.money += earned; state.total += earned; state.lifetime += earned;
             Tele.log("offline_claim", { reward:"standard", seconds:Math.round(secs), amount:Math.round(earned) });
+            jot("Back after " + awayTime(rawSecs) + ": the site banked " + money(earned) + ".", "away");
             document.getElementById("modalOffline").hidden = true;
             sfx("buy"); render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
           });
@@ -2651,6 +2682,7 @@ header{display:none;}
               var doubled = earned * 2;
               state.money += doubled; state.total += doubled; state.lifetime += doubled;
               Tele.log("offline_claim", { reward:"double", seconds:Math.round(secs), amount:Math.round(doubled) });
+              jot("Back after " + awayTime(rawSecs) + ": the site banked " + money(doubled) + " (doubled).", "away");
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
               render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
@@ -3650,6 +3682,7 @@ header{display:none;}
     state.policy = id;
     invalidateUpMult();
     Tele.log("policy_set", { policy_choice:id });
+    jot("Policy changed to " + POLICIES[id].name + ".", "action");
     sfx("upgrade");
     showToast("<b>" + POLICIES[id].name + "</b> is now in force.");
     render(); saveGame();
@@ -3707,6 +3740,7 @@ header{display:none;}
     if (!d || c.hired || state.money < d.hire) return false;
     state.money -= d.hire; c.hired = true; c.dept = d.home;
     Tele.log("crew_hire", { crew_member:id });
+    jot(d.name + " hired and put on " + DEPT_NAME[d.home] + ".", "crew");
     sfx("upgrade"); showToast("<b>" + d.name + "</b> joins the crew, on " + DEPT_NAME[d.home] + ".");
     render(); saveGame(); return true;
   }
@@ -3717,6 +3751,7 @@ header{display:none;}
     if (state.money < cost) return false;
     state.money -= cost; c.level++;
     Tele.log("crew_train", { crew_member:id, crew_level:c.level });
+    jot(d.name + " qualified to level " + c.level + ".", "crew");
     sfx("upgrade"); showToast("<b>" + d.name + "</b> qualified to level " + c.level + ".");
     render(); saveGame(); return true;
   }
@@ -4534,8 +4569,23 @@ header{display:none;}
     });
   })();
 
+  function renderJournal(){
+    var el = document.getElementById("journalList");
+    if (!el) return;
+    // A save is the player's to edit, so every entry is read as untrusted: objects only, the
+    // kind reduced to a class name, the text stripped of markup.
+    var j = (Array.isArray(state.journal) ? state.journal : []).filter(function(e){ return e && typeof e === "object"; });
+    var html = j.length ? j.slice(0, 12).map(function(e){
+      var kind = String(e.kind || "info").replace(/[^a-z]/g, "");
+      return '<div class="jrow ' + kind + '"><i></i><span>' + String(e.text).replace(/[<>&"]/g, "") + '</span><em>' + ago(Number(e.at) || Date.now()) + '</em></div>';
+    }).join("") : '<div class="jrow"><i></i><span>Nothing yet. Contracts, hires and sales are recorded here.</span></div>';
+    if (el._html !== html){ el.innerHTML = html; el._html = html; }
+  }
+
+  window.__journal = { jot: jot, render: renderJournal };
+
   function renderOffice(){
-    renderPolicy();
+    renderPolicy(); renderJournal();
     var sl = document.getElementById("specialistList");
     if (sl){
       var rows = JOB_KINDS.map(function(k){
@@ -4577,6 +4627,7 @@ header{display:none;}
     state.rep += gain; state.prestiges++;
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
     Tele.log("business_sold", { rep_gain:gain, sales:state.prestiges, site:state.site });
+    jot("Sold " + currentSite().name + " for " + fmt(gain) + " REP. It joins the Network.", "milestone");
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
     if (!state.network) state.network = [];
@@ -5382,6 +5433,7 @@ header{display:none;}
     c.cash *= EXPRESS_CASH; c.pallets += EXPRESS_PALLETS;
     c.label = "EXPRESS · " + c.label;
     expressArmedUntil = 0;
+    jot("Express clause signed: " + money(c.cash) + " if delivered in " + clockLeft(c.deadline - Date.now()) + ".", "action");
     Tele.log("express_taken", { express_progress:Math.round(c.prog / c.goal * 100),
                                 express_secs:Math.round((c.deadline - Date.now()) / 1000) });
     sfx("upgrade");
@@ -5414,9 +5466,11 @@ header{display:none;}
     if (Date.now() > c.deadline){
       if (c.rush){
         Tele.log("rush_contract_missed", { progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        jot("Rush window closed at " + Math.round(Math.min(1, c.prog / c.goal) * 100) + "%. No penalty.", "missed");
         showToast("Rush window closed. <b>No penalty.</b>");
       } else if (c.express){
         Tele.log("express_missed", { express_progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        jot("Express job missed at " + Math.round(Math.min(1, c.prog / c.goal) * 100) + "%. It went to another carrier.", "missed");
         showToast("Express clause missed. <b>The job went to another carrier.</b>");
       }
       state.contract = newContract(); c = state.contract;
@@ -7914,6 +7968,8 @@ header{display:none;}
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
         Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
                                         contract_express:state.contract.express ? 1 : 0, contract_kind:state.contract.kind || "standard" });
+        jot((state.contract.express ? "Express contract" : state.contract.rush ? "Rush contract" : state.contract.kind ? (jobKind(state.contract.kind) || {}).name + " contract" : "Contract") +
+            " delivered: +" + money(state.contract.cash) + " and " + state.contract.pallets + " pallets.", "contract");
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
         maybeOfferMilestone();
