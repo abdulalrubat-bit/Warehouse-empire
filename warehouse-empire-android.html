@@ -610,7 +610,9 @@ body.pocket .metrics i{color:#8b9b91; font-weight:800;}
 body.pocket .metrics span:last-child b{color:#8066bf;}
 body.pocket.compact-head .money{padding:8px 12px 8px 46px; font-size:20px;}
 body.pocket.compact-head .money:before{display:none;}
-body.pocket.compact-head .rate{padding:8px 12px 8px 46px;}
+body.pocket.compact-head .rate{padding:8px 10px 8px 46px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+body.pocket.compact-head .rate b{font-size:17px;}
+body.pocket.compact-head #wageTag{display:none;}
 body.pocket.compact-head .rate:before{display:none;}
 body.pocket.compact-head .money:after, body.pocket.compact-head .rate:after{width:26px; height:26px; margin-top:-13px; font-size:14px;}
 
@@ -7185,17 +7187,27 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
     // How many of a thing to stand on the floor for N owned: one for the first, then one
     // more each time the fleet doubles, never more than the yard holds.
     function shown(n, cap){ return n > 0 ? Math.min(cap, 1 + Math.floor(Math.log(n) / Math.LN2)) : 0; }
+    // A livery bought with crates repaints the model too: its racking, pillars, lorries and
+    // grass, and a night livery dims the lot. Safety Orange, the free default, keeps the
+    // prototype's own pastel palette.
+    function livery(){
+      var t = currentTheme();
+      if (!t || t.id === "hivis") return { id:"hivis", beam:MAT.orange, post:MAT.teal, lorry:MAT.orange, grass:null, night:false };
+      var m3 = function(a){ return { top:a[0], right:a[1], left:a[2] }; };
+      return { id:t.id, beam:m3(t.rackBeam), post:m3(t.rackPost), lorry:{ top:t.accent, right:t.accent, left:t.accentD },
+               grass:t.grass && t.grass[0], night:t.ui === "night" };
+    }
     function skuColor(){ return { fmcg:"#f3b655", pharma:"#65ccde", industrial:"#b6a4f1", bonded:"#e7a07a", semis:"#9fd3a8" }[state.sku] || "#f3b655"; }
 
     function drawBase(){
-      var key = state.site + "|" + (state.network || []).length;
+      var lv = livery(), key = state.site + "|" + (state.network || []).length + "|" + lv.id;
       if (base && key === baseKey) return;
       baseKey = key;
       if (!base){ base = document.createElement("canvas"); base.width = 1100; base.height = 950; }
       var g = base.getContext("2d"); if (!g) return;
       if (g.clearRect) g.clearRect(0, 0, 1100, 950);
       var port = state.site === "port", cold = state.site === "cold";
-      plane(g, -150, -95, 820, 815, -28, port ? "#9fd0cf" : "#a7dba5");
+      plane(g, -150, -95, 820, 815, -28, lv.grass || (port ? "#9fd0cf" : "#a7dba5"));
       plane(g, -95, 515, 725, 130, -23, "#9aadb1"); plane(g, -95, 525, 725, 105, -22, "#b8c3c2");
       line(g, [{x:-80,y:577,z:-20},{x:620,y:577,z:-20}], "#edf0cf", 4, [21, 18]);
       plane(g, -140, 5, 120, 480, -23, "#bdd0c2"); plane(g, 555, -80, 100, 540, -23, "#c4dbc3");
@@ -7217,6 +7229,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       for (var k = 0; k < 7; k++){ plane(g, 34 + k * 27, 471, 12, 15, 5, "#fff0b1"); plane(g, 304 + k * 27, 471, 12, 15, 5, "#def2bd"); }
       [[-45,-40],[620,-30],[640,420],[-150,420],[-74,500],[592,500],[200,-60]].forEach(function(t){ tree(g, t[0], t[1], 1.2); });
       [[-40,675],[155,673],[500,675]].forEach(function(b){ box(g, b[0], b[1], 75, 28, -20, 14, MAT.cream); plane(g, b[0] + 3, b[1] + 3, 69, 22, -4, "#73bf91"); });
+      if (lv.night){ g.fillStyle = "rgba(14,24,48,.32)"; g.fillRect(0, 0, 1100, 950); }
     }
 
     function fit(){
@@ -7233,13 +7246,13 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       c.translate(CW / 2 + view.ox, CH / 2 + view.oy); c.scale(view.s, view.s); c.translate(-550, -420);
       if (base && c.drawImage) c.drawImage(base, 0, 0);
       var nodes = [], add = function(depth, fn){ nodes.push({ d:depth, f:fn }); };
-      var o = state.owned, col = skuColor(), phase = t * 7;
+      var o = state.owned, col = skuColor(), phase = t * 7, LV = livery();
       var flow = flowStats(), limit = flow.raw < FLOW_MAX - 0.005 ? flow.weakest : null;
 
       // Back walls, with windows and pillars.
       add(-15, function(){
         box(c, -8, -8, 548, 10, 3, 66, MAT.wall); box(c, -8, -8, 10, 480, 3, 58, MAT.wall);
-        for (var n = 0; n < 6; n++){ box(c, 45 + n * 91, -7, 6, 12, 3, 78, MAT.teal); box(c, -7, 45 + n * 79, 12, 6, 3, 70, MAT.teal); }
+        for (var n = 0; n < 6; n++){ box(c, 45 + n * 91, -7, 6, 12, 3, 78, LV.post); box(c, -7, 45 + n * 79, 12, 6, 3, 70, LV.post); }
         for (var w = 0; w < 7; w++) box(c, 28 + w * 72, -6, 54, 3, 25, 22, MAT.blue);
       });
 
@@ -7260,9 +7273,9 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       for (var r = 0; r < rows; r++) (function(r){
         var y = 70 + r * 72;
         add(160 + y, function(){
-          [65, 185].forEach(function(x){ box(c, x, y, 6, 27, 3, 8 + levels * 29, MAT.teal); });
+          [65, 185].forEach(function(x){ box(c, x, y, 6, 27, 3, 8 + levels * 29, LV.post); });
           for (var l = 0; l < levels; l++){
-            var z = 8 + l * 29; box(c, 60, y, 138, 29, z, 4, MAT.orange);
+            var z = 8 + l * 29; box(c, 60, y, 138, 29, z, 4, LV.beam);
             for (var k = 0; k < 4; k++) if ((k + l + r) % 5 !== 4) box(c, 68 + k * 30, y + 3, 23, 22, z + 4, 18, { top:col, left:"#be914f", right:"#d9ad68" });
           }
         });
@@ -7318,7 +7331,7 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       // Lorries: one backing on to receiving, one leaving dispatch with the takings.
       var cycle = 12, u = (outbound.t % cycle) / cycle;
       var inX = 65, inY = 490 + Math.max(0, 1 - u * 3) * 120;
-      add(900 + inY, function(){ truck(c, inX, inY, MAT.orange); });
+      add(900 + inY, function(){ truck(c, inX, inY, LV.lorry); });
       var leaving = u > 0.7, outY = 490 + (leaving ? (u - 0.7) / 0.3 * 160 : 0);
       add(1020 + outY, function(){ truck(c, 355, outY, MAT.teal); });
       if (outbound.shown <= 0.7 && u > 0.7) outbound.pop = { at:t, amount: totalRate() * cycle };
