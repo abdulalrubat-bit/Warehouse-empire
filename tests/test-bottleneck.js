@@ -212,6 +212,51 @@ chk("and it is tagged as a rolling target rather than a numbered task",
       !/\d{7}/.test(title), title);
 }
 
+// ---- the card names the purchase that fixes it, and makes it --------------------------
+// It used to say "Expedite or add <the first tier you do not own>": usually a tier far out
+// of reach, with the actual arithmetic left to the player on another tab.
+{
+  fresh(); s.owned = { picker: 30, trolley: 10 }; s.contractsDone = 1; s.total = 1e5;
+  s.contract = { goal: 1e12, prog: 0, mins: 2, deadline: Date.now() + 60000,
+                 label: "x", cash: 1, pallets: 3, rush: false };
+  // Price every tier the Fleet tab would show, and work out which buys the most net rate
+  // per dollar among those affordable -- independently of the game's own pick.
+  const G = S.GENS;
+  s.money = 1e9;
+  const cands = G.filter(g => (s.owned[g.id] || 0) > 0 || s.total >= g.cost * 0.35)
+                 .map(g => ({ g, cost: S.costOf(g, 1), gain: S.marginalRate(g, 1) }))
+                 .filter(c => c.gain > 0 && c.cost <= s.money);
+  cands.sort((a, b) => b.gain / b.cost - a.gain / a.cost);
+  global.render(); await settle();
+  const buy = $("bottleneckBuy");
+  chk("a contract behind schedule offers a purchase to fix it", buy.hidden === false, buy.textContent);
+  chk("and it is the best rate per dollar on offer",
+      cands.length > 1 && buy.textContent.indexOf(cands[0].g.name) >= 0,
+      buy.textContent + " vs " + (cands[0] && cands[0].g.name));
+  chk("the detail says what one adds and how many close the gap",
+      /Best fix: .*\+.*\/s each/.test($("bottleneckDetail").textContent) && /close|alone/.test($("bottleneckDetail").textContent),
+      $("bottleneckDetail").textContent);
+  chk("Expedite is still offered beside it", action().hidden === false, action().textContent);
+
+  const id = cands[0].g.id, had = s.owned[id], cash = s.money;
+  buy.onclick({ preventDefault(){}, stopPropagation(){} }); await settle();
+  chk("pressing it buys exactly one", s.owned[id] === had + 1, had + " -> " + s.owned[id]);
+  chk("at the price the button showed", Math.abs((cash - s.money) - cands[0].cost) < 1,
+      "paid " + (cash - s.money) + " vs " + cands[0].cost);
+
+  // Broke: no button, but the card still says what to save for.
+  s.money = 0; global.render(); await settle();
+  chk("a player who cannot afford any fix gets no buy button", buy.hidden === true);
+  chk("but is told what to save for", /Next fix: .* to go/.test($("bottleneckDetail").textContent),
+      $("bottleneckDetail").textContent);
+
+  // On schedule: nothing to buy.
+  s.money = 1e9; s.contract = { goal: 1, prog: 0.5, mins: 15, deadline: Date.now() + 600000,
+                                label: "x", cash: 1, pallets: 3, rush: false };
+  global.render(); await settle();
+  chk("a contract on schedule offers no purchase", buy.hidden === true);
+}
+
 console.log("PASS:"); ok.forEach(x=>console.log("  + " + x));
 if (bad.length){ console.log("FAIL:"); bad.forEach(x=>console.log("  - " + x)); }
 console.log(`\n${ok.length} passed, ${bad.length} failed`);

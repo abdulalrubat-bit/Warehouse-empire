@@ -116,10 +116,15 @@
   .bottleneck .bdetail{font-size:9px; color:var(--dim); line-height:1.4; margin-top:2px;}
   .bottleneck .bgo{font-family:var(--font-cond); font-weight:800; font-size:11px; color:var(--cash); white-space:nowrap;}
   .bottleneck .baction{flex:0 0 auto; border:1px solid var(--hazard); border-radius:4px; background:var(--hazard); color:#20130a; padding:7px 8px; font-family:var(--font-cond); font-weight:800; font-size:10px; letter-spacing:.8px; text-transform:uppercase; cursor:pointer;}
+  .bottleneck .bacts{flex:0 0 auto; display:flex; flex-direction:column; gap:5px; max-width:44%;}
+  .bottleneck .bbuy{background:var(--panel2); border-color:var(--cash); color:var(--cash); white-space:normal; line-height:1.25;}
   .bottleneck .baction:disabled{border-color:var(--line); background:var(--panel2); color:var(--dim); cursor:default;}
 
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
   .rerollbtn{width:100%; margin-top:9px; background:none; cursor:pointer; border:1px dashed var(--hivis); border-radius:4px; padding:7px 8px; color:var(--hivis); font-family:var(--font-cond); font-weight:700; font-size:12px; letter-spacing:1.4px; text-transform:uppercase; display:flex; flex-direction:column; align-items:center; gap:2px;}
+  .expressbtn{border-style:solid; border-color:var(--hazard); color:var(--hazard);}
+  .expressbtn.armed{background:var(--hazard); color:#20130a;}
+  .expressbtn.armed small{color:#20130a;}
   .rerollbtn small{font-family:var(--font-mono); font-size:8px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; font-weight:400;}
 
   .skustrip{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cash); border-radius:4px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center;}
@@ -273,6 +278,11 @@
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
   .office-text{font-size:10.5px; color:var(--dim); margin-top:6px; line-height:1.65;}
   .office-text b{color:var(--ink);}
+  .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
+  .specrow b{color:var(--steel); white-space:nowrap;}
+  .specrow span{text-align:right;}
+  .specrow.on b{color:var(--cash);}
+  .specrow.on span{color:var(--ink);}
   #sellBtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--hazard); color:var(--hazard); border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; cursor:pointer;}
   #sellBtn.armed{background:var(--hazard); color:#20180a;}
   .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--steel); border-radius:4px; padding:10px; font-family:var(--font-cond); font-weight:800; font-size:13px; cursor:pointer;}
@@ -531,7 +541,10 @@ header{display:none;}
         <div class="btitle" id="bottleneckTitle"></div>
         <div class="bdetail" id="bottleneckDetail"></div>
       </div>
-      <button class="baction" id="bottleneckAction" type="button" hidden></button>
+      <div class="bacts" id="bottleneckActs" hidden>
+        <button class="baction" id="bottleneckAction" type="button" hidden></button>
+        <button class="baction bbuy" id="bottleneckBuy" type="button" hidden></button>
+      </div>
       <div class="bgo" id="bottleneckGo">FIX →</div>
     </div>
 
@@ -548,6 +561,7 @@ header{display:none;}
           <span id="contractProg">—</span>
           <span class="creward" id="contractReward"></span>
         </div>
+        <button class="rerollbtn expressbtn" id="expressBtn" type="button" hidden>Take the express clause</button>
         <button class="rerollbtn" id="rerollBtn" hidden>Reroll contract<small id="rerollSub">WATCH AD · GET A DIFFERENT JOB (+50% PROG)</small></button>
       </div>
       <div class="contract priority" id="priorityCard" hidden>
@@ -695,8 +709,22 @@ header{display:none;}
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
     </div>
+    <div class="office-block" id="specialistBlock">
+      <div class="office-title">SPECIALIST WORK</div>
+      <div class="office-text">Every third job is specialist freight when you can handle it. It pays more.</div>
+      <div id="specialistList"></div>
+    </div>
     <div class="office-block"><div class="office-title">STATS</div><div class="office-text" id="statsText"></div></div>
     
+    <div class="office-block">
+      <div class="office-title">SAVE</div>
+      <div class="office-text">Your business is backed up on this phone automatically. To move it to another phone, export a save code there and import it here.</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button id="exportSaveBtn" class="renamebtn" style="flex:1;">EXPORT SAVE</button>
+        <button id="importSaveBtn" class="renamebtn" style="flex:1;">IMPORT SAVE</button>
+      </div>
+    </div>
+
     <div class="office-block" style="border-left-color: var(--bad); margin-top: 24px;">
       <div class="office-title" style="color: var(--bad);">DANGER ZONE</div>
       <div class="office-text">Completely wipe all save data, pallets, and reputation. This cannot be undone.</div>
@@ -750,6 +778,17 @@ header{display:none;}
       <div class="sku-list" id="skuList"></div>
       <div class="office-text" id="changeoverNote" style="margin-top:12px; border-left:3px solid var(--hazard); padding-left:10px;"></div>
       <button class="renamebtn" id="btnCloseSku" style="margin-top:12px;">Close</button>
+    </div>
+  </div>
+
+  <div id="modalSave" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="modal-title" id="saveModalTitle">Save code</div>
+      <div class="modal-sub" id="saveModalSub"></div>
+      <textarea id="saveCodeBox" spellcheck="false" autocomplete="off" style="width:100%; height:120px; padding:10px; background:var(--panel2); border:1px solid var(--line); color:var(--ink); font-family:var(--font-mono); font-size:11px; border-radius:8px; resize:none; word-break:break-all;"></textarea>
+      <div class="modal-sub" id="saveModalMsg" style="min-height:18px; margin:8px 0 0;"></div>
+      <button class="modal-btn" id="btnSaveAction">COPY</button>
+      <button class="renamebtn" id="btnSaveClose" style="margin-top:12px;">Close</button>
     </div>
   </div>
 
@@ -1883,7 +1922,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2194,13 +2233,57 @@ header{display:none;}
   function pendingRep(){ return Math.max(0, repEarnedByLifetime() - state.rep); }
   function repWithFavour(n){ return Math.max(n + 1, Math.floor(n * 1.25)); }
 
+  // --- Save backup, export and import ---------------------------------------------------
+  // One previous generation, kept in its own slot. Written at launch from the save that
+  // loaded, and every half hour after a successful write; read only when the main save
+  // will not parse or has gone missing.
+  var BACKUP_KEY = SAVE_KEY + "-backup", BACKUP_EVERY_MS = 30 * 60000;
+  var lastBackupAt = 0, recoveredFromBackup = false;
+  function parsesAsSave(raw){
+    try { var o = JSON.parse(raw); return !!o && typeof o === "object" && !Array.isArray(o); }
+    catch(e){ return false; }
+  }
+  function writeBackup(raw){
+    lastBackupAt = Date.now();
+    try { Promise.resolve(window.storage.set(BACKUP_KEY, raw)).catch(function(){}); } catch(e){}
+  }
+  // A save code: WE1.<base64 of the JSON>.<FNV-1a of the JSON>. The checksum is there to
+  // catch a paste that lost its end or picked up a stray character, which is how a code
+  // copied between phones actually goes wrong.
+  function fnv1a(str){
+    var h = 0x811c9dc5;
+    for (var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return ("0000000" + h.toString(16)).slice(-8);
+  }
+  function exportCode(){
+    var json = JSON.stringify(state);
+    return "WE1." + btoa(unescape(encodeURIComponent(json))) + "." + fnv1a(json);
+  }
+  /** @returns {{ok:boolean, json?:string, why?:string}} */
+  function readCode(code){
+    var parts = String(code || "").replace(/\s+/g, "").split(".");
+    if (parts.length !== 3 || parts[0] !== "WE1") return { ok:false, why:"That isn't a Warehouse Empire save code." };
+    var json;
+    try { json = decodeURIComponent(escape(atob(parts[1]))); }
+    catch(e){ return { ok:false, why:"The code is damaged \u2014 copy it again in full." }; }
+    if (fnv1a(json) !== parts[2]) return { ok:false, why:"The code is incomplete or changed \u2014 copy it again in full." };
+    if (!parsesAsSave(json)) return { ok:false, why:"The code doesn't contain a save." };
+    var o = JSON.parse(json);
+    if (!isFinite(Number(o.lifetime))) return { ok:false, why:"The code doesn't contain a save." };
+    return { ok:true, json:json };
+  }
+  window.__saveCode = { exportCode: exportCode, readCode: readCode, parses: parsesAsSave, BACKUP_KEY: BACKUP_KEY };
+
   // Coalesce checkpoints and reward writes while preserving their order on native storage.
   var pendingSave=null,saveWriting=false,saveRetry=null;
   function flushPendingSave(){
     if(saveWriting||!pendingSave||wiping)return;
     var snapshot=pendingSave;pendingSave=null;saveWriting=true;
     Promise.resolve().then(function(){return window.storage.set(SAVE_KEY,snapshot);}).then(function(){
-      saveWriting=false;flushPendingSave();
+      saveWriting=false;
+      // Refreshed every half hour of play as well as at launch, from a write that succeeded.
+      if(Date.now()-lastBackupAt>BACKUP_EVERY_MS)writeBackup(snapshot);
+      flushPendingSave();
     },function(error){
       saveWriting=false;if(!pendingSave)pendingSave=snapshot;
       console.warn("Save delayed; latest checkpoint retained",error);
@@ -2224,6 +2307,22 @@ header{display:none;}
     return window.storage.ready.then(function(){
       return window.storage.get(SAVE_KEY);
     }).then(function(res){
+      // A save that reads is copied to the backup slot before anything else touches it, so
+      // the backup is always the last business that actually loaded. A save that does not
+      // read -- or is missing while a backup exists -- is answered from the backup rather
+      // than with a fresh site: losing a developed business is the one thing that ends a
+      // player for good.
+      var raw = res && res.value;
+      if (raw && parsesAsSave(raw)){ writeBackup(raw); return res; }
+      if (raw){ try { window.storage.set(SAVE_KEY + "-corrupt", raw); } catch(e){} }
+      return Promise.resolve(window.storage.get(BACKUP_KEY)).then(function(b){
+        if (b && b.value && parsesAsSave(b.value)){ recoveredFromBackup = true; return { value: b.value }; }
+        return res;
+      }, function(){ return res; });
+    }).then(function(res){
+      if (recoveredFromBackup) setTimeout(function(){
+        showToast("Your save couldn't be read, so the <b>backup</b> was restored.");
+      }, 1200);
       if (res && res.value){
         try {
           Object.assign(state, JSON.parse(res.value));
@@ -2240,7 +2339,7 @@ header{display:none;}
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered",
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered",
        "launches","dispatchesToday","shipment_counter","eventPlaySeconds","crisisNextAt",
        "crisisRepAwarded","automationTrialUsed","automationTrialUntil","inductionStep"].forEach(function(k){
         var v = Number(state[k]);
@@ -2305,6 +2404,47 @@ header{display:none;}
         document.getElementById("wipeInput").value = "";
         document.getElementById("modalReset").hidden = false;
       });
+      (function bindSaveCodes(){
+        var mode = "export", armed = false;
+        var box = document.getElementById("saveCodeBox"), msg = document.getElementById("saveModalMsg");
+        var act = document.getElementById("btnSaveAction");
+        function open(m){
+          mode = m; armed = false; msg.textContent = "";
+          document.getElementById("saveModalTitle").textContent = m === "export" ? "Export save" : "Import save";
+          document.getElementById("saveModalSub").textContent = m === "export"
+            ? "Copy this code and keep it somewhere safe, or paste it into the game on another phone."
+            : "Paste a save code from another phone. It replaces the business on this one.";
+          box.value = m === "export" ? exportCode() : "";
+          box.readOnly = m === "export";
+          act.textContent = m === "export" ? "COPY" : "IMPORT";
+          document.getElementById("modalSave").hidden = false;
+        }
+        document.getElementById("exportSaveBtn").addEventListener("click", function(){ saveGame(); open("export"); });
+        document.getElementById("importSaveBtn").addEventListener("click", function(){ open("import"); });
+        document.getElementById("btnSaveClose").addEventListener("click", function(){ document.getElementById("modalSave").hidden = true; });
+        act.addEventListener("click", function(){
+          if (mode === "export"){
+            box.select && box.select();
+            var done = function(){ msg.textContent = "Copied."; };
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(box.value).then(done, function(){ msg.textContent = "Select the code and copy it."; });
+              else msg.textContent = "Select the code and copy it.";
+            } catch(e){ msg.textContent = "Select the code and copy it."; }
+            return;
+          }
+          var r = readCode(box.value);
+          if (!r.ok){ msg.textContent = r.why; armed = false; act.textContent = "IMPORT"; return; }
+          // Two presses: the second is the decision, the first only says what it costs.
+          if (!armed){ armed = true; act.textContent = "REPLACE THIS BUSINESS";
+                       msg.textContent = "This replaces your current business. Press again to confirm."; return; }
+          wiping = true;
+          var reload = function(){ location.reload(); };
+          var current = JSON.stringify(state);
+          try { Promise.all([window.storage.set(SAVE_KEY + "-preimport", current),
+                             window.storage.set(SAVE_KEY, r.json)]).then(reload, reload); }
+          catch(e){ reload(); }
+        });
+      })();
       document.getElementById("btnCancelWipe").addEventListener("click", function(){
         document.getElementById("modalReset").hidden = true;
         showToast("Reset aborted.");
@@ -2314,7 +2454,10 @@ header{display:none;}
           // Stop the autosave/ticker from writing the live state back out before the reload lands.
           wiping = true;
           var reload = function(){ location.reload(); };
-          try { window.storage.remove(SAVE_KEY).then(reload, reload); }
+          // The backup goes with it: left behind, the next launch would read a missing save
+          // as a lost one and restore the business the player just chose to wipe.
+          try { Promise.all([window.storage.remove(SAVE_KEY), window.storage.remove(BACKUP_KEY),
+                             window.storage.remove(SAVE_KEY + "-preimport")]).then(reload, reload); }
           catch(e){ reload(); }
         } else {
           showToast("Type WIPE to confirm.");
@@ -3002,6 +3145,36 @@ header{display:none;}
     render(); saveGame();
   }
 
+  // The purchase that closes a contract gap fastest per dollar. The card used to say
+  // "Expedite or add <the first thing you do not own>", which named a fleet tier you could
+  // rarely afford and left the player to work out the rest on the Fleet tab. This weighs
+  // every tier the Fleet tab already shows by what one more of it nets per second for what
+  // it costs, prefers one the player can buy now, and says how many would close the gap.
+  function bottleneckFix(gap){
+    var best = null, cheapest = null, base = grossRate() - wageBill();
+    for (var i = 0; i < GENS.length; i++){
+      var g = GENS[i], owned = state.owned[g.id] || 0;
+      if (!(owned > 0 || state.total >= g.cost * 0.35)) continue;
+      var cost = costOf(g, 1), gain = marginalRate(g, 1, base);
+      if (gain <= 0) continue;
+      var f = { g:g, cost:cost, gain:gain, value:gain / cost, affordable:state.money >= cost };
+      if (f.affordable && (!best || f.value > best.value)) best = f;
+      if (!cheapest || cost < cheapest.cost) cheapest = f;
+    }
+    var pick = best || cheapest;
+    if (pick) pick.toClose = Math.max(1, Math.ceil(Math.max(0, gap) / pick.gain));
+    return pick;
+  }
+
+  function buyBottleneckFix(ev){
+    if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+    var b = bottleneckState();
+    if (!b || !b.buy) return;
+    Tele.log("bottleneck_buy", { bottleneck_buy_equipment:b.buy.g.id });
+    var quantity = buyQty; buyQty = 1;
+    try { buyGen(b.buy.g); } finally { buyQty = quantity; }
+  }
+
   function bottleneckState(){
     if (!ownsBoughtPlant()) return null;
     var pressure = contractPressure();
@@ -3013,12 +3186,17 @@ header{display:none;}
 
     if (state.contract){
       if (pressure && pressure.ratio > 1.05){
-        var nextName = "more fleet capacity";
-        for (var gi = 0; gi < GENS.length; gi++){
-          if ((state.owned[GENS[gi].id] || 0) === 0){ nextName = GENS[gi].name; break; }
-        }
+        var fix = bottleneckFix(pressure.required - pressure.current);
+        var says = "";
+        if (fix && fix.affordable)
+          says = " Best fix: " + fix.g.name + ", +" + moneyRate(fix.gain) + "/s each" +
+                 (fix.toClose > 20 ? " · too far behind to buy out alone." :
+                  fix.toClose > 1 ? " · " + fix.toClose + " close the gap." : " · one closes the gap.");
+        else if (fix)
+          says = " Next fix: " + fix.g.name + " at " + money(fix.cost) + " · " + money(fix.cost - state.money) + " to go.";
         return { title:state.contract.rush ? "Rush dispatch backlog" : "Contract capacity", tab:"equip", good:false, action:action,
-                 detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s. Expedite or add " + nextName + "." };
+                 buy:fix && fix.affordable ? fix : null,
+                 detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s." + says };
       }
       var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
       return { title:expediteActive() ? "Backlog clearing" : "Contract on schedule", tab:"floor", good:true, action:action,
@@ -3044,7 +3222,12 @@ header{display:none;}
     action.disabled = !b.action || !!b.action.disabled;
     action.textContent = b.action ? b.action.label : "";
     action.onclick = useExpedite;
-    document.getElementById("bottleneckGo").hidden = !!b.action;
+    var buy = document.getElementById("bottleneckBuy");
+    buy.hidden = !b.buy;
+    buy.textContent = b.buy ? "BUY " + b.buy.g.name + " · " + money(b.buy.cost) : "";
+    buy.onclick = buyBottleneckFix;
+    document.getElementById("bottleneckActs").hidden = !b.action && !b.buy;
+    document.getElementById("bottleneckGo").hidden = !!(b.action || b.buy);
     card.onclick = function(){ switchTab(b.tab); };
   }
 
@@ -3984,6 +4167,15 @@ header{display:none;}
   })();
 
   function renderOffice(){
+    var sl = document.getElementById("specialistList");
+    if (sl){
+      var rows = JOB_KINDS.map(function(k){
+        var on = k.has();
+        return '<div class="specrow' + (on ? ' on' : '') + '"><b>' + (on ? "\u2713 " : "\u25cb ") + k.name + '</b>' +
+               '<span>' + (on ? "+" + Math.round((k.cash - 1) * 100) + "% cash \u00b7 +" + k.pallets + " PAL" : k.needs) + '</span></div>';
+      }).join("");
+      if (sl._html !== rows){ sl.innerHTML = rows; sl._html = rows; }
+    }
     var st = document.getElementById("statsText");
     if(st) {
       st.innerHTML = "Lifetime Capital: <b style='color:var(--cash);'>" + money(state.lifetime) + "</b><br>" +
@@ -4733,6 +4925,29 @@ header{display:none;}
   // non-default manifest mathematically impossible once the flat $500 floor stopped binding.
   var CONTRACT_GOAL_FRACTION = 0.6;
 
+  // --- Specialist work ----------------------------------------------------------------
+  // Some freight only goes to an operator who can actually handle it. These jobs are earned
+  // by what the business has done -- a refrigerated site run or held in the Network, a
+  // fleet that can lift oversized loads -- rather than bought, and they pay for it. Every
+  // third standard job is specialist work if the business qualifies for any; the Office
+  // lists what each kind needs, so a locked one is a goal and not a secret.
+  var JOB_KINDS = [
+    { id:"oversize", tag:"OVERSIZE", name:"Oversized loads", cash:1.4, pallets:2,
+      needs:"5 Reach Trucks or an Automated Crane",
+      has:function(){ return (state.owned.reach || 0) >= 5 || (state.owned.crane || 0) >= 1; } },
+    { id:"reefer", tag:"REEFER", name:"Refrigerated freight", cash:1.6, pallets:1,
+      needs:"Run a Cold Storage site, or hold one in your Network",
+      has:function(){ return siteHeld("cold"); } },
+    { id:"dg", tag:"DG", name:"Dangerous goods", cash:1.8, pallets:1,
+      needs:"Run a Dangerous Goods site, or hold one in your Network",
+      has:function(){ return siteHeld("hazmat"); } }
+  ];
+  function siteHeld(id){
+    return state.site === id || (state.network || []).some(function(e){ return e.id === id; });
+  }
+  function jobKinds(){ return JOB_KINDS.filter(function(k){ return k.has(); }); }
+  function jobKind(id){ for (var i = 0; i < JOB_KINDS.length; i++) if (JOB_KINDS[i].id === id) return JOB_KINDS[i]; return null; }
+
   function newContract(){
     var r = totalRate();
     // Every fourth job is a short, optional pressure test. It carries no failure penalty:
@@ -4752,12 +4967,71 @@ header{display:none;}
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var rushReward = rush ? 2.5 : 1;
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward;
+    var kinds = !rush && state.contractsDone >= 2 && state.contractsOffered % 3 === 2 ? jobKinds() : [];
+    // Taken in turn by a count of their own: indexing by the job number let a rush that
+    // fell on a specialist slot skip the same kind every time round.
+    var kind = kinds.length ? kinds[(state.specialistOffered || 0) % kinds.length] : null;
+    if (kind) state.specialistOffered = (state.specialistOffered || 0) + 1;
 
-    return {
+    var job = {
       goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
       label: (openingClient==="steady"?"REGULAR CLIENT · ":openingClient==="express"?"EXPRESS CLIENT · ":"") + (rush ? "RUSH · " : "") + "Dispatch " + money(goal) + " of freight",
       cash: cashReward, pallets: rush ? 5 : 3, rush: rush
     };
+    if (kind){
+      job.kind = kind.id;
+      job.label = kind.tag + " · Dispatch " + money(goal) + " of " + kind.name.toLowerCase();
+      job.cash = Math.floor(job.cash * kind.cash);
+      job.pallets += kind.pallets;
+    }
+    return job;
+  }
+
+  // --- Express clause ----------------------------------------------------------------
+  // A standard job can be taken on express terms: half the time it has left, for twice the
+  // cash and two more pallets. Offered only at the start of a job, so it is a bet placed on
+  // the fleet you have rather than a bonus claimed on one already nearly done; and locked
+  // once signed, so it is a commitment rather than a toggle. A standard job asks for 60% of
+  // the window's throughput, so express terms ask for about 120%: a stretch the player can
+  // meet by buying capacity or with Priority Dispatch, and lose the job if they do not.
+  var EXPRESS_CASH = 2, EXPRESS_PALLETS = 2, EXPRESS_OPEN_PROG = 0.2, EXPRESS_OPEN_TIME = 0.8;
+  var expressArmedUntil = 0;
+
+  function expressOffered(c){
+    if (!c || c.rush || c.express || state.contractsDone < 2 || LastTruck.active()) return false;
+    var span = c.mins * 60000, left = c.deadline - Date.now();
+    return c.prog < c.goal * EXPRESS_OPEN_PROG && left > span * EXPRESS_OPEN_TIME;
+  }
+
+  function takeExpress(){
+    var c = state.contract;
+    if (!expressOffered(c)) return false;
+    c.express = true;
+    c.deadline = Date.now() + Math.floor((c.deadline - Date.now()) / 2);
+    c.cash *= EXPRESS_CASH; c.pallets += EXPRESS_PALLETS;
+    c.label = "EXPRESS · " + c.label;
+    expressArmedUntil = 0;
+    Tele.log("express_taken", { express_progress:Math.round(c.prog / c.goal * 100),
+                                express_secs:Math.round((c.deadline - Date.now()) / 1000) });
+    sfx("upgrade");
+    showToast("<b>Express clause signed.</b><br>Deliver by " + clockLeft(c.deadline - Date.now()) + " for " + money(c.cash) + ".");
+    renderContract(); render(); saveGame();
+    return true;
+  }
+
+  function pressExpress(ev){
+    if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+    // Two presses: a signature that cannot be taken back should not be one stray tap.
+    if (Date.now() < expressArmedUntil) takeExpress();
+    else { expressArmedUntil = Date.now() + 4000; renderContract(); }
+  }
+
+  window.__jobs = { kinds: JOB_KINDS, qualified: jobKinds, newContract: newContract, renderOffice: renderOffice };
+  window.__express = { offered: function(){ return expressOffered(state.contract); }, take: takeExpress, press: pressExpress };
+
+  function clockLeft(ms){
+    var t = Math.max(0, Math.ceil(ms / 1000)), m = Math.floor(t / 60), sec = t % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
   }
 
   function renderContract(){
@@ -4770,6 +5044,9 @@ header{display:none;}
       if (c.rush){
         Tele.log("rush_contract_missed", { progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
         showToast("Rush window closed. <b>No penalty.</b>");
+      } else if (c.express){
+        Tele.log("express_missed", { express_progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        showToast("Express clause missed. <b>The job went to another carrier.</b>");
       }
       state.contract = newContract(); c = state.contract;
     }
@@ -4777,7 +5054,18 @@ header{display:none;}
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
-    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : c.express ? "EXPRESS REWARD " : c.kind ? "SPECIALIST REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractTime").textContent = clockLeft(c.deadline - Date.now()) + " left";
+    var xb = document.getElementById("expressBtn");
+    var offered = expressOffered(c), armed = offered && Date.now() < expressArmedUntil;
+    xb.hidden = !offered;
+    xb.classList.toggle("armed", armed);
+    var html = !offered ? "" : (armed ? "Tap again to sign" : "Take the express clause") + "<small>" + (armed
+      ? "CAN'T BE UNDONE · MISS IT AND THE JOB IS GONE"
+      : "HALF THE TIME · " + money(c.cash * EXPRESS_CASH) + " + " + (c.pallets + EXPRESS_PALLETS) + " PAL") + "</small>";
+    // Rewritten only when it changes: this runs ten times a second, under the player's thumb.
+    if (offered && xb._html !== html){ xb.innerHTML = html; xb._html = html; }
+    xb.onclick = pressExpress;
   }
 
   // --- Local notifications ---------------------------------------------------------
@@ -7198,7 +7486,8 @@ header{display:none;}
       if (state.contract.prog >= state.contract.goal){
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
-        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0 });
+        Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
+                                        contract_express:state.contract.express ? 1 : 0, contract_kind:state.contract.kind || "standard" });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
         maybeOfferMilestone();
