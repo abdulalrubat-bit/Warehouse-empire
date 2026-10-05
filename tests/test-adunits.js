@@ -32,11 +32,11 @@ await tick(10);
 // ---- config integrity ----
 const PLACEHOLDER = /^ca-app-pub-0+\//;
 const keys = Object.keys(UNITS);
-chk("all six placements have an ad unit", keys.length === 6 && keys.every(k=>UNITS[k]),
+chk("all seven placements have an ad unit", keys.length === 7 && keys.every(k=>UNITS[k]),
     keys.join(", "));
 chk("every id is well formed", keys.every(k=>/^ca-app-pub-\d{16}\/\d{10}$/.test(UNITS[k])));
 const ids = keys.map(k=>UNITS[k]);
-chk("no id is reused across placements", new Set(ids).size === 6,
+chk("no id is reused across placements", new Set(ids).size === 7,
     new Set(ids).size + " distinct of " + ids.length);
 // app-ads.txt lives in the Pages repo, so this one assertion needs both checkouts. It
 // reports as skipped rather than passing silently when only this repo is present --
@@ -82,6 +82,8 @@ chk("Call in a favour -> its own unit",
 global.__clickTab("pallets");
 chk("Crate Shipment -> its own unit",
     await fire("crateAdBtn", ()=>{ s.crateAdsToday = 0; s.crateAdDay = -1; }) === UNITS.crate, UNITS.crate);
+s.dailyStreak = 2;
+chk("Double Stipend -> its own unit", await fire("btnDoubleDaily") === UNITS.daily, UNITS.daily);
 
 console.log("PASS:"); ok.forEach(l=>console.log("  + "+l));
 if(skipped.length){ console.log("SKIPPED:"); skipped.forEach(l=>console.log("  ~ "+l)); }

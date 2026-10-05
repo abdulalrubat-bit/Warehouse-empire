@@ -709,6 +709,7 @@ header{display:none;}
       <div class="modal-sub">Log in daily to claim corporate pallet stipends and freight bonuses.</div>
       <div class="cal-grid" id="calGrid"></div>
       <button class="modal-btn" id="btnClaimDaily">Clock In &amp; Claim</button>
+      <button class="adbtn alt" id="btnDoubleDaily" style="width:100%; margin-top:10px;">Claim &times;2<small id="dailyDoubleSub">WATCH AD</small></button>
     </div>
   </div>
 
@@ -2378,7 +2379,8 @@ header{display:none;}
     reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
     favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
     offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double     -- 2x offline earnings
-    crate:   "ca-app-pub-5195464450607116/4517127752"   // Crate Shipment    -- +3 crates, 5/day
+    crate:   "ca-app-pub-5195464450607116/4517127752",  // Crate Shipment    -- +3 crates, 5/day
+    daily:   ""                                         // Double Stipend    -- 2x daily pallets
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
@@ -2717,6 +2719,7 @@ header{display:none;}
   }
 
   function renderDailyCalendar(){
+    renderDailyDouble();
     var grid = document.getElementById("calGrid"); grid.innerHTML = "";
     DAILY_REWARDS.forEach(function(r){
       var d = document.createElement("div");
@@ -2729,7 +2732,9 @@ header{display:none;}
     });
   }
 
-  document.getElementById("btnClaimDaily").addEventListener("click", function(){
+  // One claim path for both buttons. The doubled claim doubles the pallets only: the crate
+  // on its bonus days is a fixed gift, and doubling it would make crates an ad farm.
+  function claimDaily(mult){
     // A streak of 0 indexes DAILY_REWARDS at -1, and the next line then throws on
     // undefined. The calendar always used to open at boot and set the streak before this
     // button could be reached, so the case could not arise; now that it waits for a second
@@ -2740,14 +2745,15 @@ header{display:none;}
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
     if (!reward){ document.getElementById("modalDaily").hidden = true;
                   maybeAskNotifications("launch"); return; }
-    state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
-    Tele.log("daily_claim", { day:state.dailyStreak, pallets:reward.pallets });
+    var pallets = reward.pallets * mult;
+    state.pallets += pallets; state.lastDailyClaim = Date.now();
+    Tele.log("daily_claim", { day:state.dailyStreak, pallets:pallets, daily_reward: mult > 1 ? "double" : "standard" });
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
     if (crate) state.crates += 1;
     var built = advanceCorpProgress();
     document.getElementById("modalDaily").hidden = true;
     sfx("upgrade");
-    showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>" +
+    showToast("Daily stipend collected: <b>+" + pallets + " Pallets</b>" + (mult > 1 ? " (2\u00d7)" : "") +
               (crate ? " and <b>+1 Crate</b>" : "") + "." +
               (built ? " Site works advanced on the <b>" + built.name + "</b>." : ""));
     render(); saveGame();
@@ -2755,7 +2761,23 @@ header{display:none;}
     // wants -- and modals share a z-index, so the card would have deferred itself every
     // single time and never appeared at all. It queues behind the calendar instead.
     maybeAskNotifications("launch");
+  }
+
+  document.getElementById("btnClaimDaily").addEventListener("click", function(){ claimDaily(1); });
+
+  // The daily screen was the most-seen screen in the game that offered no ad: 43% of active
+  // players open it, and only one in five had ever watched one. Opt-in, beside the claim
+  // rather than instead of it, and a failed or skipped ad leaves the plain claim standing.
+  document.getElementById("btnDoubleDaily").addEventListener("click", function(){
+    var b = document.getElementById("btnDoubleDaily");
+    b.disabled = true;
+    Ads.show("daily", function(){ b.disabled = false; claimDaily(2); },
+                      function(){ b.disabled = false; });
   });
+  function renderDailyDouble(){
+    var reward = DAILY_REWARDS[state.dailyStreak - 1], sub = document.getElementById("dailyDoubleSub");
+    if (sub) sub.textContent = reward ? "WATCH AD \u00b7 +" + (reward.pallets * 2) + " PALLETS INSTEAD OF " + reward.pallets : "WATCH AD";
+  }
 
   var crateAdBtnEl = null, crateAdSubEl = null;
   function renderCrateAd(){
@@ -4110,7 +4132,7 @@ header{display:none;}
     /** @typedef {{id:string,title:string,line:string,action:string,kind:string,reward:number}} Beat */
     /** @type {Beat[]} */
     var beats=[
-      {id:"departure",title:"S04 is waiting for its final three pallets.",line:"Tap each staged pallet beside S04. Your handler loads it into the trailer. Dispatch only when all three are aboard.",action:"Locate S04",kind:"clear",reward:40},
+      {id:"departure",title:"S04 is waiting for its final three pallets.",line:"Tap a pallet beside S04, or press the button, and your handler loads it into the trailer. Dispatch when all three are aboard.",action:"Load pallet",kind:"clear",reward:40},
       {id:"handler",title:"Give the next load to a handler",line:"Hire one Casual Picker. Watch your new worker start moving freight while you pick orders.",action:"Hire handler",kind:"hire",reward:60},
       {id:"heavy",title:"Heavy freight. One valuable delivery.",line:"Tap the cable drum on the floor. This one-off opening load pays $350.",action:"Locate cable drum",kind:"drum",reward:0},
       {id:"decision",title:"Two jobs. One loading slot.",line:"Clear the backlog with 8 picks, or take express freight with 12. Both pay $650 on dispatch.",action:"Clear backlog",kind:"choice",reward:650},
@@ -4215,6 +4237,11 @@ header{display:none;}
       report("truck_end",{truck_result:"complete",truck_completed:h.completed,truck_secs:Math.round(h.totalSeconds),truck_beat:10});
       h.note=h.completed+" of 10 shift tasks completed · "+money(h.rewards)+" shift bonuses. Your team is yours to keep.";
       persist();paint();showToast("Shift complete. Your operation is ready for the next load.");
+      // The moment the reminder card is for: they have just run the whole shift, and the
+      // crew keeps working once the app is shut. Waiting for a second launch meant anyone
+      // who did not come back on their own was never asked -- five players in a month saw
+      // the card. A beat later, so the shift's own toast is read first.
+      setTimeout(function(){maybeAskNotifications("shift");},1500);
     }
     function action(second){
       if(!ready)return;
@@ -4226,7 +4253,10 @@ header{display:none;}
       }
       var h=state.lastTruck,b=beats[h.index];
       if(h.done){if(h.depart<=0)advance();else showFloor();return;}
-      if(b.kind==="clear"){if(h.cleared===7&&h.loadIndex<0)finishBeat("S04 loaded. Truck departing.");else showFloor();}
+      if(b.kind==="clear"){
+        if(h.cleared===7&&h.loadIndex<0)finishBeat("S04 loaded. Truck departing.");
+        else{showFloor();loadPallet(nextPallet());}
+      }
       else if(b.kind==="hire")purchase("picker");
       else if(b.kind==="forklift")purchase("forklift");
       else if(b.kind==="trolley")purchase("trolley");
@@ -4297,6 +4327,18 @@ header{display:none;}
       if(["clear","choice","rush","finale"].indexOf(beats[h.index].kind)<0)return null;
       return {phase:h.depart>0?"leaving":h.done?"empty":"docked",t:h.depart>0?(1-h.depart/3.5)*DOCK_OUT:0,livery:1};
     }
+    // Start loading pallet i into S04. Shared by a tap on the plan and by the card's
+    // button: the button used to only re-centre the camera, so a new player who pressed the
+    // obvious thing saw nothing happen while the clock ran -- and that is where the opening
+    // was losing people, before their first purchase.
+    /** @param {number} i @returns {boolean} */
+    function loadPallet(i){
+      var h=state.lastTruck;
+      if(i<0||i>2||(h.cleared&(1<<i))||h.loadIndex>=0)return false;
+      h.loadIndex=i;h.loadAge=0;h.note="Handler loading pallet "+(i+1)+" into S04.";sfx("tap");persist();paint();return true;
+    }
+    /** @returns {number} the first pallet still on the dock, or -1 */
+    function nextPallet(){var h=state.lastTruck;for(var i=0;i<3;i++)if(!(h.cleared&(1<<i))&&i!==h.loadIndex)return i;return -1;}
     /** @param {number} x @param {number} y @returns {boolean} */
     function tap(x,y){
       if(!active()||state.lastTruck.index!==0||state.lastTruck.done)return false;
@@ -4306,11 +4348,13 @@ header{display:none;}
       for(var i=0;i<3;i++){
         if((h.cleared&(1<<i))||i===h.loadIndex)continue;
         var c=blockCell(i),screen=toScreen(c.x,c.y),distance=Math.hypot(x-screen.x,y-screen.y);
-        if(distance<Math.max(22,c.size*cam.z*.65)&&distance<best){best=distance;nearest=i;}
+        // A finger is ~40px; the pallet is ~20 at this zoom. Generous, because a near miss
+        // on the first thing the game asks for reads as the game not working.
+        if(distance<Math.max(40,c.size*cam.z*1.1)&&distance<best){best=distance;nearest=i;}
       }
       if(nearest<0)return false;
       if(h.loadIndex>=0)return true;
-      h.loadIndex=nearest;h.loadAge=0;h.note="Handler loading pallet "+(nearest+1)+" into S04.";sfx("tap");persist();paint();return true;
+      return loadPallet(nearest);
     }
     /** Draw world freight under the same camera transform as every other pallet. */
     function drawWorld(){
@@ -4325,7 +4369,15 @@ header{display:none;}
           var t=factoryTravel(Math.min(1,h.loadAge/1.4));
           var p=factoryRoute([[c.x,c.y],[c.x,door.y],[door.x,door.y]],t);
           pallet(p.x-11,p.y-11,22,22,false);crew(p.x-13,p.y+3,0,false,true,i);
-        }else{pallet(c.x-11,c.y-11,22,22,false);ro(c.x-13,c.y-13,26,26,"#e3c26b",1.5);}
+        }else{
+          pallet(c.x-11,c.y-11,22,22,false);ro(c.x-13,c.y-13,26,26,"#e3c26b",1.5);
+          // Pulse what is waiting to be tapped, so the plan says where to look.
+          if(h.loadIndex<0){
+            var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            var k=reduce?0.5:(Math.sin(animT*3.8+i)*0.5+0.5),g=4+k*7;
+            ctx.save();ctx.globalAlpha=0.35+0.5*(1-k);ro(c.x-13-g,c.y-13-g,26+g*2,26+g*2,"#ffd23a",2.5);ctx.restore();
+          }
+        }
       }
       var loaded=(h.cleared&1)+((h.cleared>>1)&1)+((h.cleared>>2)&1);
       label("S04 · "+loaded+"/3 LOADED",d.x+d.w/2,d.y-8,11,"#ffe1a1","center");
@@ -4353,7 +4405,8 @@ header{display:none;}
       bar.style.width=(h.totalSeconds/6)+"%";button.disabled=false;
       button.textContent=h.done?(h.depart>0?"Watch S04 depart":"Continue shift"):b.action;
       if(!h.done&&b.kind==="clear"){
-        button.textContent=h.loadIndex>=0?"Handler loading…":h.cleared===7?"Dispatch S04":"Locate pallets at S04";
+        var loaded=(h.cleared&1)+((h.cleared>>1)&1)+((h.cleared>>2)&1);
+        button.textContent=h.loadIndex>=0?"Handler loading…":h.cleared===7?"Dispatch S04":"Load pallet "+(loaded+1)+" of 3";
         button.disabled=h.loadIndex>=0;
       }
       if(!h.done&&["hire","forklift","trolley"].indexOf(b.kind)>=0){
@@ -4876,7 +4929,8 @@ header{display:none;}
   // not yet know what the game is, and a refusal there cannot be taken back from inside the
   // app. So this asks in our own words first, and only once the player has shown they will
   // come back at all: on their second launch, or the moment they collect a shift's offline
-  // takings and the reminder has just demonstrated what it is for.
+  // takings and the reminder has just demonstrated what it is for -- or the moment they
+  // finish the Last Truck, the one point every new player who stays reaches in session one.
   function maybeAskNotifications(trigger){
     if(LastTruck.active())return;
     if (state.notifPrompted || state.notifAsked) return;
@@ -4887,10 +4941,14 @@ header{display:none;}
     // false means this is simply tried again next launch rather than lost.
     if (!document.getElementById("modalOffline").hidden) return;
     if (!document.getElementById("modalDaily").hidden) return;
+    // A calendar still queued will open on top of the card; the next launch asks instead.
+    if (trigger === "shift" && dailyPending) return;
 
     var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
     document.getElementById("notifPromptLead").textContent = trigger === "offline"
       ? "Your site banked that while the app was shut. It keeps going until storage fills."
+      : trigger === "shift"
+      ? "Shift saved. Your crew keeps working while the app is shut."
       : "Your site keeps earning while the app is shut.";
     document.getElementById("notifPromptCap").textContent = capHours + "h";
     document.getElementById("modalNotif").hidden = false;

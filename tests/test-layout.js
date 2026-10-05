@@ -49,6 +49,26 @@ async function phone(b, save){
     chk("with PICK ORDER still reachable beside it", pick.ok, pick.why);
     await ctx.close(); }
 
+  // ---- the first task can be finished with the button alone ----
+  // The button used to only re-centre the camera: a new player who pressed the obvious
+  // thing saw nothing happen while the clock ran, and half of installs never made a
+  // purchase. Pressing it now loads the next pallet, and three presses and a dispatch
+  // finish the task without ever finding the pallets on the plan.
+  { const { ctx, p } = await phone(b);
+    const label = () => p.evaluate(() => document.getElementById("ltAction").textContent);
+    chk("the first button says what it does", /Load pallet 1 of 3/.test(await label()), await label());
+    for (let i = 0; i < 3; i++){
+      await p.waitForFunction(() => !document.getElementById("ltAction").disabled, null, { timeout: 8000 });
+      await p.tap("#ltAction");
+    }
+    await p.waitForFunction(() => /Dispatch S04/.test(document.getElementById("ltAction").textContent), null, { timeout: 8000 });
+    await p.tap("#ltAction"); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({ done: window.state.lastTruck.done, cleared: window.state.lastTruck.cleared,
+                                        money: window.state.money }));
+    chk("three presses and a dispatch complete the first task", r.done === true && r.cleared === 7, JSON.stringify(r));
+    chk("and its reward covers the hire the next task asks for", r.money >= 17, "$" + r.money.toFixed(2));
+    await ctx.close(); }
+
   // ---- once the shift is over the card goes back into the page ----
   { const { ctx, p } = await phone(b, { launches:3, lifetime:5e5, total:5e5, money:1000, contractsDone:2,
                                         lastTruck:{ version:1, status:"complete" } });

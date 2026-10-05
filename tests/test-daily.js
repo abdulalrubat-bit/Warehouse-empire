@@ -222,6 +222,23 @@ chk("old saves survive", (function(){
   function corpProgressSafe(){ try { return 0; } catch(e){ return NaN; } }
 })());
 
+// --- the doubled stipend ------------------------------------------------------------------
+// Watching the ad doubles the day's pallets, not a bonus crate: a doubled crate would make
+// crates an ad farm. With no ad plugin (this harness, the browser build) the reward is
+// granted directly, so this drives the real claim path. The day is whatever the calendar
+// opened on; its label is read for the base so the check holds on any day.
+s.lastDailyClaim = clock - DAY - 1000; clock += DAY + 2000; s.streakGrace = 1; s.dailyShownFor = -1;
+ticker.fn();
+const sub = $("dailyDoubleSub").textContent || "";
+const m = /\+(\d+) PALLETS INSTEAD OF (\d+)/.exec(sub);
+chk("the doubled claim says what it pays", !!m && +m[1] === 2 * +m[2], sub);
+const base = m ? +m[2] : 0, palBefore = s.pallets, crateBefore = s.crates;
+$("btnDoubleDaily").fire("click");
+chk("watching doubles the day's pallets", s.pallets - palBefore === base * 2,
+    (s.pallets - palBefore) + " pallets for a " + base + "-pallet day");
+chk("but never doubles a bonus crate", s.crates - crateBefore <= 1, (s.crates - crateBefore) + " crates");
+chk("and the stipend is spent for the day", $("modalDaily").hidden === true);
+
 console.log("PASS:"); ok.forEach(l=>console.log("  + "+l));
 if(bad.length){ console.log("FAIL:"); bad.forEach(l=>console.log("  - "+l)); process.exitCode=1; }
 })();
