@@ -145,15 +145,20 @@ jobs:
           IDS=$(printf '%s\n' "$UNITS" | grep -oE 'ca-app-pub-[0-9]{16}/[0-9]{10}' || true)
           COUNT=$(printf '%s\n' "$IDS" | grep -c . || true)
           UNIQ=$(printf '%s\n' "$IDS" | sort -u | grep -c . || true)
+          # Placements are counted from the map itself. This was a literal 6, and the
+          # seventh placement (Double Stipend, 4.5) failed the release build on a number
+          # nobody had updated. Every key must carry a well-formed id: a key whose value
+          # is malformed shows up as KEYS > COUNT.
+          KEYS=$(printf '%s\n' "$UNITS" | grep -cE '^[[:space:]]*[A-Za-z_]+:[[:space:]]*"' || true)
           echo "--- ad units ---"
           printf '%s\n' "$IDS"
-          echo "found $COUNT unit(s), $UNIQ distinct, $EMPTY empty"
+          echo "found $KEYS placement(s), $COUNT unit(s), $UNIQ distinct, $EMPTY empty"
           if [ "$EMPTY" -ne 0 ]; then
             echo "::error::$EMPTY ad unit(s) left empty — those placements would earn nothing."
             exit 1
           fi
-          if [ "$COUNT" -ne 6 ]; then
-            echo "::error::Expected 6 rewarded ad units, found $COUNT."
+          if [ "$KEYS" -eq 0 ] || [ "$COUNT" -ne "$KEYS" ]; then
+            echo "::error::$KEYS placement(s) in AD_UNITS but $COUNT well-formed ad unit id(s)."
             exit 1
           fi
           if [ "$UNIQ" -ne "$COUNT" ]; then
