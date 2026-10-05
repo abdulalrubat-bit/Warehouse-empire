@@ -1,7 +1,7 @@
 # Warehouse Empire 4.5 (v32)
 
-4.4 (v31) is live. This release is two fixes to the first session and one new
-rewarded-ad option, all found in 4.4's own data.
+4.4 (v31) is live. This release is two fixes to the first session, one new
+rewarded-ad option, and a new reward moment: milestone shipments.
 
 ---
 
@@ -14,6 +14,8 @@ Finishing the opening shift now offers to remind you when your storage is full, 
 your crew's work isn't wasted while you're away.
 
 The daily stipend can now be doubled by watching a short ad.
+
+New: Milestone Shipments. Every fifth contract, choose one reward from three.
 
 ---
 
@@ -49,14 +51,27 @@ Skipping or failing the ad leaves the normal claim as it was.
 It has its own ad unit, `daily` (`.../2661942413`), so it reports separately in
 AdMob.
 
+### Milestone Shipments
+
+Every fifth completed contract offers a choice of one reward from three: a timed
+boost (Relief crew, Rush hour, Hand-pick frenzy) or something now (Cash advance,
+Pallet bonus, Crate shipment). Every offer has at least one of each. It's built from
+rewards the game already has, so there is no new currency.
+
+The offer is fixed and saved when the contract completes, so closing the app can't
+reroll it, and it pays exactly once. Timed boosts start when picked, not when
+offered. It only opens on its own when nothing else is on screen; otherwise, and
+after "Decide later", it waits as a gold row in the Contracts panel.
+
 ---
 
 ## Release checklist
 
 1. Build and upload **v32**, version name **4.5**.
-2. **Register one custom dimension in GA4:** `daily_reward` (Event scope) on
-   `daily_claim`. Its values are `standard` or `double`, so it shows how many players
-   take the doubled claim. `notification_prompt` also gains a `prompt_trigger` value,
+2. **Register two custom dimensions in GA4** (Event scope):
+   - `daily_reward` on `daily_claim`: `standard` or `double`, so it shows how many
+     players take the doubled claim.
+   - `milestone_choice` on `milestone_pick`: which reward players choose. `notification_prompt` also gains a `prompt_trigger` value,
    `shift`, on a dimension already registered in 4.2.
 3. Store listing and screenshots unchanged. Don't change them while the icon
    before/after comparison is running.
@@ -65,5 +80,7 @@ AdMob.
    - `equipment_bought` users ÷ active users, from about 52% in 4.4.
    - `notification_prompt` shown with `prompt_trigger` = `shift`, and its
      accept rate.
+   - `milestone_pick` by `milestone_choice`: which rewards players value. A choice
+     nobody picks is a candidate to replace.
    - AdMob: impressions on the **Double Stipend** unit, and `rewarded_ad` users ÷
      active users, from about 20% in 4.4.
