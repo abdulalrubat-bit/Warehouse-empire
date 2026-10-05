@@ -278,6 +278,11 @@
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
   .office-text{font-size:10.5px; color:var(--dim); margin-top:6px; line-height:1.65;}
   .office-text b{color:var(--ink);}
+  .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
+  .specrow b{color:var(--steel); white-space:nowrap;}
+  .specrow span{text-align:right;}
+  .specrow.on b{color:var(--cash);}
+  .specrow.on span{color:var(--ink);}
   #sellBtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--hazard); color:var(--hazard); border-radius:4px; padding:12px; font-family:var(--font-cond); font-weight:800; font-size:15px; cursor:pointer;}
   #sellBtn.armed{background:var(--hazard); color:#20180a;}
   .renamebtn{width:100%; margin-top:10px; background:transparent; border:1px solid var(--line); color:var(--steel); border-radius:4px; padding:10px; font-family:var(--font-cond); font-weight:800; font-size:13px; cursor:pointer;}
@@ -703,6 +708,11 @@ header{display:none;}
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
+    </div>
+    <div class="office-block" id="specialistBlock">
+      <div class="office-title">SPECIALIST WORK</div>
+      <div class="office-text">Every third job is specialist freight when you can handle it. It pays more.</div>
+      <div id="specialistList"></div>
     </div>
     <div class="office-block"><div class="office-title">STATS</div><div class="office-text" id="statsText"></div></div>
     
@@ -1912,7 +1922,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2329,7 +2339,7 @@ header{display:none;}
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered",
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered",
        "launches","dispatchesToday","shipment_counter","eventPlaySeconds","crisisNextAt",
        "crisisRepAwarded","automationTrialUsed","automationTrialUntil","inductionStep"].forEach(function(k){
         var v = Number(state[k]);
@@ -4157,6 +4167,15 @@ header{display:none;}
   })();
 
   function renderOffice(){
+    var sl = document.getElementById("specialistList");
+    if (sl){
+      var rows = JOB_KINDS.map(function(k){
+        var on = k.has();
+        return '<div class="specrow' + (on ? ' on' : '') + '"><b>' + (on ? "\u2713 " : "\u25cb ") + k.name + '</b>' +
+               '<span>' + (on ? "+" + Math.round((k.cash - 1) * 100) + "% cash \u00b7 +" + k.pallets + " PAL" : k.needs) + '</span></div>';
+      }).join("");
+      if (sl._html !== rows){ sl.innerHTML = rows; sl._html = rows; }
+    }
     var st = document.getElementById("statsText");
     if(st) {
       st.innerHTML = "Lifetime Capital: <b style='color:var(--cash);'>" + money(state.lifetime) + "</b><br>" +
@@ -4906,6 +4925,29 @@ header{display:none;}
   // non-default manifest mathematically impossible once the flat $500 floor stopped binding.
   var CONTRACT_GOAL_FRACTION = 0.6;
 
+  // --- Specialist work ----------------------------------------------------------------
+  // Some freight only goes to an operator who can actually handle it. These jobs are earned
+  // by what the business has done -- a refrigerated site run or held in the Network, a
+  // fleet that can lift oversized loads -- rather than bought, and they pay for it. Every
+  // third standard job is specialist work if the business qualifies for any; the Office
+  // lists what each kind needs, so a locked one is a goal and not a secret.
+  var JOB_KINDS = [
+    { id:"oversize", tag:"OVERSIZE", name:"Oversized loads", cash:1.4, pallets:2,
+      needs:"5 Reach Trucks or an Automated Crane",
+      has:function(){ return (state.owned.reach || 0) >= 5 || (state.owned.crane || 0) >= 1; } },
+    { id:"reefer", tag:"REEFER", name:"Refrigerated freight", cash:1.6, pallets:1,
+      needs:"Run a Cold Storage site, or hold one in your Network",
+      has:function(){ return siteHeld("cold"); } },
+    { id:"dg", tag:"DG", name:"Dangerous goods", cash:1.8, pallets:1,
+      needs:"Run a Dangerous Goods site, or hold one in your Network",
+      has:function(){ return siteHeld("hazmat"); } }
+  ];
+  function siteHeld(id){
+    return state.site === id || (state.network || []).some(function(e){ return e.id === id; });
+  }
+  function jobKinds(){ return JOB_KINDS.filter(function(k){ return k.has(); }); }
+  function jobKind(id){ for (var i = 0; i < JOB_KINDS.length; i++) if (JOB_KINDS[i].id === id) return JOB_KINDS[i]; return null; }
+
   function newContract(){
     var r = totalRate();
     // Every fourth job is a short, optional pressure test. It carries no failure penalty:
@@ -4925,12 +4967,24 @@ header{display:none;}
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var rushReward = rush ? 2.5 : 1;
     var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward;
+    var kinds = !rush && state.contractsDone >= 2 && state.contractsOffered % 3 === 2 ? jobKinds() : [];
+    // Taken in turn by a count of their own: indexing by the job number let a rush that
+    // fell on a specialist slot skip the same kind every time round.
+    var kind = kinds.length ? kinds[(state.specialistOffered || 0) % kinds.length] : null;
+    if (kind) state.specialistOffered = (state.specialistOffered || 0) + 1;
 
-    return {
+    var job = {
       goal: goal, prog: 0, mins: mins, deadline: Date.now() + mins * 60000,
       label: (openingClient==="steady"?"REGULAR CLIENT · ":openingClient==="express"?"EXPRESS CLIENT · ":"") + (rush ? "RUSH · " : "") + "Dispatch " + money(goal) + " of freight",
       cash: cashReward, pallets: rush ? 5 : 3, rush: rush
     };
+    if (kind){
+      job.kind = kind.id;
+      job.label = kind.tag + " · Dispatch " + money(goal) + " of " + kind.name.toLowerCase();
+      job.cash = Math.floor(job.cash * kind.cash);
+      job.pallets += kind.pallets;
+    }
+    return job;
   }
 
   // --- Express clause ----------------------------------------------------------------
@@ -4972,6 +5026,7 @@ header{display:none;}
     else { expressArmedUntil = Date.now() + 4000; renderContract(); }
   }
 
+  window.__jobs = { kinds: JOB_KINDS, qualified: jobKinds, newContract: newContract, renderOffice: renderOffice };
   window.__express = { offered: function(){ return expressOffered(state.contract); }, take: takeExpress, press: pressExpress };
 
   function clockLeft(ms){
@@ -4999,7 +5054,7 @@ header{display:none;}
     document.getElementById("contractTitle").textContent = c.label;
     document.getElementById("contractBar").style.width = pct + "%";
     document.getElementById("contractProg").textContent = money(c.prog) + " / " + money(c.goal);
-    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : c.express ? "EXPRESS REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
+    document.getElementById("contractReward").textContent = (c.rush ? "RUSH REWARD " : c.express ? "EXPRESS REWARD " : c.kind ? "SPECIALIST REWARD " : "REWARD ") + money(c.cash) + " + " + c.pallets + " PAL";
     document.getElementById("contractTime").textContent = clockLeft(c.deadline - Date.now()) + " left";
     var xb = document.getElementById("expressBtn");
     var offered = expressOffered(c), armed = offered && Date.now() < expressArmedUntil;
@@ -7432,7 +7487,7 @@ header{display:none;}
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
         Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
-                                        contract_express:state.contract.express ? 1 : 0 });
+                                        contract_express:state.contract.express ? 1 : 0, contract_kind:state.contract.kind || "standard" });
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
         maybeOfferMilestone();
