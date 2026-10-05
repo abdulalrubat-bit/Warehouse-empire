@@ -4110,7 +4110,7 @@ header{display:none;}
     /** @typedef {{id:string,title:string,line:string,action:string,kind:string,reward:number}} Beat */
     /** @type {Beat[]} */
     var beats=[
-      {id:"departure",title:"S04 is waiting for its final three pallets.",line:"Tap each staged pallet beside S04. Your handler loads it into the trailer. Dispatch only when all three are aboard.",action:"Locate S04",kind:"clear",reward:40},
+      {id:"departure",title:"S04 is waiting for its final three pallets.",line:"Tap a pallet beside S04, or press the button, and your handler loads it into the trailer. Dispatch when all three are aboard.",action:"Load pallet",kind:"clear",reward:40},
       {id:"handler",title:"Give the next load to a handler",line:"Hire one Casual Picker. Watch your new worker start moving freight while you pick orders.",action:"Hire handler",kind:"hire",reward:60},
       {id:"heavy",title:"Heavy freight. One valuable delivery.",line:"Tap the cable drum on the floor. This one-off opening load pays $350.",action:"Locate cable drum",kind:"drum",reward:0},
       {id:"decision",title:"Two jobs. One loading slot.",line:"Clear the backlog with 8 picks, or take express freight with 12. Both pay $650 on dispatch.",action:"Clear backlog",kind:"choice",reward:650},
@@ -4226,7 +4226,10 @@ header{display:none;}
       }
       var h=state.lastTruck,b=beats[h.index];
       if(h.done){if(h.depart<=0)advance();else showFloor();return;}
-      if(b.kind==="clear"){if(h.cleared===7&&h.loadIndex<0)finishBeat("S04 loaded. Truck departing.");else showFloor();}
+      if(b.kind==="clear"){
+        if(h.cleared===7&&h.loadIndex<0)finishBeat("S04 loaded. Truck departing.");
+        else{showFloor();loadPallet(nextPallet());}
+      }
       else if(b.kind==="hire")purchase("picker");
       else if(b.kind==="forklift")purchase("forklift");
       else if(b.kind==="trolley")purchase("trolley");
@@ -4297,6 +4300,18 @@ header{display:none;}
       if(["clear","choice","rush","finale"].indexOf(beats[h.index].kind)<0)return null;
       return {phase:h.depart>0?"leaving":h.done?"empty":"docked",t:h.depart>0?(1-h.depart/3.5)*DOCK_OUT:0,livery:1};
     }
+    // Start loading pallet i into S04. Shared by a tap on the plan and by the card's
+    // button: the button used to only re-centre the camera, so a new player who pressed the
+    // obvious thing saw nothing happen while the clock ran -- and that is where the opening
+    // was losing people, before their first purchase.
+    /** @param {number} i @returns {boolean} */
+    function loadPallet(i){
+      var h=state.lastTruck;
+      if(i<0||i>2||(h.cleared&(1<<i))||h.loadIndex>=0)return false;
+      h.loadIndex=i;h.loadAge=0;h.note="Handler loading pallet "+(i+1)+" into S04.";sfx("tap");persist();paint();return true;
+    }
+    /** @returns {number} the first pallet still on the dock, or -1 */
+    function nextPallet(){var h=state.lastTruck;for(var i=0;i<3;i++)if(!(h.cleared&(1<<i))&&i!==h.loadIndex)return i;return -1;}
     /** @param {number} x @param {number} y @returns {boolean} */
     function tap(x,y){
       if(!active()||state.lastTruck.index!==0||state.lastTruck.done)return false;
@@ -4306,11 +4321,13 @@ header{display:none;}
       for(var i=0;i<3;i++){
         if((h.cleared&(1<<i))||i===h.loadIndex)continue;
         var c=blockCell(i),screen=toScreen(c.x,c.y),distance=Math.hypot(x-screen.x,y-screen.y);
-        if(distance<Math.max(22,c.size*cam.z*.65)&&distance<best){best=distance;nearest=i;}
+        // A finger is ~40px; the pallet is ~20 at this zoom. Generous, because a near miss
+        // on the first thing the game asks for reads as the game not working.
+        if(distance<Math.max(40,c.size*cam.z*1.1)&&distance<best){best=distance;nearest=i;}
       }
       if(nearest<0)return false;
       if(h.loadIndex>=0)return true;
-      h.loadIndex=nearest;h.loadAge=0;h.note="Handler loading pallet "+(nearest+1)+" into S04.";sfx("tap");persist();paint();return true;
+      return loadPallet(nearest);
     }
     /** Draw world freight under the same camera transform as every other pallet. */
     function drawWorld(){
@@ -4325,7 +4342,15 @@ header{display:none;}
           var t=factoryTravel(Math.min(1,h.loadAge/1.4));
           var p=factoryRoute([[c.x,c.y],[c.x,door.y],[door.x,door.y]],t);
           pallet(p.x-11,p.y-11,22,22,false);crew(p.x-13,p.y+3,0,false,true,i);
-        }else{pallet(c.x-11,c.y-11,22,22,false);ro(c.x-13,c.y-13,26,26,"#e3c26b",1.5);}
+        }else{
+          pallet(c.x-11,c.y-11,22,22,false);ro(c.x-13,c.y-13,26,26,"#e3c26b",1.5);
+          // Pulse what is waiting to be tapped, so the plan says where to look.
+          if(h.loadIndex<0){
+            var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            var k=reduce?0.5:(Math.sin(animT*3.8+i)*0.5+0.5),g=4+k*7;
+            ctx.save();ctx.globalAlpha=0.35+0.5*(1-k);ro(c.x-13-g,c.y-13-g,26+g*2,26+g*2,"#ffd23a",2.5);ctx.restore();
+          }
+        }
       }
       var loaded=(h.cleared&1)+((h.cleared>>1)&1)+((h.cleared>>2)&1);
       label("S04 · "+loaded+"/3 LOADED",d.x+d.w/2,d.y-8,11,"#ffe1a1","center");
@@ -4353,7 +4378,8 @@ header{display:none;}
       bar.style.width=(h.totalSeconds/6)+"%";button.disabled=false;
       button.textContent=h.done?(h.depart>0?"Watch S04 depart":"Continue shift"):b.action;
       if(!h.done&&b.kind==="clear"){
-        button.textContent=h.loadIndex>=0?"Handler loading…":h.cleared===7?"Dispatch S04":"Locate pallets at S04";
+        var loaded=(h.cleared&1)+((h.cleared>>1)&1)+((h.cleared>>2)&1);
+        button.textContent=h.loadIndex>=0?"Handler loading…":h.cleared===7?"Dispatch S04":"Load pallet "+(loaded+1)+" of 3";
         button.disabled=h.loadIndex>=0;
       }
       if(!h.done&&["hire","forklift","trolley"].indexOf(b.kind)>=0){
