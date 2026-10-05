@@ -24,7 +24,10 @@ async function boot(b, seed){
   }, seed);
   const p = await ctx.newPage();
   p.on("pageerror", e => bad.push("PAGEERROR: " + e.message));
-  await p.goto("file://" + FILE); await p.waitForTimeout(1800);
+  await p.goto("file://" + FILE);
+  // Waited on, not timed: a fixed 1.8s was usually enough and on a loaded runner was not.
+  await p.waitForFunction(() => window.state && typeof window.state.money === "number" && window.__saveCode, null, { timeout: 15000 });
+  await p.waitForTimeout(600);
   await p.evaluate(() => document.querySelectorAll(".modal-screen").forEach(m => { if (m.id !== "modalSave") m.hidden = true; }));
   return { ctx, p };
 }
@@ -45,8 +48,9 @@ const money = p => p.evaluate(() => Math.round(window.state.money));
   { const { ctx, p } = await boot(b, { [KEY]: '{"money": 99, "lifetime": ', [BKEY]: BIZ(54321) });
     chk("an unreadable save restores the backup instead of a fresh site", await money(p) >= 54321, "$" + await money(p));
     chk("and the damaged save is parked, not lost", (await ls(p, KEY + "-corrupt") || "").startsWith('{"money": 99'));
-    await p.waitForTimeout(800);
-    chk("and the player is told", /backup/.test(await p.evaluate(() => document.getElementById("toast").textContent)));
+    const told = await p.waitForFunction(() => /backup/.test(document.getElementById("toast").textContent), null, { timeout: 5000 })
+      .then(() => true, () => false);
+    chk("and the player is told", told);
     await ctx.close(); }
 
   // ---- so is one that has gone missing ----
@@ -58,7 +62,8 @@ const money = p => p.evaluate(() => Math.round(window.state.money));
   { const { ctx, p } = await boot(b, { [KEY]: BIZ(5000) });
     await p.evaluate(() => { document.getElementById("modalReset").hidden = false; document.getElementById("wipeInput").value = "WIPE"; });
     await Promise.all([p.waitForEvent("load"), p.evaluate(() => document.getElementById("btnConfirmWipe").click())]);
-    await p.waitForTimeout(1800);
+    await p.waitForFunction(() => window.state && typeof window.state.money === "number", null, { timeout: 15000 });
+    await p.waitForTimeout(600);
     chk("a reset removes the backup as well as the save", !(await ls(p, BKEY)) || JSON.parse(await ls(p, BKEY)).money < 5000,
         "backup=" + ((await ls(p, BKEY)) || "none").slice(0, 40));
     chk("so the business does not come back", await money(p) < 5000, "$" + await money(p));
@@ -91,7 +96,7 @@ const money = p => p.evaluate(() => Math.round(window.state.money));
     chk("the first press only warns", await money(p) < 888888 &&
         /replaces your current business/i.test(await p.evaluate(() => document.getElementById("saveModalMsg").textContent)));
     await Promise.all([p.waitForEvent("load"), p.click("#btnSaveAction")]);
-    await p.waitForTimeout(1800);
+    await p.waitForFunction(() => window.state && window.state.money >= 888888, null, { timeout: 15000 }).catch(() => {});
     chk("the second imports it", await money(p) >= 888888, "$" + await money(p));
     chk("and the business it replaced is kept aside", JSON.parse((await ls(p, KEY + "-preimport")) || "{}").money >= 4242);
     await ctx.close(); }
