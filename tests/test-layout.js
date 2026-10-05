@@ -165,6 +165,11 @@ async function phone(b, save){
     });
     chk("the plan carries the four numbered department cards", lab.n === 4 && lab.inside, JSON.stringify(lab));
     chk("and none covers another", lab.overlap === false);
+    // The operating policy card is drawn by the Office, not the Floor; it was once empty.
+    await p.click('.tabs button[data-tab="office"]'); await p.waitForTimeout(300);
+    chk("the Office lists the three operating policies",
+        await p.evaluate(() => document.querySelectorAll("#policyList .policy-opt").length === 3));
+    await p.click('.tabs button[data-tab="floor"]'); await p.waitForTimeout(400);
     await p.click("#canvasOverview"); await p.waitForTimeout(1500);
     const over = await p.evaluate(() => {
       const P = window.__plan, a = P.toScreen(P.site.x, P.net.y), b2 = P.toScreen(P.site.x + P.site.w, P.site.y + P.site.h);

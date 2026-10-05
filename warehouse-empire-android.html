@@ -307,6 +307,15 @@
   .away-grid b{display:block; font-size:19px; color:#f2f7fb; font-weight:800; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .away-grid div:first-child b{color:var(--cash);}
   .away-grid small{display:block; font-size:9.5px; color:#a9c0d0; margin-top:3px; line-height:1.3;}
+  .policy-opt{display:block; width:100%; text-align:left; margin-top:8px; padding:10px 12px; border-radius:10px; border:1px solid #33495a; background:#13222e; color:#eef5fb; cursor:pointer;}
+  .policy-opt b{font-size:13px; font-weight:800;}
+  .policy-opt span{display:block; font-size:11px; color:#a9c0d0; margin-top:3px; line-height:1.4;}
+  .policy-opt em{display:block; font-style:normal; font-size:10.5px; color:#cfe0ec; margin-top:4px; font-weight:700;}
+  .policy-opt.on{border-color:var(--ui-gold, #ffc665); background:#2a3a33;}
+  .policy-opt.on b{color:var(--ui-gold, #ffc665);}
+  .floor-tags{display:flex; gap:6px; flex-wrap:wrap; padding:0 10px 10px; background:var(--panel);}
+  .ftag{font-size:8.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:4px 7px; border-radius:6px; border:1px solid #4a6375; color:#cfe0ec; background:none; cursor:pointer;}
+  .ftag.gold{border-color:var(--ui-gold, #ffc665); color:var(--ui-gold, #ffc665);}
   .help-item{border:1px solid #33495a; border-radius:10px; padding:9px 11px; margin-top:8px; font-size:12px; line-height:1.5; color:#cfe0ec; text-align:left;}
   .help-item b{color:var(--ui-gold, #f0c060); margin-right:4px;}
   .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
@@ -557,6 +566,7 @@ header{display:none;}
       <div class="canvas-controls"><span id="canvasGestureHint">Swipe to scroll · tap to inspect</span><button id="canvasExplore" type="button" aria-pressed="false">Explore</button><button id="canvasOverview" type="button">Overview</button></div>
       <div class="dept-labels" id="deptLabels" aria-hidden="true"></div>
       <div class="dept-strip" id="deptStrip" aria-label="Departments"></div>
+      <div class="floor-tags" id="floorTags"><button type="button" class="ftag gold" id="policyTag"></button><span class="ftag" id="rankTag"></span></div>
       <div class="zone-info" id="canvasZoneInfo" hidden><strong id="canvasZoneTitle"></strong><p id="canvasZoneDetail"></p><div class="canvas-controls"><button id="canvasZoneEquipment" type="button">View equipment</button></div></div>
     </div>
     <div class="pickwrap">
@@ -691,6 +701,11 @@ header{display:none;}
 
   <section id="tab-office" hidden>
     <div class="panelhead"><div class="eyebrow">COMPANY</div><h2>Run the business</h2><p>Sell a site for REP, grow your Network, and keep your records.</p><button class="panel-help" type="button" data-help="office">How this screen works &#8599;</button></div>
+    <div class="office-block" id="policyBlock">
+      <div class="office-title">OPERATING POLICY</div>
+      <div class="office-text">How your managers run the site. Applies at once; switching is free.</div>
+      <div id="policyList"></div>
+    </div>
     <div class="toolbar"><div class="label">The Office</div><div class="qty"><button id="muteBtn">SFX ON</button><button id="hapticBtn">BUZZ ON</button></div></div>
     <div class="office-block">
       <div class="office-title">COMPANY</div>
@@ -1979,7 +1994,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2228,9 +2243,26 @@ header{display:none;}
     return span;
   }
 
+  // --- Operating policy ---------------------------------------------------------------------
+  // From the autonomous prototype: one standing choice about how the site is run. Each is a
+  // trade, not an upgrade. High throughput pushes the crew harder -- output up a fifth,
+  // payroll doubled -- which loses money while wages are a large share of gross and pays once
+  // HR and the Network have made them a small one; the header's payroll figure is the thing
+  // to read. Premium service runs slower and earns it back on contracts, whose pay is fixed
+  // when the job is posted, so switching on the way to a delivery does not cash in.
+  var POLICIES = {
+    reliable:   { id:"reliable",   name:"Reliable service", out:1,    wage:1,    contract:1,
+                  desc:"Standard output, wages and contract pay." },
+    throughput: { id:"throughput", name:"High throughput",  out:1.2,  wage:2,    contract:1,
+                  desc:"Output +20%, wages \u00d72. Worth it once payroll is a small share." },
+    premium:    { id:"premium",    name:"Premium service",  out:0.85, wage:0.85, contract:1.5,
+                  desc:"New contracts pay 50% more per load. Output \u221215%." }
+  };
+  function policy(){ return POLICIES[state.policy] || POLICIES.reliable; }
+
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out;
   }
 
   function wageBill(){
@@ -2251,7 +2283,7 @@ header{display:none;}
     // x2.03 against a button that says +75%. Pushing the crew harder costs more in wages,
     // not the same, and the rush it exists to solve is still winnable with it priced
     // honestly: 90s at x1 plus 30s at x1.75 clears a goal sized at 110% of two minutes.
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().wage;
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -3537,7 +3569,52 @@ header{display:none;}
   });
   document.getElementById("btnHelpClose").addEventListener("click", function(){ document.getElementById("modalHelp").hidden = true; });
 
-  window.__depts = { DEPTS: DEPTS, stats: deptStats, render: renderDeptStrip, help: openHelp, HELP: HELP };
+  // What net income would be under each policy right now, for the Office card. Computed by
+  // trying each in turn: the multipliers interact with payroll, which is the whole point.
+  function policyNet(id){
+    var was = state.policy; state.policy = id;
+    var n = grossRate() - wageBill();
+    state.policy = was;
+    return n;
+  }
+  var policyHtml = "";
+  function renderPolicy(){
+    var tag = document.getElementById("policyTag"), rk = document.getElementById("rankTag");
+    var tags = document.getElementById("floorTags");
+    if (tags) tags.hidden = LastTruck.active();
+    if (tag) tag.textContent = policy().name;
+    if (rk) rk.textContent = RANKS[rankIndex()].name;
+    var list = document.getElementById("policyList");
+    if (!list || curTab !== "office") return;
+    var cur = policy().id;
+    var html = Object.keys(POLICIES).map(function(k){
+      var P = POLICIES[k];
+      return '<button type="button" class="policy-opt' + (k === cur ? ' on' : '') + '" data-policy="' + k + '"><b>' + P.name + (k === cur ? ' \u2713' : '') + '</b>' +
+             '<span>' + P.desc + '</span><em>Site net now: ' + moneyRate(policyNet(k)) + '/s</em></button>';
+    }).join("");
+    if (html !== policyHtml){ list.innerHTML = html; policyHtml = html; }
+  }
+  function setPolicy(id){
+    if (!POLICIES[id] || state.policy === id) return;
+    state.policy = id;
+    invalidateUpMult();
+    Tele.log("policy_set", { policy_choice:id });
+    sfx("upgrade");
+    showToast("<b>" + POLICIES[id].name + "</b> is now in force.");
+    render(); saveGame();
+  }
+  document.getElementById("policyList").addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest("[data-policy]") : null;
+    if (b) setPolicy(b.getAttribute("data-policy"));
+  });
+  document.getElementById("policyTag").addEventListener("click", function(){
+    switchTab("office");
+    var blk = document.getElementById("policyBlock");
+    if (blk && blk.scrollIntoView) setTimeout(function(){ blk.scrollIntoView({ behavior:"smooth", block:"center" }); }, 60);
+  });
+
+  window.__depts = { DEPTS: DEPTS, stats: deptStats, render: renderDeptStrip, help: openHelp, HELP: HELP,
+                     POLICIES: POLICIES, policyNet: policyNet, setPolicy: setPolicy, renderPolicy: renderPolicy };
 
   function pickNextCard(){
     var obj = document.getElementById("objective"), bn = document.getElementById("bottleneck");
@@ -3894,7 +3971,7 @@ header{display:none;}
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
     renderNetwork(); renderScaleStrip(); renderPickSub();
-    renderObjective(); renderBottleneck(); pickNextCard(); renderDeptStrip();
+    renderObjective(); renderBottleneck(); pickNextCard(); renderDeptStrip(); renderPolicy();
     renderAdButtons(); renderShiftSummary();
   }
 
@@ -4329,6 +4406,7 @@ header{display:none;}
   })();
 
   function renderOffice(){
+    renderPolicy();
     var sl = document.getElementById("specialistList");
     if (sl){
       var rows = JOB_KINDS.map(function(k){
@@ -5130,7 +5208,7 @@ header{display:none;}
     var goal = Math.max(minGoal, Math.floor(r * 60 * mins * goalFraction * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var rushReward = rush ? 2.5 : 1;
-    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward;
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward * policy().contract;
     var kinds = !rush && state.contractsDone >= 2 && state.contractsOffered % 3 === 2 ? jobKinds() : [];
     // Taken in turn by a count of their own: indexing by the job number let a rush that
     // fell on a specialist slot skip the same kind every time round.
