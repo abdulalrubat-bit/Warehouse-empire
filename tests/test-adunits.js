@@ -55,6 +55,12 @@ if (P.hasAppAds()){
 chk("no placement is left on a placeholder id",
     keys.every(k => !PLACEHOLDER.test(UNITS[k])),
     keys.filter(k => PLACEHOLDER.test(UNITS[k])).join(", ") || "none");
+// The release build counted placements against a literal 6, and the seventh (Double
+// Stipend) failed the 4.5 build on a number nobody had updated. It counts the map's keys
+// now; this keeps a hard-coded count from coming back.
+{ const wf = fs.readFileSync(P.WORKFLOW,"utf8");
+  chk("the release workflow counts placements from AD_UNITS, not a fixed number",
+      /"\$COUNT" -ne "\$KEYS"/.test(wf) && !/"\$COUNT" -ne \d/.test(wf)); }
 chk("the release workflow still refuses to ship a placeholder",
     /ca-app-pub-0\+\//.test(fs.readFileSync(
       P.WORKFLOW,"utf8")));

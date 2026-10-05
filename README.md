@@ -115,7 +115,7 @@ projects 2:1 dimetric and an orthographic camera cannot produce that at uniform 
 
 ## Ads
 
-Six rewarded AdMob placements, mapped in `AD_UNITS` near the top of the game's
+Seven rewarded AdMob placements, mapped in `AD_UNITS` near the top of the game's
 script block. Each has its own ad unit so they report separately.
 
 Debug builds force `AD_TESTING = true` so they always serve Google test ads —
