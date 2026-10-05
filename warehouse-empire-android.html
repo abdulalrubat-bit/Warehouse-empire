@@ -4215,6 +4215,11 @@ header{display:none;}
       report("truck_end",{truck_result:"complete",truck_completed:h.completed,truck_secs:Math.round(h.totalSeconds),truck_beat:10});
       h.note=h.completed+" of 10 shift tasks completed · "+money(h.rewards)+" shift bonuses. Your team is yours to keep.";
       persist();paint();showToast("Shift complete. Your operation is ready for the next load.");
+      // The moment the reminder card is for: they have just run the whole shift, and the
+      // crew keeps working once the app is shut. Waiting for a second launch meant anyone
+      // who did not come back on their own was never asked -- five players in a month saw
+      // the card. A beat later, so the shift's own toast is read first.
+      setTimeout(function(){maybeAskNotifications("shift");},1500);
     }
     function action(second){
       if(!ready)return;
@@ -4902,7 +4907,8 @@ header{display:none;}
   // not yet know what the game is, and a refusal there cannot be taken back from inside the
   // app. So this asks in our own words first, and only once the player has shown they will
   // come back at all: on their second launch, or the moment they collect a shift's offline
-  // takings and the reminder has just demonstrated what it is for.
+  // takings and the reminder has just demonstrated what it is for -- or the moment they
+  // finish the Last Truck, the one point every new player who stays reaches in session one.
   function maybeAskNotifications(trigger){
     if(LastTruck.active())return;
     if (state.notifPrompted || state.notifAsked) return;
@@ -4913,10 +4919,14 @@ header{display:none;}
     // false means this is simply tried again next launch rather than lost.
     if (!document.getElementById("modalOffline").hidden) return;
     if (!document.getElementById("modalDaily").hidden) return;
+    // A calendar still queued will open on top of the card; the next launch asks instead.
+    if (trigger === "shift" && dailyPending) return;
 
     var capHours = (((state.corp.hr || 0) >= 10) ? 72 : (state.perks.night ? 24 : OFFLINE_CAP_HOURS)) + (hasNode("contops") ? 12 : 0);
     document.getElementById("notifPromptLead").textContent = trigger === "offline"
       ? "Your site banked that while the app was shut. It keeps going until storage fills."
+      : trigger === "shift"
+      ? "Shift saved. Your crew keeps working while the app is shut."
       : "Your site keeps earning while the app is shut.";
     document.getElementById("notifPromptCap").textContent = capHours + "h";
     document.getElementById("modalNotif").hidden = false;
