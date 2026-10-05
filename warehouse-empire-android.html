@@ -709,6 +709,7 @@ header{display:none;}
       <div class="modal-sub">Log in daily to claim corporate pallet stipends and freight bonuses.</div>
       <div class="cal-grid" id="calGrid"></div>
       <button class="modal-btn" id="btnClaimDaily">Clock In &amp; Claim</button>
+      <button class="adbtn alt" id="btnDoubleDaily" style="width:100%; margin-top:10px;">Claim &times;2<small id="dailyDoubleSub">WATCH AD</small></button>
     </div>
   </div>
 
@@ -2378,7 +2379,8 @@ header{display:none;}
     reroll:  "ca-app-pub-5195464450607116/9540605756",  // Reroll contract  -- new job, +50% progress
     favour:  "ca-app-pub-5195464450607116/7983097022",  // Call in a favour -- +25% REP, +10 pallets
     offline: "ca-app-pub-5195464450607116/3193699573",  // Claim Double     -- 2x offline earnings
-    crate:   "ca-app-pub-5195464450607116/4517127752"   // Crate Shipment    -- +3 crates, 5/day
+    crate:   "ca-app-pub-5195464450607116/4517127752",  // Crate Shipment    -- +3 crates, 5/day
+    daily:   ""                                         // Double Stipend    -- 2x daily pallets
   };
 
   // Serve Google's test ads while developing. Shipping this as true earns nothing;
@@ -2717,6 +2719,7 @@ header{display:none;}
   }
 
   function renderDailyCalendar(){
+    renderDailyDouble();
     var grid = document.getElementById("calGrid"); grid.innerHTML = "";
     DAILY_REWARDS.forEach(function(r){
       var d = document.createElement("div");
@@ -2729,7 +2732,9 @@ header{display:none;}
     });
   }
 
-  document.getElementById("btnClaimDaily").addEventListener("click", function(){
+  // One claim path for both buttons. The doubled claim doubles the pallets only: the crate
+  // on its bonus days is a fixed gift, and doubling it would make crates an ad farm.
+  function claimDaily(mult){
     // A streak of 0 indexes DAILY_REWARDS at -1, and the next line then throws on
     // undefined. The calendar always used to open at boot and set the streak before this
     // button could be reached, so the case could not arise; now that it waits for a second
@@ -2740,14 +2745,15 @@ header{display:none;}
     var reward = DAILY_REWARDS[state.dailyStreak - 1];
     if (!reward){ document.getElementById("modalDaily").hidden = true;
                   maybeAskNotifications("launch"); return; }
-    state.pallets += reward.pallets; state.lastDailyClaim = Date.now();
-    Tele.log("daily_claim", { day:state.dailyStreak, pallets:reward.pallets });
+    var pallets = reward.pallets * mult;
+    state.pallets += pallets; state.lastDailyClaim = Date.now();
+    Tele.log("daily_claim", { day:state.dailyStreak, pallets:pallets, daily_reward: mult > 1 ? "double" : "standard" });
     var crate = CRATE_DAILY_BONUS_DAYS.indexOf(state.dailyStreak) !== -1;
     if (crate) state.crates += 1;
     var built = advanceCorpProgress();
     document.getElementById("modalDaily").hidden = true;
     sfx("upgrade");
-    showToast("Daily stipend collected: <b>+" + reward.pallets + " Pallets</b>" +
+    showToast("Daily stipend collected: <b>+" + pallets + " Pallets</b>" + (mult > 1 ? " (2\u00d7)" : "") +
               (crate ? " and <b>+1 Crate</b>" : "") + "." +
               (built ? " Site works advanced on the <b>" + built.name + "</b>." : ""));
     render(); saveGame();
@@ -2755,7 +2761,23 @@ header{display:none;}
     // wants -- and modals share a z-index, so the card would have deferred itself every
     // single time and never appeared at all. It queues behind the calendar instead.
     maybeAskNotifications("launch");
+  }
+
+  document.getElementById("btnClaimDaily").addEventListener("click", function(){ claimDaily(1); });
+
+  // The daily screen was the most-seen screen in the game that offered no ad: 43% of active
+  // players open it, and only one in five had ever watched one. Opt-in, beside the claim
+  // rather than instead of it, and a failed or skipped ad leaves the plain claim standing.
+  document.getElementById("btnDoubleDaily").addEventListener("click", function(){
+    var b = document.getElementById("btnDoubleDaily");
+    b.disabled = true;
+    Ads.show("daily", function(){ b.disabled = false; claimDaily(2); },
+                      function(){ b.disabled = false; });
   });
+  function renderDailyDouble(){
+    var reward = DAILY_REWARDS[state.dailyStreak - 1], sub = document.getElementById("dailyDoubleSub");
+    if (sub) sub.textContent = reward ? "WATCH AD \u00b7 +" + (reward.pallets * 2) + " PALLETS INSTEAD OF " + reward.pallets : "WATCH AD";
+  }
 
   var crateAdBtnEl = null, crateAdSubEl = null;
   function renderCrateAd(){
