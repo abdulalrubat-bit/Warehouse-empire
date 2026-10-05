@@ -116,6 +116,8 @@
   .bottleneck .bdetail{font-size:9px; color:var(--dim); line-height:1.4; margin-top:2px;}
   .bottleneck .bgo{font-family:var(--font-cond); font-weight:800; font-size:11px; color:var(--cash); white-space:nowrap;}
   .bottleneck .baction{flex:0 0 auto; border:1px solid var(--hazard); border-radius:4px; background:var(--hazard); color:#20130a; padding:7px 8px; font-family:var(--font-cond); font-weight:800; font-size:10px; letter-spacing:.8px; text-transform:uppercase; cursor:pointer;}
+  .bottleneck .bacts{flex:0 0 auto; display:flex; flex-direction:column; gap:5px; max-width:44%;}
+  .bottleneck .bbuy{background:var(--panel2); border-color:var(--cash); color:var(--cash); white-space:normal; line-height:1.25;}
   .bottleneck .baction:disabled{border-color:var(--line); background:var(--panel2); color:var(--dim); cursor:default;}
 
   .contract{margin:10px 14px 0; background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--hazard); border-radius:4px; padding:10px 12px;}
@@ -531,7 +533,10 @@ header{display:none;}
         <div class="btitle" id="bottleneckTitle"></div>
         <div class="bdetail" id="bottleneckDetail"></div>
       </div>
-      <button class="baction" id="bottleneckAction" type="button" hidden></button>
+      <div class="bacts" id="bottleneckActs" hidden>
+        <button class="baction" id="bottleneckAction" type="button" hidden></button>
+        <button class="baction bbuy" id="bottleneckBuy" type="button" hidden></button>
+      </div>
       <div class="bgo" id="bottleneckGo">FIX →</div>
     </div>
 
@@ -3126,6 +3131,36 @@ header{display:none;}
     render(); saveGame();
   }
 
+  // The purchase that closes a contract gap fastest per dollar. The card used to say
+  // "Expedite or add <the first thing you do not own>", which named a fleet tier you could
+  // rarely afford and left the player to work out the rest on the Fleet tab. This weighs
+  // every tier the Fleet tab already shows by what one more of it nets per second for what
+  // it costs, prefers one the player can buy now, and says how many would close the gap.
+  function bottleneckFix(gap){
+    var best = null, cheapest = null, base = grossRate() - wageBill();
+    for (var i = 0; i < GENS.length; i++){
+      var g = GENS[i], owned = state.owned[g.id] || 0;
+      if (!(owned > 0 || state.total >= g.cost * 0.35)) continue;
+      var cost = costOf(g, 1), gain = marginalRate(g, 1, base);
+      if (gain <= 0) continue;
+      var f = { g:g, cost:cost, gain:gain, value:gain / cost, affordable:state.money >= cost };
+      if (f.affordable && (!best || f.value > best.value)) best = f;
+      if (!cheapest || cost < cheapest.cost) cheapest = f;
+    }
+    var pick = best || cheapest;
+    if (pick) pick.toClose = Math.max(1, Math.ceil(Math.max(0, gap) / pick.gain));
+    return pick;
+  }
+
+  function buyBottleneckFix(ev){
+    if (ev){ ev.preventDefault(); ev.stopPropagation(); }
+    var b = bottleneckState();
+    if (!b || !b.buy) return;
+    Tele.log("bottleneck_buy", { bottleneck_buy_equipment:b.buy.g.id });
+    var quantity = buyQty; buyQty = 1;
+    try { buyGen(b.buy.g); } finally { buyQty = quantity; }
+  }
+
   function bottleneckState(){
     if (!ownsBoughtPlant()) return null;
     var pressure = contractPressure();
@@ -3137,12 +3172,17 @@ header{display:none;}
 
     if (state.contract){
       if (pressure && pressure.ratio > 1.05){
-        var nextName = "more fleet capacity";
-        for (var gi = 0; gi < GENS.length; gi++){
-          if ((state.owned[GENS[gi].id] || 0) === 0){ nextName = GENS[gi].name; break; }
-        }
+        var fix = bottleneckFix(pressure.required - pressure.current);
+        var says = "";
+        if (fix && fix.affordable)
+          says = " Best fix: " + fix.g.name + ", +" + moneyRate(fix.gain) + "/s each" +
+                 (fix.toClose > 20 ? " · too far behind to buy out alone." :
+                  fix.toClose > 1 ? " · " + fix.toClose + " close the gap." : " · one closes the gap.");
+        else if (fix)
+          says = " Next fix: " + fix.g.name + " at " + money(fix.cost) + " · " + money(fix.cost - state.money) + " to go.";
         return { title:state.contract.rush ? "Rush dispatch backlog" : "Contract capacity", tab:"equip", good:false, action:action,
-                 detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s. Expedite or add " + nextName + "." };
+                 buy:fix && fix.affordable ? fix : null,
+                 detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s." + says };
       }
       var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
       return { title:expediteActive() ? "Backlog clearing" : "Contract on schedule", tab:"floor", good:true, action:action,
@@ -3168,7 +3208,12 @@ header{display:none;}
     action.disabled = !b.action || !!b.action.disabled;
     action.textContent = b.action ? b.action.label : "";
     action.onclick = useExpedite;
-    document.getElementById("bottleneckGo").hidden = !!b.action;
+    var buy = document.getElementById("bottleneckBuy");
+    buy.hidden = !b.buy;
+    buy.textContent = b.buy ? "BUY " + b.buy.g.name + " · " + money(b.buy.cost) : "";
+    buy.onclick = buyBottleneckFix;
+    document.getElementById("bottleneckActs").hidden = !b.action && !b.buy;
+    document.getElementById("bottleneckGo").hidden = !!(b.action || b.buy);
     card.onclick = function(){ switchTab(b.tab); };
   }
 
