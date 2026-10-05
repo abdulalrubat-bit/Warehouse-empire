@@ -316,6 +316,18 @@
   .floor-tags{display:flex; gap:6px; flex-wrap:wrap; padding:0 10px 10px; background:var(--panel);}
   .ftag{font-size:8.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:4px 7px; border-radius:6px; border:1px solid #4a6375; color:#cfe0ec; background:none; cursor:pointer;}
   .ftag.gold{border-color:var(--ui-gold, #ffc665); color:var(--ui-gold, #ffc665);}
+  .crew-list{padding:0 14px;}
+  .crew-card{border:1px solid #33495a; border-radius:14px; background:#13222e; padding:13px 14px; margin-top:10px;}
+  .crew-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .crew-head b{font-size:16px; color:#f2f7fb; font-weight:800;}
+  .crew-badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 7px; border-radius:6px; border:1px solid var(--ui-gold, #ffc665); color:var(--ui-gold, #ffc665);}
+  .crew-role{font-size:11.5px; color:#a9c0d0; margin-top:3px;}
+  .crew-line{font-size:11px; color:#cfe0ec; margin-top:8px; line-height:1.4;}
+  .crew-assign{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; font-size:12px; color:#cfe0ec;}
+  .crew-assign select{flex:0 0 55%; min-height:38px; border-radius:9px; border:1px solid #3b5466; background:#0f1c26; color:#eef5fb; padding:0 10px; font-size:13px;}
+  .crew-btn{display:block; width:100%; margin-top:10px; min-height:42px; border-radius:10px; border:1px solid #3b5466; background:#1d2f3c; color:#eef5fb; font-weight:800; font-size:13px; cursor:pointer;}
+  .crew-btn.primary{background:var(--ui-gold, #ffc665); border-color:var(--ui-gold, #ffc665); color:#1b1408;}
+  .crew-btn:disabled{opacity:.45; cursor:default;}
   .help-item{border:1px solid #33495a; border-radius:10px; padding:9px 11px; margin-top:8px; font-size:12px; line-height:1.5; color:#cfe0ec; text-align:left;}
   .help-item b{color:var(--ui-gold, #f0c060); margin-right:4px;}
   .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
@@ -672,6 +684,10 @@ header{display:none;}
       </div>
     </div>
     <div class="gens" id="gens"></div>
+    <div id="crewWrap" hidden>
+      <div class="toolbar"><div class="label">Your crew</div></div>
+      <div class="crew-list" id="crewList"></div>
+    </div>
   </section>
 
   <section id="tab-upgrades" hidden>
@@ -2124,8 +2140,43 @@ header{display:none;}
   }
 
   function genRate(g){
-      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id);
+      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id) * crewMult(g.id);
   }
+
+  // --- Crew -----------------------------------------------------------------------------
+  // Three named specialists, from the autonomous prototype. Each is hired once, assigned to
+  // a department, and trained; the department's fleet works faster for them -- a quarter
+  // faster in their own trade, an eighth anywhere else, a tenth more per qualification. They
+  // are the company's people, not the site's, so they stay through a sale.
+  var GEN_DEPT = { picker:"receive", trolley:"receive", forklift:"store", reach:"store",
+                   conveyor:"pack", sorter:"pack", crane:"dispatch", hub:"dispatch" };
+  var DEPT_NAME = { receive:"Receiving", store:"Storage", pack:"Packing", dispatch:"Dispatch" };
+  var CREW = [
+    { id:"mick",   name:"Big Mick", role:"Handling specialist", home:"store",    hire:500 },
+    { id:"shazza", name:"Shazza",   role:"Packing specialist",  home:"pack",     hire:250000 },
+    { id:"elena",  name:"Elena",    role:"Dispatch specialist", home:"dispatch", hire:5e7 }
+  ];
+  var CREW_MAX_LEVEL = 5;
+  function crewOf(id){
+    if (!state.crew || typeof state.crew !== "object") state.crew = {};
+    var c = state.crew[id];
+    if (!c || typeof c !== "object") c = state.crew[id] = { hired:false, dept:null, level:0 };
+    if (!DEPT_NAME[c.dept]) c.dept = null;
+    c.level = Math.max(0, Math.min(CREW_MAX_LEVEL, Math.floor(Number(c.level) || 0)));
+    return c;
+  }
+  function crewDef(id){ for (var i = 0; i < CREW.length; i++) if (CREW[i].id === id) return CREW[i]; return null; }
+  function crewBoost(def, c){ return (c.dept === def.home ? 0.25 : 0.12) + 0.10 * c.level; }
+  function crewMult(genId){
+    var dept = GEN_DEPT[genId], m = 1;
+    if (!dept || !state.crew) return 1;
+    for (var i = 0; i < CREW.length; i++){
+      var c = state.crew[CREW[i].id];
+      if (c && c.hired && c.dept === dept) m *= 1 + crewBoost(CREW[i], c);
+    }
+    return m;
+  }
+  function crewTrainCost(def, c){ return def.hire * Math.pow(4, c.level + 1); }
 
   function prestigeMult(){ return (1 + state.rep * 0.0085) * (1 + Math.sqrt(state.prestiges || 0) * 0.08); }
   function boostActive(){ return Date.now() < boostUntil; }
@@ -3535,7 +3586,7 @@ header{display:none;}
       text:"Each unit earns every second, whether you are here or not.",
       items:["The green figure on each card is what one more adds, after wages.",
              "Switch to \u00d710 to buy in bulk. Every 25 of a tier earns a milestone bonus.",
-             "Bigger tiers unlock as your total earnings grow."] },
+             "Your crew, below the fleet, speed up one department each. They stay when you sell."] },
     upgrades: { eyebrow:"UPGRADES / FIELD GUIDE", title:"Make every unit count",
       text:"An upgrade is bought once and multiplies a fleet tier for the rest of this site.",
       items:["Managers keep a tier running at full output.",
@@ -3612,6 +3663,83 @@ header{display:none;}
     var blk = document.getElementById("policyBlock");
     if (blk && blk.scrollIntoView) setTimeout(function(){ blk.scrollIntoView({ behavior:"smooth", block:"center" }); }, 60);
   });
+
+  // The crew section heads the Fleet tab. Its structure is rebuilt only when someone is
+  // hired, trained or moved -- rebuilding a <select> ten times a second would shut it under
+  // the player's thumb -- and the buttons' affordability is refreshed in place.
+  var crewKey = "";
+  function renderCrew(){
+    var wrap = document.getElementById("crewWrap"), list = document.getElementById("crewList");
+    if (!wrap || !list) return;
+    wrap.hidden = !GATES.office() || LastTruck.active();
+    if (wrap.hidden) return;
+    var key = CREW.map(function(d){ var c = crewOf(d.id); return d.id + c.hired + c.dept + c.level; }).join("|");
+    if (key !== crewKey){
+      crewKey = key;
+      list.innerHTML = CREW.map(function(d){
+        var c = crewOf(d.id);
+        var badge = c.hired ? "QUAL " + c.level : "AVAILABLE";
+        var body;
+        if (!c.hired){
+          body = '<button type="button" class="crew-btn primary" data-crew-hire="' + d.id + '">Hire permanently \u00b7 ' + money(d.hire) + '</button>';
+        } else {
+          var opts = Object.keys(DEPT_NAME).map(function(k){
+            return '<option value="' + k + '"' + (c.dept === k ? " selected" : "") + '>' + DEPT_NAME[k] + '</option>';
+          }).join("");
+          var gens = [];
+          for (var g in GEN_DEPT) if (GEN_DEPT[g] === c.dept){ var gd = genById(g); if (gd) gens.push(gd.name); }
+          body = '<div class="crew-line">' + (c.dept ? "+" + Math.round(crewBoost(d, c) * 100) + "% to " + gens.join(" &amp; ") + (c.dept === d.home ? " \u00b7 home trade" : "") : "Not assigned yet") + '</div>' +
+                 '<label class="crew-assign"><span>Department</span><select data-crew-assign="' + d.id + '">' +
+                 (c.dept ? "" : '<option value="" selected>Choose\u2026</option>') + opts + '</select></label>' +
+                 (c.level < CREW_MAX_LEVEL
+                   ? '<button type="button" class="crew-btn" data-crew-train="' + d.id + '">Train \u00b7 ' + money(crewTrainCost(d, c)) + '</button>'
+                   : '<div class="crew-line">Fully qualified.</div>');
+        }
+        return '<div class="crew-card"><div class="crew-head"><b>' + d.name + '</b><span class="crew-badge">' + badge + '</span></div>' +
+               '<div class="crew-role">' + d.role + ' \u00b7 best in ' + DEPT_NAME[d.home] + '</div>' + body + '</div>';
+      }).join("");
+    }
+    list.querySelectorAll("[data-crew-hire]").forEach(function(b){ var d = crewDef(b.getAttribute("data-crew-hire")); b.disabled = !d || state.money < d.hire; });
+    list.querySelectorAll("[data-crew-train]").forEach(function(b){ var d = crewDef(b.getAttribute("data-crew-train")); b.disabled = !d || state.money < crewTrainCost(d, crewOf(d.id)); });
+  }
+  function hireCrew(id){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || c.hired || state.money < d.hire) return false;
+    state.money -= d.hire; c.hired = true; c.dept = d.home;
+    Tele.log("crew_hire", { crew_member:id });
+    sfx("upgrade"); showToast("<b>" + d.name + "</b> joins the crew, on " + DEPT_NAME[d.home] + ".");
+    render(); saveGame(); return true;
+  }
+  function trainCrew(id){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || !c.hired || c.level >= CREW_MAX_LEVEL) return false;
+    var cost = crewTrainCost(d, c);
+    if (state.money < cost) return false;
+    state.money -= cost; c.level++;
+    Tele.log("crew_train", { crew_member:id, crew_level:c.level });
+    sfx("upgrade"); showToast("<b>" + d.name + "</b> qualified to level " + c.level + ".");
+    render(); saveGame(); return true;
+  }
+  function assignCrew(id, dept){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || !c.hired || !DEPT_NAME[dept] || c.dept === dept) return false;
+    c.dept = dept;
+    Tele.log("crew_assign", { crew_member:id, crew_dept:dept });
+    render(); saveGame(); return true;
+  }
+  document.getElementById("crewList").addEventListener("click", function(ev){
+    var t = ev.target.closest ? ev.target.closest("[data-crew-hire],[data-crew-train]") : null;
+    if (!t || t.disabled) return;
+    if (t.hasAttribute("data-crew-hire")) hireCrew(t.getAttribute("data-crew-hire"));
+    else trainCrew(t.getAttribute("data-crew-train"));
+  });
+  document.getElementById("crewList").addEventListener("change", function(ev){
+    var t = ev.target;
+    if (t && t.getAttribute && t.getAttribute("data-crew-assign")) assignCrew(t.getAttribute("data-crew-assign"), t.value);
+  });
+
+  window.__crew = { CREW: CREW, GEN_DEPT: GEN_DEPT, mult: crewMult, hire: hireCrew, train: trainCrew, assign: assignCrew,
+                    render: renderCrew, trainCost: function(id){ return crewTrainCost(crewDef(id), crewOf(id)); } };
 
   window.__depts = { DEPTS: DEPTS, stats: deptStats, render: renderDeptStrip, help: openHelp, HELP: HELP,
                      POLICIES: POLICIES, policyNet: policyNet, setPolicy: setPolicy, renderPolicy: renderPolicy };
@@ -3999,6 +4127,7 @@ header{display:none;}
   }
 
   function renderEquipTab(){
+    renderCrew();
     var base = grossRate() - wageBill();
     GENS.forEach(function(g){
       var e = genEls[g.id];
