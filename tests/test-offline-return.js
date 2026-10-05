@@ -49,6 +49,10 @@ for (const [label, save] of Object.entries(SAVES)){
   chk(label + ": loads without throwing", threw === null, threw || "clean");
   if (!modal.hidden){
     chk(label + ": the away line is filled in", /Away/.test(awayLine), awayLine);
+    // The summary grid, after the autonomous prototype: every cell filled, none of it junk.
+    const cells = ["offlineBaseTxt","offlineRateTxt","offlineSitesTxt","offlineDeptTxt"].map(id => document.getElementById(id).textContent || "");
+    chk(label + ": every cell of the summary is filled", cells.every(t => t.length > 0 && !/undefined|NaN|Infinity/.test(t)), cells.join(" | "));
+    chk(label + ": it counts this site among those operating", Number(cells[2]) === 1 + ((s.network || []).length), cells[2]);
     chk(label + ": the next target is named, not blank or undefined",
         nextLine.length > 0 && !/undefined|NaN|\[object/.test(nextLine),
         nextLine.replace(/<[^>]+>/g,"").slice(0,80));
