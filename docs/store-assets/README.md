@@ -43,3 +43,27 @@ the one in use shows no gameplay at all and repeats the icon's forklift.
 Regenerate with `icons/draw.js` and the feature-graphic snippet in the working
 scratchpad; the plan frame comes from a 1400x900 capture of `#wcanvas` on a
 late-game save.
+
+## Icon test for 4.4 (Store Listing Experiment)
+
+The pallet (`c-pallet`) shipped in 3.8. A month of 4.4 data put the leak at the top of
+the funnel: 4.76K store impressions, 82 installs (1.7%), against a 20.4% conversion
+once someone opens the listing. Before the listing, people see only the icon, name and
+rating, so the icon is the thing to test.
+
+`icon-test-sheet.png` shows why it is worth testing. On Play's dark theme the pallet's
+`#1f2125` tile is the same colour as the page, so the icon reads as a small object
+floating on nothing; on the light theme it is the one dark square in a row of bright
+ones. The art also fills under half the frame.
+
+| File | Idea | Why it might win |
+|---|---|---|
+| `icon-test-a.png` | Forklift with a boxed load, on hi-vis orange | The game's own colour, a subject that says "warehouse" at 48px, loudest in a list |
+| `icon-test-b.png` | Pallet stacks rising like a bar chart, gold arrow, on the UI blue | The only one that says *tycoon* -- growth -- which is what idle players browse for |
+| `icon-test-c.png` | Depot front, open roller door, stock inside, on sky blue | Reads as a building, not an object; most distinct silhouette |
+
+All three keep their art inside the centre 80%, so Play's corner rounding never touches
+it. Regenerate with `node tools/icon-variants.js`; the art is SVG in that file.
+
+These are **listing icons only**. The launcher icon (`assets/icon.png`) stays the pallet
+until a winner is known, then the winner is redrawn as an adaptive icon.
