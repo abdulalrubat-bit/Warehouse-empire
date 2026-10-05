@@ -328,6 +328,11 @@
   .crew-btn{display:block; width:100%; margin-top:10px; min-height:42px; border-radius:10px; border:1px solid #3b5466; background:#1d2f3c; color:#eef5fb; font-weight:800; font-size:13px; cursor:pointer;}
   .crew-btn.primary{background:var(--ui-gold, #ffc665); border-color:var(--ui-gold, #ffc665); color:#1b1408;}
   .crew-btn:disabled{opacity:.45; cursor:default;}
+  .setup-h{margin-top:14px; font-size:10px; letter-spacing:1.4px; font-weight:800; text-transform:uppercase; color:var(--steel);}
+  .setup-h small{letter-spacing:.4px; text-transform:none; font-weight:600; color:#7f98ab; margin-left:6px;}
+  .policy-opt:disabled{opacity:.5; cursor:default;}
+  .dept.limit{border-color:var(--bad);}
+  .dept.limit .ds{color:var(--bad);}
   .lrow{margin-top:9px;}
   .lrow .lt{display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#eef5fb; font-weight:700;}
   .lrow .lt span{color:#a9c0d0; font-weight:600; font-size:11px; white-space:nowrap;}
@@ -592,7 +597,7 @@ header{display:none;}
       <div class="canvas-controls"><span id="canvasGestureHint">Swipe to scroll · tap to inspect</span><button id="canvasExplore" type="button" aria-pressed="false">Explore</button><button id="canvasOverview" type="button">Overview</button></div>
       <div class="dept-labels" id="deptLabels" aria-hidden="true"></div>
       <div class="dept-strip" id="deptStrip" aria-label="Departments"></div>
-      <div class="floor-tags" id="floorTags"><button type="button" class="ftag gold" id="policyTag"></button><span class="ftag" id="rankTag"></span></div>
+      <div class="floor-tags" id="floorTags"><button type="button" class="ftag gold" id="policyTag"></button><span class="ftag" id="rankTag"></span><button type="button" class="ftag" id="flowTag"></button></div>
       <div class="zone-info" id="canvasZoneInfo" hidden><strong id="canvasZoneTitle"></strong><p id="canvasZoneDetail"></p><div class="canvas-controls"><button id="canvasZoneEquipment" type="button">View equipment</button></div></div>
     </div>
     <div class="pickwrap">
@@ -798,6 +803,13 @@ header{display:none;}
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
+    </div>
+    <div class="office-block" id="setupBlock">
+      <div class="office-title">SITE SETUP</div>
+      <div class="office-text" id="setupFlowText"></div>
+      <div class="setup-h">Manager focus</div><div id="focusList"></div>
+      <div class="setup-h">Forklift attachment <small>fitted to this site</small></div><div id="attachList"></div>
+      <div class="setup-h">Packing line <small>fitted to this site</small></div><div id="packList"></div>
     </div>
     <div class="office-block" id="knowledgeBlock">
       <div class="office-title">COMPANY KNOWLEDGE</div>
@@ -2039,7 +2051,8 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], knowledge: 0, licences: {}, kindDone: {}, expressDone: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], knowledge: 0, licences: {}, kindDone: {}, expressDone: 0,
+    focus: "balanced", attachment: "standard", packSpec: "flexible", flowGraceUntil: -1, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2169,7 +2182,7 @@ header{display:none;}
   }
 
   function genRate(g){
-      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id) * crewMult(g.id);
+      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id) * crewMult(g.id) * setupMult(g.id);
   }
 
   // --- Crew -----------------------------------------------------------------------------
@@ -2206,6 +2219,118 @@ header{display:none;}
     return m;
   }
   function crewTrainCost(def, c){ return def.hire * Math.pow(4, c.level + 1); }
+
+  // --- Departments with capacity (4.8) ------------------------------------------------------
+  // The core of the autonomous prototype: freight moves receiving -> storage -> packing ->
+  // dispatch, and a site is only as good as its weakest department. Here that is a FLOW
+  // BALANCE multiplier on output, from x0.90 for a site with a department left empty to
+  // x1.25 for one invested in evenly -- so a lopsided save loses at most a tenth, and a
+  // balanced one gains a quarter.
+  //
+  // Departments are weighed by what has been INVESTED in them, not by what they produce.
+  // By output the comparison could never be won late in the game: a picker moves 0.1/s and a
+  // crane 7,800/s, so no number of pickers balances a crane. Unit prices climb with every
+  // purchase, so investment can always be evened up -- at a price, which is the decision.
+  //
+  // A department counts once its first tier comes into reach, and phases in over the next
+  // tenfold of earnings, so unlocking the forklift does not drop the multiplier off a cliff.
+  // Each site type wants its own mix: cold storage wants more racking, a port more dispatch.
+  var FLOW_MIN = 0.90, FLOW_MAX = 1.25, FLOW_GRACE_MS = 7 * 86400000;
+  var DEPT_ORDER = ["receive", "store", "pack", "dispatch"];
+  var DEPT_TIERS = { receive:["picker","trolley"], store:["forklift","reach"], pack:["conveyor","sorter"], dispatch:["crane","hub"] };
+  var SITE_MIX = {
+    general: { receive:1,   store:1,   pack:1,   dispatch:1 },
+    cold:    { receive:1,   store:1.5, pack:1,   dispatch:0.8 },
+    hazmat:  { receive:1,   store:1,   pack:1.4, dispatch:1 },
+    port:    { receive:0.9, store:1,   pack:0.9, dispatch:1.5 }
+  };
+  function genDef(id){ for (var i = 0; i < GENS.length; i++) if (GENS[i].id === id) return GENS[i]; return null; }
+  function invested(g){
+    var n = Math.min(3000, Math.max(0, state.owned[g.id] || 0));
+    return n ? g.cost * (Math.pow(COST_GROWTH, n) - 1) / (COST_GROWTH - 1) : 0;
+  }
+  function deptWeight(d){
+    if (d === "receive") return 1;
+    var first = genDef(DEPT_TIERS[d][0]); if (!first) return 0;
+    var lo = first.cost * 0.35, hi = first.cost * 10;
+    return Math.max(0, Math.min(1, ((state.total || 0) - lo) / (hi - lo)));
+  }
+  // Every department's share of investment against the share this site type wants of it.
+  function flowStats(){
+    var mix = SITE_MIX[state.site] || SITE_MIX.general, inv = {}, all = 0, want = 0, out = {};
+    DEPT_ORDER.forEach(function(d){
+      inv[d] = 0; DEPT_TIERS[d].forEach(function(id){ var g = genDef(id); if (g) inv[d] += invested(g); });
+      all += inv[d];
+      if (deptWeight(d) > 0) want += mix[d];
+    });
+    var weakest = null, worst = 1;
+    DEPT_ORDER.forEach(function(d){
+      var w = deptWeight(d);
+      var ideal = (w > 0 && want > 0) ? mix[d] / want : 0, share = all > 0 ? inv[d] / all : 0;
+      // A department coming into reach is blended in by its weight: just unlocked it barely
+      // counts, so an empty one does not knock a quarter off the site overnight.
+      var met = ideal > 0 ? Math.min(1, share / ideal) : 1;
+      var ratio = 1 - w + w * met;
+      out[d] = { invested:inv[d], share:share, ideal:ideal, ratio:ratio, counted:w > 0, weight:w };
+      if (w > 0 && ratio < worst){ worst = ratio; weakest = d; }
+    });
+    return { depts:out, weakest:weakest, worst:all > 0 ? worst : 1, raw:FLOW_MIN + (FLOW_MAX - FLOW_MIN) * (all > 0 ? worst : 1) };
+  }
+  function flowGrace(){ return Date.now() < (state.flowGraceUntil || 0); }
+  function flowBalance(){
+    var b = flowStats().raw;
+    // Never a penalty during the opening shift, which scripts its purchases, nor in the first
+    // week after an existing save meets the rule.
+    if (LastTruck.active() || flowGrace()) return Math.max(1, b);
+    return b;
+  }
+
+  // --- Site setup: manager focus, forklift attachment, packing specialisation ----------------
+  // From the prototype's Manage screen. Focus is the manager's and stays through a sale; the
+  // attachment and the packing line are fitted to a site and go with it.
+  var FOCUS = {
+    balanced:   { name:"Balanced",            desc:"No priority. Every department as it is." },
+    bottleneck: { name:"Fix the bottleneck",  desc:"The limiting department works 20% faster." },
+    dispatch:   { name:"Prioritise dispatch", desc:"Contracts fill 20% faster; output \u22125%." }
+  };
+  var ATTACH = {
+    standard: { name:"Standard forks",       mult:0,    desc:"Balanced handling, no surcharge." },
+    battery:  { name:"Quick-change battery", mult:1,    desc:"Storage +40%. Wages +10%." },
+    mast:     { name:"Heavy-lift mast",      mult:1.25, desc:"On Heavy Industrial: receiving and storage +35%. Otherwise \u221210%." },
+    scanner:  { name:"Precision scanner",    mult:1.5,  desc:"On Cold Pharma: output +18%. Packing \u221210% always." }
+  };
+  var PACKSPEC = {
+    flexible:  { name:"Flexible packing",  desc:"No advantage or penalty." },
+    bulk:      { name:"Bulk processing",   desc:"On FMCG: packing +40%. Other freight \u221215%." },
+    precision: { name:"Precision handling", desc:"On Cold Pharma or Semiconductors: packing +25%. Other freight \u221210%." }
+  };
+  function attachCost(id){ return id === "standard" ? 0 : Math.ceil(Math.max(5000, (state.lifetime || 0) * 0.01) * ATTACH[id].mult); }
+  function setupMult(genId){
+    var dept = GEN_DEPT[genId], m = 1, sku = state.sku;
+    if (state.focus === "bottleneck" && dept && dept === flowWeakestCached()) m *= 1.20;
+    var a = state.attachment;
+    if (a === "battery" && dept === "store") m *= 1.40;
+    if (a === "mast" && (dept === "receive" || dept === "store")) m *= sku === "industrial" ? 1.35 : 0.90;
+    if (a === "scanner" && dept === "pack") m *= 0.90;
+    var p = state.packSpec;
+    if (p === "bulk" && dept === "pack") m *= sku === "fmcg" ? 1.40 : 0.85;
+    if (p === "precision" && dept === "pack") m *= (sku === "pharma" || sku === "semis") ? 1.25 : 0.90;
+    return m;
+  }
+  function setupOutput(){
+    var m = 1;
+    if (state.attachment === "scanner" && state.sku === "pharma") m *= 1.18;
+    if (state.focus === "dispatch") m *= 0.95;
+    return m;
+  }
+  // The weakest department, cached for a moment: setupMult runs inside genRate, which runs
+  // many times a frame, and the answer only moves when the fleet does.
+  var weakCache = { at:0, key:"", d:null };
+  function flowWeakestCached(){
+    var key = DEPT_ORDER.map(function(d){ return DEPT_TIERS[d].map(function(id){ return state.owned[id] || 0; }).join("."); }).join("|") + state.site + Math.floor(Math.log10((state.total || 0) + 1) * 4);
+    if (key !== weakCache.key){ weakCache.key = key; weakCache.d = flowStats().weakest; }
+    return weakCache.d;
+  }
 
   function prestigeMult(){ return (1 + state.rep * 0.0085) * (1 + Math.sqrt(state.prestiges || 0) * 0.08); }
   function boostActive(){ return Date.now() < boostUntil; }
@@ -2419,7 +2544,7 @@ header{display:none;}
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out * knowledgeMult() * licenceMult();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out * knowledgeMult() * licenceMult() * flowBalance() * setupOutput();
   }
 
   function wageBill(){
@@ -2440,7 +2565,7 @@ header{display:none;}
     // x2.03 against a button that says +75%. Pushing the crew harder costs more in wages,
     // not the same, and the rush it exists to solve is still winnable with it priced
     // honestly: 90s at x1 plus 30s at x1.75 clears a goal sized at 110% of two minutes.
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().wage;
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().wage * (state.attachment === "battery" ? 1.10 : 1);
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -3396,10 +3521,11 @@ header{display:none;}
   // rarely afford and left the player to work out the rest on the Fleet tab. This weighs
   // every tier the Fleet tab already shows by what one more of it nets per second for what
   // it costs, prefers one the player can buy now, and says how many would close the gap.
-  function bottleneckFix(gap){
+  function bottleneckFix(gap, only){
     var best = null, cheapest = null, base = grossRate() - wageBill();
     for (var i = 0; i < GENS.length; i++){
       var g = GENS[i], owned = state.owned[g.id] || 0;
+      if (only && only.indexOf(g.id) < 0) continue;
       if (!(owned > 0 || state.total >= g.cost * 0.35)) continue;
       var cost = costOf(g, 1), gain = marginalRate(g, 1, base);
       if (gain <= 0) continue;
@@ -3410,6 +3536,21 @@ header{display:none;}
     var pick = best || cheapest;
     if (pick) pick.toClose = Math.max(1, Math.ceil(Math.max(0, gap) / pick.gain));
     return pick;
+  }
+
+  // A department pulling the whole site below par is a real bottleneck: the card names it,
+  // says what it is costing, and offers the purchase in that department that does most.
+  function flowCard(){
+    var b = flowBalance();
+    if (b >= 1) return null;
+    var f = flowStats(), d = f.weakest; if (!d) return null;
+    var fix = bottleneckFix(0, DEPT_TIERS[d]);
+    var says = fix && fix.affordable ? " Best fix: " + fix.g.name + ", +" + moneyRate(fix.gain) + "/s each."
+             : fix ? " Next fix: " + fix.g.name + " at " + money(fix.cost) + "." : "";
+    return { title:DEPT_NAME[d] + " is limiting your site", tab:"equip", good:false, action:null,
+             buy:fix && fix.affordable ? fix : null,
+             detail:"Flow balance \u00d7" + b.toFixed(2) + " \u00b7 " + DEPT_NAME[d] + " has " + Math.round(f.depts[d].share * 100) +
+                    "% of your investment, wants " + Math.round(f.depts[d].ideal * 100) + "%." + says };
   }
 
   function buyBottleneckFix(ev){
@@ -3444,11 +3585,13 @@ header{display:none;}
                  buy:fix && fix.affordable ? fix : null,
                  detail:"Moving " + moneyRate(pressure.current) + "/s · need " + moneyRate(pressure.required) + "/s." + says };
       }
+      var fc = flowCard(); if (fc) return fc;
       var pct = Math.min(100, Math.floor((state.contract.prog / state.contract.goal) * 100));
       return { title:expediteActive() ? "Backlog clearing" : "Contract on schedule", tab:"floor", good:true, action:action,
                detail:pct + "% dispatched · current throughput " + moneyRate(totalRate()) + "/s." };
     }
 
+    var fc2 = flowCard(); if (fc2) return fc2;
     var next = nextProgressTarget(state.money);
     return next ? { title:"Next capacity target", tab:next.tab, good:true,
                     detail:next.title + ". " + next.hint.replace(/<[^>]+>/g, "") } : null;
@@ -3659,13 +3802,16 @@ header{display:none;}
     // The opening shift has its own card and captions on the plan; the strip waits for it.
     strip.hidden = LastTruck.active();
     if (strip.hidden) return;
-    var stats = deptStats(), top = -1, best = 0;
+    var stats = deptStats(), top = -1, best = 0, flow = flowStats();
     stats.forEach(function(x, i){ if (x.share > best){ best = x.share; top = i; } });
+    // A department holding the site back is marked, once the balance is short of its best.
+    var limit = flow.raw < FLOW_MAX - 0.005 ? flow.weakest : null;
     var html = stats.map(function(x, i){
-      return '<button type="button" class="dept' + (x.units ? ' on' : '') + (i === top ? ' top' : '') + '" data-dept="' + x.d.id + '">' +
+      var lim = x.d.id === limit;
+      return '<button type="button" class="dept' + (x.units ? ' on' : '') + (i === top && !lim ? ' top' : '') + (lim ? ' limit' : '') + '" data-dept="' + x.d.id + '">' +
              '<div class="dn"><i>' + x.d.n + '</i>' + x.d.name + '</div>' +
              '<div class="dv">' + (x.units ? fmt(x.units) : "0") + ' <small>units</small></div>' +
-             '<div class="ds">' + (x.units ? "\u25cf " + moneyRate(x.rate) + "/s" : "Not staffed") + '</div>' +
+             '<div class="ds">' + (lim ? "\u25b2 Limiting" : x.units ? "\u25cf " + moneyRate(x.rate) + "/s" : "Not staffed") + '</div>' +
              '<div class="db"><i style="width:' + Math.round(x.share * 100) + '%"></i></div></button>';
     }).join("");
     if (html !== deptStripHtml){ strip.innerHTML = html; deptStripHtml = html; }
@@ -3690,6 +3836,11 @@ header{display:none;}
       items:["The four numbered departments match the strip under the plan. Tap one to buy for it.",
              "The card under the plan says what to do next. When a contract is behind, it names the fix.",
              "PICK ORDER adds a hand pick on top of what the site earns. It is never required."] },
+    flow: { eyebrow:"FLOW BALANCE / FIELD GUIDE", title:"A site is as good as its weakest department",
+      text:"Freight moves receiving, storage, packing, dispatch. Invest evenly and the whole site runs faster.",
+      items:["Flow balance runs from \u00d70.90, with a department left empty, to \u00d71.25 when every department has its share of investment.",
+             "The strip marks the department holding you back. Tap it to buy for it.",
+             "Each site type wants its own mix: cold storage more racking, a port more dispatch. Departments count once their first tier is in reach."] },
     equip: { eyebrow:"FLEET / FIELD GUIDE", title:"Build your fleet",
       text:"Each unit earns every second, whether you are here or not.",
       items:["The green figure on each card is what one more adds, after wages.",
@@ -3743,6 +3894,12 @@ header{display:none;}
     if (tags) tags.hidden = LastTruck.active();
     if (tag) tag.textContent = policy().name;
     if (rk) rk.textContent = RANKS[rankIndex()].name;
+    var ft = document.getElementById("flowTag");
+    if (ft){
+      var fb = flowStats().raw;
+      ft.textContent = "Flow \u00d7" + fb.toFixed(2) + (flowGrace() && fb < 1 ? " \u00b7 protected" : "");
+      ft.classList.toggle("gold", fb >= FLOW_MAX - 0.005);
+    }
     var list = document.getElementById("policyList");
     if (!list || curTab !== "office") return;
     var cur = policy().id;
@@ -3767,6 +3924,7 @@ header{display:none;}
     var b = ev.target.closest ? ev.target.closest("[data-policy]") : null;
     if (b) setPolicy(b.getAttribute("data-policy"));
   });
+  document.getElementById("flowTag").addEventListener("click", function(){ openHelp("flow"); });
   document.getElementById("policyTag").addEventListener("click", function(){
     switchTab("office");
     var blk = document.getElementById("policyBlock");
@@ -4689,8 +4847,68 @@ header{display:none;}
   }
   document.getElementById("codifyBtn").addEventListener("click", function(){ codify(); });
 
+  function optList(map, cur, attr, extra){
+    return Object.keys(map).map(function(k){
+      var x = extra ? extra(k) : {};
+      return '<button type="button" class="policy-opt' + (k === cur ? ' on' : '') + '" ' + attr + '="' + k + '"' + (x.disabled && k !== cur ? ' disabled' : '') + '><b>' +
+             map[k].name + (k === cur ? ' \u2713' : '') + '</b><span>' + map[k].desc + '</span>' + (x.note ? '<em>' + x.note + '</em>' : '') + '</button>';
+    }).join("");
+  }
+  var setupHtml = "";
+  function renderSetup(){
+    var t = document.getElementById("setupFlowText");
+    if (!t) return;
+    var f = flowStats(), wk = f.weakest ? DEPT_NAME[f.weakest] : null;
+    t.innerHTML = "Flow balance <b>\u00d7" + f.raw.toFixed(2) + "</b>" + (f.raw < FLOW_MAX - 0.005 && wk ? " \u00b7 limited by <b>" + wk + "</b>" : " \u00b7 every department pulling its weight") +
+                  (flowGrace() ? ". Your income is protected until " + new Date(state.flowGraceUntil).toLocaleDateString() + "." : ".");
+    var hasLine = (state.owned.conveyor || 0) > 0;
+    var html = optList(FOCUS, state.focus in FOCUS ? state.focus : "balanced", "data-focus") + "|" +
+               optList(ATTACH, state.attachment in ATTACH ? state.attachment : "standard", "data-attach", function(k){
+                 var c = attachCost(k); return { disabled: state.money < c, note: k === "standard" ? "Free" : "Fit for " + money(c) };
+               }) + "|" +
+               optList(PACKSPEC, state.packSpec in PACKSPEC ? state.packSpec : "flexible", "data-pack", function(k){
+                 return { disabled: k !== "flexible" && !hasLine, note: k !== "flexible" && !hasLine ? "Needs a Conveyor Line" : "Free to switch" };
+               });
+    if (html !== setupHtml){
+      setupHtml = html; var parts = html.split("|");
+      document.getElementById("focusList").innerHTML = parts[0];
+      document.getElementById("attachList").innerHTML = parts[1];
+      document.getElementById("packList").innerHTML = parts[2];
+    }
+  }
+  function setFocus(id){
+    if (!FOCUS[id] || state.focus === id) return false;
+    state.focus = id; jot("Manager focus set to " + FOCUS[id].name + ".", "action");
+    Tele.log("setup_change", { setup_part:"focus", setup_choice:id });
+    render(); saveGame(); return true;
+  }
+  function fitAttachment(id){
+    if (!ATTACH[id] || state.attachment === id) return false;
+    var c = attachCost(id); if (state.money < c) return false;
+    state.money -= c; state.attachment = id;
+    jot(ATTACH[id].name + " fitted" + (c ? " for " + money(c) : "") + ".", "action");
+    Tele.log("setup_change", { setup_part:"attachment", setup_choice:id });
+    sfx("upgrade"); render(); saveGame(); return true;
+  }
+  function setPackSpec(id){
+    if (!PACKSPEC[id] || state.packSpec === id) return false;
+    if (id !== "flexible" && !((state.owned.conveyor || 0) > 0)) return false;
+    state.packSpec = id; jot("Packing line set to " + PACKSPEC[id].name + ".", "action");
+    Tele.log("setup_change", { setup_part:"packing", setup_choice:id });
+    render(); saveGame(); return true;
+  }
+  document.getElementById("setupBlock").addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest("[data-focus],[data-attach],[data-pack]") : null;
+    if (!b || b.disabled) return;
+    if (b.hasAttribute("data-focus")) setFocus(b.getAttribute("data-focus"));
+    else if (b.hasAttribute("data-attach")) fitAttachment(b.getAttribute("data-attach"));
+    else setPackSpec(b.getAttribute("data-pack"));
+  });
+  window.__flow = { stats: flowStats, balance: flowBalance, setFocus: setFocus, fit: fitAttachment, setPack: setPackSpec,
+                    attachCost: attachCost, renderSetup: renderSetup, setupMult: setupMult, MIN: FLOW_MIN, MAX: FLOW_MAX };
+
   function renderOffice(){
-    renderPolicy(); renderJournal(); renderKnowledge(); renderLicences();
+    renderPolicy(); renderJournal(); renderKnowledge(); renderLicences(); renderSetup();
     var sl = document.getElementById("specialistList");
     if (sl){
       var rows = JOB_KINDS.map(function(k){
@@ -4754,6 +4972,7 @@ header{display:none;}
 
     var kept = {}; for (var k in state.upgrades) if (state.upgrades[k] && k.indexOf("mgr_") === 0) kept[k] = true;
     state.upgrades = kept; invalidateUpMult(); resetFleet();
+    state.attachment = "standard"; state.packSpec = "flexible";     // fitted to the site sold
 
     sfx("prestige"); showToast("Business Sold! Site retired into your <b>Network</b>.");
 
@@ -7939,6 +8158,20 @@ header{display:none;}
 
   /* ---- frame ---------------------------------------------------------------- */
   var animT = 0, lastFrame = 0, lastSitePainted = null, lastHubVisible = null;
+  // Freight waiting at the department that limits the site: the prototype's pallet stacks.
+  // More imbalance, more waiting, up to six pallets; none at all once the site is balanced.
+  var FLOW_ZONE = { receive:"receive", store:"racks", pack:"packing", dispatch:"ship" };
+  function drawFlowBacklog(){
+    if (LastTruck.active()) return;
+    var f = flowStats();
+    if (!f.weakest || f.raw >= FLOW_MAX - 0.005) return;
+    var z = ZONE[FLOW_ZONE[f.weakest]]; if (!z) return;
+    var n = Math.max(1, Math.min(6, Math.round((1 - f.worst) * 6)));
+    var x0 = z.x + z.w - 34, y0 = z.y + z.h - 34;
+    for (var i = 0; i < n; i++) pallet(x0 - (i % 3) * 26, y0 - Math.floor(i / 3) * 26, 22, 22, i % 2 === 1);
+    label("BACKLOG", x0 - 26, y0 - (n > 3 ? 52 : 26) - 6, 11, "#ffb4a8", "center", true, true);
+  }
+
   // The numbered department cards on the plan. HTML rather than canvas so they stay crisp
   // at any zoom; placed from the camera each frame, and only where they can be read: not
   // pulled out to Overview, not over the opening shift's own captions.
@@ -8019,6 +8252,7 @@ header{display:none;}
     drawContractBacklog(dt);
     if(!is_rush_order)tickFreight(logisticsDt);
     drawFreight();
+    drawFlowBacklog();
     drawFactoryWorkers();
     factoryRackBelts();
     drawFactoryCrane();
@@ -8068,7 +8302,7 @@ header{display:none;}
     if (priorityActive() && !state.priorityClient.collected)
       state.priorityClient.prog += earned;
     if (state.contract){
-      state.contract.prog += earned;
+      state.contract.prog += earned * (state.focus === "dispatch" ? 1.2 : 1);
       if (state.contract.prog >= state.contract.goal){
         state.pallets += state.contract.pallets; state.contractsDone++;
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
@@ -8100,6 +8334,13 @@ header{display:none;}
     var bl = document.getElementById("buildLine");
     if (bl) bl.textContent = "WAREHOUSE EMPIRE \u00b7 BUILD " + APP_VERSION.toUpperCase();
     openDailyGate();
+    // The first launch under the department rule: a business that already existed is held
+    // harmless for a week (it can only gain), so nobody wakes to a site earning less than it
+    // did yesterday. A new install has nothing to protect.
+    if (!(Number(state.flowGraceUntil) >= 0)){
+      state.flowGraceUntil = (state.lifetime || 0) > 0 ? Date.now() + FLOW_GRACE_MS : 0;
+      if (state.flowGraceUntil) jot("New: departments now set your site's flow balance. Your income is protected for 7 days while you even them up.", "milestone");
+    }
     sizeCanvas(); renderSkuUI(); bindAdButtons(); buildCorpShop(); Ads.init();
     renderCompany(); renderMute(); renderNotifs(); renderSkuUI(); update3DPalette();
     bindNotificationLifecycle();

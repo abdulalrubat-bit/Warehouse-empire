@@ -193,10 +193,14 @@ const reset = () => {
   chk("an Overtime Call starts a rush", /RUSH/.test($("boostTag").innerHTML), $("boostTag").innerHTML);
 
   // The Solar Array's mastery used to delete the system outright.
+  // Total earnings are pinned for both clears: the first payout raises them, and since 4.8
+  // the flow balance phases departments in as they grow, which would move the rate the
+  // second payout is figured on.
+  const pinnedTotal = s.total;
   s.incidentsCleared = 0; s.corp.solar = 0; s.money = 0;
   INC.clear(byId("spill"));
   const plain = s.money;
-  s.corp.solar = 10; s.money = 0;
+  s.corp.solar = 10; s.money = 0; s.total = pinnedTotal;
   INC.clear(byId("spill"));
   chk("Solar Array mastery doubles the payout rather than removing incidents",
       Math.abs(s.money - plain*2) < 1, "$" + plain.toFixed(0) + " -> $" + s.money.toFixed(0));
