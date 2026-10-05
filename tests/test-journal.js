@@ -19,7 +19,7 @@ s.lastTruck = { version: 1, status: "complete", reportSeen: true };
 s.owned = { picker: 30, trolley: 10 }; s.contractsDone = 3; s.journal = [];
 
 // ---- a delivered contract is recorded -------------------------------------------------------
-s.contract = { goal: 10, prog: 9.99, mins: 15, deadline: Date.now() + 600000, label: "x", cash: 1234, pallets: 3, rush: false };
+s.contract = { goal: 10, prog: 10, mins: 15, deadline: Date.now() + 600000, label: "x", cash: 1234, pallets: 3, rush: false };
 ticker.fn(); await settle();
 chk("a delivered contract is written to the journal", /Contract delivered: \+\$1\.23K and 3 pallets/.test((s.journal[0] || {}).text || ""),
     (s.journal[0] || {}).text);

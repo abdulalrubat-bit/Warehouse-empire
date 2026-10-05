@@ -328,11 +328,19 @@
   .crew-btn{display:block; width:100%; margin-top:10px; min-height:42px; border-radius:10px; border:1px solid #3b5466; background:#1d2f3c; color:#eef5fb; font-weight:800; font-size:13px; cursor:pointer;}
   .crew-btn.primary{background:var(--ui-gold, #ffc665); border-color:var(--ui-gold, #ffc665); color:#1b1408;}
   .crew-btn:disabled{opacity:.45; cursor:default;}
+  .lrow{margin-top:9px;}
+  .lrow .lt{display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#eef5fb; font-weight:700;}
+  .lrow .lt span{color:#a9c0d0; font-weight:600; font-size:11px; white-space:nowrap;}
+  .lrow.got .lt{color:var(--cash);}
+  .lrow .ln{font-size:10.5px; color:#8fa7b9; margin-top:2px;}
+  .lrow .lb{height:4px; border-radius:4px; background:#0e1a22; margin-top:5px; overflow:hidden;}
+  .lrow .lb i{display:block; height:100%; background:var(--ui-gold, #ffc665);}
+  .lrow.got .lb i{background:var(--cash);}
   .jrow{display:flex; gap:9px; align-items:flex-start; padding:7px 0; border-top:1px solid #24384a; font-size:11.5px; line-height:1.45; color:#cfe0ec;}
   .jrow:first-child{border-top:0;}
   .jrow i{flex:0 0 7px; height:7px; border-radius:50%; margin-top:5px; background:#6b8396;}
-  .jrow.contract i{background:var(--cash);} .jrow.missed i{background:var(--bad);} .jrow.crew i{background:var(--ui-gold, #ffc665);}
-  .jrow.milestone i{background:var(--corp);} .jrow.away i{background:var(--ui-mint, #65e0b0);}
+  .jrow.jk-contract i{background:var(--cash);} .jrow.jk-missed i{background:var(--bad);} .jrow.jk-crew i{background:var(--ui-gold, #ffc665);}
+  .jrow.jk-milestone i{background:var(--corp);} .jrow.jk-away i{background:var(--ui-mint, #65e0b0);}
   .jrow span{flex:1;} .jrow em{font-style:normal; color:#7f98ab; font-size:10px; white-space:nowrap;}
   .help-item{border:1px solid #33495a; border-radius:10px; padding:9px 11px; margin-top:8px; font-size:12px; line-height:1.5; color:#cfe0ec; text-align:left;}
   .help-item b{color:var(--ui-gold, #f0c060); margin-right:4px;}
@@ -790,6 +798,16 @@ header{display:none;}
     <div class="office-block">
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
+    </div>
+    <div class="office-block" id="knowledgeBlock">
+      <div class="office-title">COMPANY KNOWLEDGE</div>
+      <div class="office-text" id="knowledgeText"></div>
+      <button class="renamebtn" id="codifyBtn" type="button"></button>
+    </div>
+    <div class="office-block" id="licenceBlock">
+      <div class="office-title">LICENCES</div>
+      <div class="office-text">Earned by what you deliver. Each is +2% output for good, and pallets.</div>
+      <div id="licenceList"></div>
     </div>
     <div class="office-block" id="journalBlock">
       <div class="office-title">OPERATIONS JOURNAL</div>
@@ -2021,7 +2039,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], knowledge: 0, licences: {}, kindDone: {}, expressDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2322,6 +2340,64 @@ header{display:none;}
   };
   function policy(){ return POLICIES[state.policy] || POLICIES.reliable; }
 
+  // --- Company knowledge -------------------------------------------------------------------
+  // From the autonomous prototype: documented procedures make every site faster. Output
+  // only -- a better procedure is the same crew working smarter, so payroll does not follow.
+  // Priced on lifetime earnings, which never fall, so it cannot be bought cheaply in the
+  // trough just after a sale. It belongs to the company and stays through every sale.
+  var KNOWLEDGE_MAX = 12, KNOWLEDGE_STEP = 0.08;
+  function knowledgeLevel(){ return Math.max(0, Math.min(KNOWLEDGE_MAX, Math.floor(Number(state.knowledge) || 0))); }
+  function knowledgeMult(){ return 1 + KNOWLEDGE_STEP * knowledgeLevel(); }
+  function knowledgeCost(){ return Math.ceil(Math.max(2500, (state.lifetime || 0) * 0.02) * Math.pow(1.9, knowledgeLevel())); }
+  function codify(){
+    var lvl = knowledgeLevel(), cost = knowledgeCost();
+    if (lvl >= KNOWLEDGE_MAX || state.money < cost) return false;
+    state.money -= cost; state.knowledge = lvl + 1;
+    Tele.log("knowledge_level", { knowledge_level:state.knowledge });
+    jot("Procedure documented: company knowledge level " + state.knowledge + ". Every site +" + Math.round(KNOWLEDGE_STEP * state.knowledge * 100) + "%.", "milestone");
+    sfx("upgrade"); showToast("<b>Procedure documented.</b> Every site +" + Math.round(KNOWLEDGE_STEP * 100) + "% faster.");
+    render(); saveGame(); return true;
+  }
+
+  // --- Licences ------------------------------------------------------------------------------
+  // From the autonomous prototype: earned by what the business has delivered, never bought.
+  // Each is a permanent +2% to output and a pallet reward. (The prototype paid REP; here REP
+  // is what a sale pays out against lifetime earnings, so REP granted now would simply be
+  // taken off the next sale.)
+  var LICENCE_STEP = 0.02;
+  var LICENCES = [
+    { id:"local",    name:"Local operator licence",  need:"Deliver 10 contracts",            target:10, pallets:5,
+      prog:function(){ return state.contractsDone || 0; } },
+    { id:"express",  name:"Express carrier",         need:"Deliver 5 jobs on express terms", target:5,  pallets:8,
+      prog:function(){ return state.expressDone || 0; } },
+    { id:"heavy",    name:"Heavy haulage permit",    need:"Deliver 5 oversized loads",       target:5,  pallets:8,
+      prog:function(){ return (state.kindDone && state.kindDone.oversize) || 0; } },
+    { id:"medical",  name:"Medical accreditation",   need:"Deliver 5 refrigerated jobs",     target:5,  pallets:10,
+      prog:function(){ return (state.kindDone && state.kindDone.reefer) || 0; } },
+    { id:"dg",       name:"Dangerous goods licence", need:"Deliver 5 dangerous goods jobs",  target:5,  pallets:10,
+      prog:function(){ return (state.kindDone && state.kindDone.dg) || 0; } },
+    { id:"regional", name:"Regional licence",        need:"Hold 3 sites in your Network",    target:3,  pallets:12,
+      prog:function(){ return (state.network || []).length; } }
+  ];
+  function licencesHeld(){
+    if (!state.licences || typeof state.licences !== "object") state.licences = {};
+    var n = 0; LICENCES.forEach(function(l){ if (state.licences[l.id]) n++; }); return n;
+  }
+  function licenceMult(){ return 1 + LICENCE_STEP * licencesHeld(); }
+  function checkLicences(){
+    licencesHeld();
+    LICENCES.forEach(function(l){
+      if (state.licences[l.id] || l.prog() < l.target) return;
+      state.licences[l.id] = Date.now();
+      state.pallets = (state.pallets || 0) + l.pallets;
+      invalidateUpMult();
+      Tele.log("licence_earned", { licence_id:l.id });
+      jot(l.name + " earned: +" + Math.round(LICENCE_STEP * 100) + "% output for good, and " + l.pallets + " pallets.", "milestone");
+      sfx("upgrade"); showToast("<b>" + l.name + "</b> earned.<br>+" + Math.round(LICENCE_STEP * 100) + "% output for good &amp; +" + l.pallets + " pallets.");
+      saveGame();
+    });
+  }
+
   // --- Operations journal -----------------------------------------------------------------
   // From the autonomous prototype: a short running record of what the business did, newest
   // first, kept with the save. It is what a returning player reads to find out what happened
@@ -2343,7 +2419,7 @@ header{display:none;}
 
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out;
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out * knowledgeMult() * licenceMult();
   }
 
   function wageBill(){
@@ -2509,7 +2585,7 @@ header{display:none;}
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered",
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered","knowledge","expressDone",
        "launches","dispatchesToday","shipment_counter","eventPlaySeconds","crisisNextAt",
        "crisisRepAwarded","automationTrialUsed","automationTrialUntil","inductionStep"].forEach(function(k){
         var v = Number(state[k]);
@@ -4577,15 +4653,44 @@ header{display:none;}
     var j = (Array.isArray(state.journal) ? state.journal : []).filter(function(e){ return e && typeof e === "object"; });
     var html = j.length ? j.slice(0, 12).map(function(e){
       var kind = String(e.kind || "info").replace(/[^a-z]/g, "");
-      return '<div class="jrow ' + kind + '"><i></i><span>' + String(e.text).replace(/[<>&"]/g, "") + '</span><em>' + ago(Number(e.at) || Date.now()) + '</em></div>';
+      // Prefixed: a bare "contract" class picked up the contract card's own styling.
+      return '<div class="jrow jk-' + kind + '"><i></i><span>' + String(e.text).replace(/[<>&"]/g, "") + '</span><em>' + ago(Number(e.at) || Date.now()) + '</em></div>';
     }).join("") : '<div class="jrow"><i></i><span>Nothing yet. Contracts, hires and sales are recorded here.</span></div>';
     if (el._html !== html){ el.innerHTML = html; el._html = html; }
   }
 
   window.__journal = { jot: jot, render: renderJournal };
+  window.__company = { codify: codify, knowledgeCost: knowledgeCost, knowledgeMult: knowledgeMult, LICENCES: LICENCES,
+                       checkLicences: checkLicences, licenceMult: licenceMult, renderKnowledge: renderKnowledge, renderLicences: renderLicences };
+
+  function renderKnowledge(){
+    var t = document.getElementById("knowledgeText"), b = document.getElementById("codifyBtn");
+    if (!t || !b) return;
+    var lvl = knowledgeLevel();
+    t.innerHTML = "Documented procedures make every site faster, now and after every sale. Level <b>" + lvl + " / " + KNOWLEDGE_MAX +
+                  "</b> \u00b7 every site <b>+" + Math.round(KNOWLEDGE_STEP * lvl * 100) + "%</b>.";
+    if (lvl >= KNOWLEDGE_MAX){ b.textContent = "FULLY DOCUMENTED"; b.disabled = true; return; }
+    var cost = knowledgeCost();
+    b.textContent = "DOCUMENT A PROCEDURE \u00b7 " + money(cost) + " \u00b7 +" + Math.round(KNOWLEDGE_STEP * 100) + "%";
+    b.disabled = state.money < cost;
+  }
+  function renderLicences(){
+    var el = document.getElementById("licenceList");
+    if (!el) return;
+    licencesHeld();
+    var html = LICENCES.map(function(l){
+      var got = !!state.licences[l.id], p = got ? l.target : Math.min(l.target, l.prog());
+      return '<div class="lrow' + (got ? ' got' : '') + '"><div class="lt">' + (got ? "\u2713 " : "") + l.name +
+             '<span>' + (got ? "+" + Math.round(LICENCE_STEP * 100) + "% output" : fmt(p) + " / " + l.target) + '</span></div>' +
+             '<div class="ln">' + l.need + ' \u00b7 ' + l.pallets + ' pallets</div>' +
+             '<div class="lb"><i style="width:' + Math.round(p / l.target * 100) + '%"></i></div></div>';
+    }).join("");
+    if (el._html !== html){ el.innerHTML = html; el._html = html; }
+  }
+  document.getElementById("codifyBtn").addEventListener("click", function(){ codify(); });
 
   function renderOffice(){
-    renderPolicy(); renderJournal();
+    renderPolicy(); renderJournal(); renderKnowledge(); renderLicences();
     var sl = document.getElementById("specialistList");
     if (sl){
       var rows = JOB_KINDS.map(function(k){
@@ -4628,6 +4733,7 @@ header{display:none;}
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
     Tele.log("business_sold", { rep_gain:gain, sales:state.prestiges, site:state.site });
     jot("Sold " + currentSite().name + " for " + fmt(gain) + " REP. It joins the Network.", "milestone");
+    setTimeout(checkLicences, 0);
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
     if (!state.network) state.network = [];
@@ -7968,10 +8074,16 @@ header{display:none;}
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
         Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
                                         contract_express:state.contract.express ? 1 : 0, contract_kind:state.contract.kind || "standard" });
+        if (state.contract.express) state.expressDone = (state.expressDone || 0) + 1;
+        if (state.contract.kind){
+          if (!state.kindDone || typeof state.kindDone !== "object") state.kindDone = {};
+          state.kindDone[state.contract.kind] = (state.kindDone[state.contract.kind] || 0) + 1;
+        }
         jot((state.contract.express ? "Express contract" : state.contract.rush ? "Rush contract" : state.contract.kind ? (jobKind(state.contract.kind) || {}).name + " contract" : "Contract") +
             " delivered: +" + money(state.contract.cash) + " and " + state.contract.pallets + " pallets.", "contract");
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
+        checkLicences();
         maybeOfferMilestone();
       }
     }
