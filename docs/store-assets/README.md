@@ -1,4 +1,24 @@
-# Store asset candidates
+# Store assets
+
+## 5.0: the Pocket look (current)
+
+Made with `node tools/pocket-art.js`, which draws the icons with the same isometric
+primitives as the in-game 3D site, so the icon and the game read as one thing.
+
+| File | What it is |
+|---|---|
+| `pocket-icon-a.png` / `-fg.png` | **Shipped as the launcher icon from 5.0.** A small pastel warehouse with crates at the dock. Copied, at 1024px, to `assets/icon.png` and `assets/icon-foreground.png`. |
+| `pocket-icon-b.png` / `-fg.png` | The alternative: the old pallet icon rebuilt in 3D pastel. Kept for a future store listing experiment. |
+| `pocket-icon-sheet.png` | Both beside the 4.x icon at 96, 64 and 48px, masked, on light and dark. |
+| `pocket-feature.png` | **Feature graphic for 5.0**, 1024x500: the title over a soft fade, with a live frame of the 3D site. |
+
+All the icon art sits inside the centre 66% that Android's adaptive mask guarantees. The
+release workflow's icon and splash background is now the Pocket mint, `#c9ebdc`. It was
+`#232529`.
+
+---
+
+## Earlier candidates (v25, 3.8)
 
 Drawn for v25 (3.8). Nothing here is installed yet — `assets/icon.png` is still
 the forklift that has always shipped. Pick one, and it gets copied over that
@@ -27,8 +47,7 @@ properly rather than from a cropped square.
 | `c-pallet.png` | One stacked pallet under floor marking. Four bold blocks, maximum contrast, legible at every size tested. **The recommendation.** |
 
 Each has a matching `-fg.png` — the same art on a transparent ground, for
-`assets/icon-foreground.png`. The background colour stays `#232529`, which the
-release workflow already passes to the icon generator.
+`assets/icon-foreground.png`. The background colour was `#232529` until 5.0.
 
 ## Feature graphic
 

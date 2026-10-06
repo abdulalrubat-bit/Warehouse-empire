@@ -221,10 +221,10 @@ jobs:
           BEFORE=$(sha256sum android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png | cut -d' ' -f1)
           npm install --save-dev @capacitor/assets
           npx capacitor-assets generate --android \
-            --iconBackgroundColor '#232529' \
-            --iconBackgroundColorDark '#232529' \
-            --splashBackgroundColor '#232529' \
-            --splashBackgroundColorDark '#232529'
+            --iconBackgroundColor '#c9ebdc' \
+            --iconBackgroundColorDark '#c9ebdc' \
+            --splashBackgroundColor '#c9ebdc' \
+            --splashBackgroundColorDark '#c9ebdc'
           AFTER=$(sha256sum android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png | cut -d' ' -f1)
           echo "icon hash before: $BEFORE"
           echo "icon hash after:  $AFTER"
