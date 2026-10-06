@@ -42,6 +42,20 @@ const colours = (p, x0, y0, x1, y1) => p.evaluate(([x0, y0, x1, y1]) => {
     const full = await colours(p, 0, 0, all[0], all[1]);
     chk("the site is drawn, not blank", full.painted > 1000 && full.colours > 40, JSON.stringify(full));
 
+    // Each site type is dressed as itself: a port is not a general site with a new name.
+    const sig = () => p.evaluate(() => { const c = document.getElementById("wcanvas"), g = c.getContext("2d");
+      return Array.from(g.getImageData(0, 0, c.width, c.height).data.filter((_, i) => i % 400 === 0)); });
+    const gen = await sig();
+    const diff = {};
+    for (const site of ["port", "cold", "hazmat"]){
+      await p.evaluate(sv => { window.state.site = sv; }, site); await p.waitForTimeout(350);
+      const other = await sig(); let n = 0;
+      for (let i = 0; i < gen.length; i++) if (Math.abs(gen[i] - other[i]) > 24) n++;
+      diff[site] = Math.round(n / gen.length * 100);
+    }
+    await p.evaluate(() => { window.state.site = "general"; }); await p.waitForTimeout(300);
+    chk("each site type is dressed differently from a general site", diff.port > 8 && diff.cold > 2 && diff.hazmat > 2, JSON.stringify(diff) + "% of samples changed");
+
     // Buying a crane stands a gantry in the dispatch yard.
     const yard = await p.evaluate(() => { const D = window.__diorama.d, Y = D.YARD.dispatch, a = D.toScreen(Y.x, Y.y, 0), b2 = D.toScreen(Y.x + Y.w, Y.y + Y.h, 120);
       return [Math.max(0, Math.min(a.x, b2.x) - 60), Math.max(0, b2.y - 60), Math.max(a.x, b2.x) + 60, Math.max(a.y, b2.y) + 20]; });

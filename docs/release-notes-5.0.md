@@ -52,6 +52,14 @@ Bright new cards and a floating tab bar. Prefer the old look? Switch back any ti
   - your company buildings (Head Office, People, Training and the rest) appear round
     the lot once bought;
   - the department limiting your flow balance is outlined, with freight waiting in it.
+- **Each site type is dressed as itself:**
+
+  | Site | What's different |
+  |---|---|
+  | Port Terminal | a quay and harbour instead of the road, a ship-to-shore crane working a container ship, and containers stacked in storage |
+  | Cold Storage | an insulated cold room round storage, condensers on top, and reefer lorries |
+  | Dangerous Goods | drums in caged bays, hazard banding, a bund wall and a warning sign |
+
 - **Liveries carry over.** Racking, pillars, lorries and grass take your livery's
   colours, and night liveries dim the lot.
 - **Taps work as before:**
@@ -73,8 +81,7 @@ Bright new cards and a floating tab bar. Prefer the old look? Switch back any ti
    version name **5.0**.
 2. **Register in GA4:** `look_choice` on `look_set`. It records switches to Classic or
    Plan and back.
-3. **Store listing:** new screenshots are in `docs/store-screenshots/` (see that
-   README's note about 03). The feature graphic and icon still show the old dark style.
+3. **Store listing:** new screenshots are in `docs/store-screenshots/`. The feature graphic and icon still show the old dark style.
    The icon test is still running, so decide whether to wait for it to finish before
    changing the art.
 4. **What to watch:**

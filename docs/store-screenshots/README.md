@@ -1,11 +1,6 @@
 # Play Store phone screenshots
 
 Captured from **5.0** (the Pocket look and the 3D site view are the defaults).
-**Known gap:** `03-port` now reads much like `01-site` at thumbnail size. The diorama
-draws a port only as water by the road, and the old shot's container stacks are on the
-plan view. Consider replacing 03 with a different site or the Office's Site Setup until
-the diorama gets per-site dressing.
-
 Previously captured from 4.4 (v31). 1080×1920 (9:16), which is Play's phone aspect.
 A 540×960 viewport at deviceScaleFactor 2 hits it exactly.
 
@@ -17,8 +12,8 @@ to read as different at thumbnail size.
 |---|---|---|
 | `01-site` | The 3D site: four department yards, fleet, lorries, company buildings | WATCH THE SITE RUN |
 | `02-last-truck` | The opening shift: S04 two-thirds loaded, the task docked above PICK ORDER | *(new in 4.4)* |
-| `03-port` | Port Terminal in Overview: container stacks in the racking | FOUR SITES |
-| `04-night-livery` | Dangerous Goods on the Night Shift livery: drum cages, dark estate | FOUR SITES |
+| `03-port` | Port Terminal: containers in storage, the quay crane and a ship alongside | FOUR SITES |
+| `04-night-livery` | Dangerous Goods on the Night Shift livery: drum cages, hazard banding, dimmed lot | FOUR SITES |
 | `05-rush` | A rush behind schedule: the bottleneck card with Expedite, and the Contracts panel | RUN FREIGHT AGAINST THE CLOCK |
 | `06-manifests` | All five, three open and two locked | CHOOSE YOUR MANIFEST |
 | `07-fleet` | The equipment ladder, with the marginal gain on each card | CLIMB THE EQUIPMENT LADDER |

@@ -7182,6 +7182,14 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       if (col) pallet(g, x - 10, y + 17, col);
     }
     function trolley(g, x, y, col){ shadow(g, x, y, 12, 6); box(g, x - 9, y - 7, 18, 14, 2, 5, MAT.dark); box(g, x - 8, y - 6, 16, 12, 7, 10, { top:col, left:"#be914f", right:"#d9ad68" }); box(g, x + 8, y - 7, 3, 14, 7, 16, MAT.teal); }
+    function drum(g, x, y, col){
+      shadow(g, x, y, 9, 5, 0.1); box(g, x - 7, y - 7, 14, 14, 0, 22, { top:col, left:"#6b5a1e", right:"#9c8530" });
+      var p = P(x, y, 22); g.fillStyle = "#3b4a5a"; g.beginPath(); if (g.ellipse) g.ellipse(p.x, p.y, 9, 5, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = col; g.beginPath(); if (g.ellipse) g.ellipse(p.x, p.y, 6.5, 3.5, 0, 0, Math.PI * 2); g.fill();
+    }
+    var BOXCOL = [MAT.red, MAT.blue, MAT.teal, MAT.orange, MAT.green, MAT.purple];
+    function container(g, x, y, z, m, along){ if (along) box(g, x, y, 58, 24, z, 24, m); else box(g, x, y, 24, 58, z, 24, m);
+      var top = P(x + (along ? 29 : 12), y + (along ? 12 : 29), z + 24); g.fillStyle = "rgba(255,255,255,.25)"; g.fillRect(top.x - 1, top.y - 1, 2, 2); }
     function along(pts, t){
       var seg = Math.min(pts.length - 1.001, Math.max(0, t) * (pts.length - 1)), i = Math.floor(seg), f = seg - i;
       return { x: pts[i].x + (pts[i + 1].x - pts[i].x) * f, y: pts[i].y + (pts[i + 1].y - pts[i].y) * f };
@@ -7210,8 +7218,16 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       if (g.clearRect) g.clearRect(0, 0, 1100, 950);
       var port = state.site === "port", cold = state.site === "cold";
       plane(g, -150, -95, 820, 815, -28, lv.grass || (port ? "#9fd0cf" : "#a7dba5"));
-      plane(g, -95, 515, 725, 130, -23, "#9aadb1"); plane(g, -95, 525, 725, 105, -22, "#b8c3c2");
-      line(g, [{x:-80,y:577,z:-20},{x:620,y:577,z:-20}], "#edf0cf", 4, [21, 18]);
+      if (port){
+        // A port fronts water, not a road: a concrete quay with the harbour beyond it.
+        plane(g, -150, 640, 820, 120, -30, "#7fc3d6");
+        for (var wv = 0; wv < 9; wv++) line(g, [{x:-120 + wv * 90,y:690,z:-29},{x:-80 + wv * 90,y:690,z:-29}], "rgba(255,255,255,.55)", 3);
+        plane(g, -95, 515, 725, 125, -23, "#d9d6c6"); plane(g, -95, 632, 725, 8, -23, "#f2c84b");
+        for (var bl = 0; bl < 8; bl++) box(g, -80 + bl * 90, 630, 10, 10, -23, 8, MAT.dark);
+      } else {
+        plane(g, -95, 515, 725, 130, -23, "#9aadb1"); plane(g, -95, 525, 725, 105, -22, "#b8c3c2");
+        line(g, [{x:-80,y:577,z:-20},{x:620,y:577,z:-20}], "#edf0cf", 4, [21, 18]);
+      }
       plane(g, -140, 5, 120, 480, -23, "#bdd0c2"); plane(g, 555, -80, 100, 540, -23, "#c4dbc3");
       if (port) for (var q = 0; q < 6; q++) plane(g, -150 + q * 140, 655, 110, 50, -27, "#7fbcc8");
       shadow(g, 280, 275, 465, 270, 0.09);
@@ -7227,6 +7243,12 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
         var y = YARD[d]; plane(g, y.x, y.y, y.w, y.h, 4, cold && d === "store" ? "#c4e2f0" : y.floor);
         plane(g, y.x, y.y, y.w, 4, 5, y.stripe);
       });
+      if (state.site === "hazmat"){
+        // Dangerous goods: hazard banding round the storage yard and a bund at its edge.
+        var S2 = YARD.store;
+        for (var hz = 0; hz < 14; hz++) plane(g, S2.x + hz * 15, S2.y + S2.h - 8, 8, 8, 5, hz % 2 ? "#2c425b" : "#f2c84b");
+        for (var hv = 0; hv < 13; hv++) plane(g, S2.x + S2.w - 8, S2.y + hv * 15, 8, 8, 5, hv % 2 ? "#2c425b" : "#f2c84b");
+      }
       plane(g, 30, 470, 188, 18, 4, "#fec76d"); plane(g, 300, 470, 188, 18, 4, "#a6d8b2");
       for (var k = 0; k < 7; k++){ plane(g, 34 + k * 27, 471, 12, 15, 5, "#fff0b1"); plane(g, 304 + k * 27, 471, 12, 15, 5, "#def2bd"); }
       [[-45,-40],[620,-30],[640,420],[-150,420],[-74,500],[592,500],[200,-60]].forEach(function(t){ tree(g, t[0], t[1], 1.2); });
@@ -7271,7 +7293,28 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       })(j);
 
       // 2 Storage: racks rise with reach trucks; forklifts run between rows.
-      var levels = 2 + shown(o.reach || 0, 3), rows = (o.forklift || 0) > 0 ? 2 : 1;
+      var levels = 2 + shown(o.reach || 0, 3), rows = (o.forklift || 0) > 0 ? 2 : 1, site = state.site;
+      if (site === "port"){
+        // Containers, not racking: stacked in rows, higher as reach trucks arrive.
+        for (var cr = 0; cr < 2; cr++) for (var cc = 0; cc < 3; cc++) (function(cr, cc){
+          var x = 50 + cc * 62, y = 60 + cr * 78, high = Math.min(levels - 1, 1 + ((cc + cr) % 3));
+          add(160 + y + x * 0.01, function(){ for (var h = 0; h < high; h++) container(c, x, y, 4 + h * 25, BOXCOL[(cc * 3 + cr + h) % BOXCOL.length], false); });
+        })(cr, cc);
+        rows = 0;
+      } else if (site === "hazmat"){
+        // Drums in caged bays instead of racking.
+        for (var bay = 0; bay < rows; bay++) (function(bay){
+          var y = 62 + bay * 78;
+          add(160 + y, function(){
+            for (var px = 0; px < 4; px++) box(c, 56 + px * 46, y, 3, 3, 4, 44, MAT.dark);
+            for (var py = 0; py < 4; py++) box(c, 56 + py * 46, y + 50, 3, 3, 4, 44, MAT.dark);
+            line(c, [{x:56,y:y,z:48},{x:197,y:y,z:48},{x:197,y:y + 50,z:48},{x:56,y:y + 50,z:48},{x:56,y:y,z:48}], "#2c425b", 2);
+            for (var dx = 0; dx < 4 + Math.min(4, levels); dx++) for (var dy = 0; dy < 2; dy++) drum(c, 70 + dx * 17, y + 14 + dy * 22, (dx + dy) % 3 === 0 ? "#5ca8db" : "#f2c84b");
+          });
+        })(bay);
+        add(470, function(){ box(c, 32, 214, 200, 6, 4, 10, MAT.red); });
+        rows = 0;
+      }
       for (var r = 0; r < rows; r++) (function(r){
         var y = 70 + r * 72;
         add(160 + y, function(){
@@ -7287,6 +7330,31 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
         var p = along(PATHS.store, ((t * 0.05) + f / Math.max(1, forks)) % 1);
         add(p.x + p.y + 25, function(){ forklift(c, p.x, p.y, f % 2 ? col : null); });
       })(f);
+
+      if (site === "cold"){
+        // A cold room: insulated panels round storage, condensers humming on top.
+        add(150, function(){ box(c, 26, 26, 214, 6, 3, 58, MAT.cream); box(c, 26, 26, 6, 204, 3, 58, MAT.cream);
+          plane(c, 26, 26, 214, 6, 52, "#9ccbe8");
+          for (var cu = 0; cu < 3; cu++){ var ux = 50 + cu * 62; box(c, ux, 18, 40, 22, 61, 18, MAT.dark); var fp = P(ux + 20, 29, 80); c.strokeStyle = "#98c8ef"; c.lineWidth = 2; c.beginPath(); c.arc(fp.x, fp.y, 7, 0, Math.PI * 2); c.stroke(); } });
+        add(640, function(){ box(c, 234, 26, 6, 204, 3, 58, MAT.cream); box(c, 26, 224, 214, 6, 3, 58, MAT.cream); plane(c, 234, 26, 6, 204, 61, "#9ccbe8"); });
+      }
+      if (site === "hazmat") add(30 + 470, function(){ box(c, 20, 470, 4, 4, 0, 46, MAT.dark); var dp = P(22, 472, 56);
+        c.fillStyle = "#f08a2c"; c.beginPath(); c.moveTo(dp.x, dp.y - 13); c.lineTo(dp.x + 13, dp.y); c.lineTo(dp.x, dp.y + 13); c.lineTo(dp.x - 13, dp.y); c.closePath(); c.fill();
+        c.fillStyle = "#2c425b"; c.font = "900 12px Trebuchet MS,system-ui"; c.textAlign = "center"; c.fillText("!", dp.x, dp.y + 5); });
+      if (site === "port"){
+        // A ship alongside the quay and the crane that works it.
+        add(1300, function(){
+          box(c, -40, 668, 360, 52, -34, 18, MAT.dark); box(c, 260, 672, 50, 44, -16, 34, MAT.cream);
+          for (var sc = 0; sc < 5; sc++) for (var sl = 0; sl < 2; sl++) box(c, -30 + sc * 56, 672 + sl * 22, 50, 20, -16, 18, BOXCOL[(sc + sl * 2) % BOXCOL.length]);
+        });
+        var sts = 20 + (Math.sin(t * 0.4) + 1) * 110;
+        add(1250, function(){
+          box(c, 140, 560, 10, 10, -23, 150, MAT.red); box(c, 140, 640, 10, 10, -23, 150, MAT.red);
+          box(c, 220, 560, 10, 10, -23, 150, MAT.red); box(c, 220, 640, 10, 10, -23, 150, MAT.red);
+          box(c, 136, 530, 98, 150, 127, 10, MAT.red);
+          box(c, 170, sts + 520, 30, 22, 112, 14, MAT.dark);
+        });
+      }
 
       // 3 Packing: a conveyor per tier owned, sorting robots beside it.
       var P3 = YARD.pack;
@@ -7333,9 +7401,11 @@ body.pocket #splashName{color:#315a59;} body.pocket #splashSub, body.pocket #spl
       // Lorries: one backing on to receiving, one leaving dispatch with the takings.
       var cycle = 12, u = (outbound.t % cycle) / cycle;
       var inX = 65, inY = 490 + Math.max(0, 1 - u * 3) * 120;
-      add(900 + inY, function(){ truck(c, inX, inY, LV.lorry); });
+      var lorryM = state.site === "cold" && LV.id === "hivis" ? MAT.blue : LV.lorry;
+      if (state.site !== "port") add(900 + inY, function(){ truck(c, inX, inY, lorryM); });
       var leaving = u > 0.7, outY = 490 + (leaving ? (u - 0.7) / 0.3 * 160 : 0);
-      add(1020 + outY, function(){ truck(c, 355, outY, MAT.teal); });
+      if (state.site !== "port") add(1020 + outY, function(){ truck(c, 355, outY, MAT.teal); });
+      else add(1020 + outY, function(){ truck(c, 355, Math.min(outY, 600), MAT.teal); });
       if (outbound.shown <= 0.7 && u > 0.7) outbound.pop = { at:t, amount: totalRate() * cycle };
       outbound.shown = u;
 
