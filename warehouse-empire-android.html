@@ -278,6 +278,72 @@
   .office-title{font-family:var(--font-cond); font-weight:800; font-size:14px; letter-spacing:2.5px; color:var(--steel); text-transform:uppercase;}
   .office-text{font-size:10.5px; color:var(--dim); margin-top:6px; line-height:1.65;}
   .office-text b{color:var(--ink);}
+  /* Department strip and map cards, after the autonomous prototype: four numbered
+     departments, the same numbers on the plan and in the strip under it. */
+  .dept-strip{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:8px 10px 10px; background:var(--panel);}
+  .dept{border:1px solid #33495a; border-radius:10px; background:#172733; padding:7px 7px 8px; text-align:left; color:var(--ink); cursor:pointer; min-width:0;}
+  .dept .dn{font-size:9.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dept .dn i{font-style:normal; color:var(--steel); margin-right:3px;}
+  .dept .dv{font-size:17px; font-weight:800; margin-top:3px; line-height:1.1;}
+  .dept .dv small{font-size:9px; color:var(--steel); font-weight:600;}
+  .dept .ds{font-size:7.5px; letter-spacing:.8px; color:var(--steel); text-transform:uppercase; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .dept.on .ds{color:var(--ui-mint, #7fe0b0);}
+  .dept .db{height:3px; border-radius:3px; background:#0e1a22; margin-top:5px; overflow:hidden;}
+  .dept .db i{display:block; height:100%; background:var(--ui-mint, #7fe0b0);}
+  .dept.top{border-color:var(--ui-gold, #f0c060);}
+  .dept-labels{position:absolute; left:0; right:0; pointer-events:none; overflow:hidden;}
+  .dept-label{position:absolute; display:flex; align-items:center; gap:6px; padding:4px 8px 4px 5px; border-radius:7px; background:rgba(16,28,38,.86); border:1px solid #3b5466; color:#eef5fb; font-size:10px; font-weight:800; white-space:nowrap; box-shadow:0 3px 10px #0005;}
+  .dept-label em{font-style:normal; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:5px; background:var(--ui-gold, #f0c060); color:#1b1408; font-size:9px;}
+  .dept-label span{font-weight:600; color:#a9c0d0; font-size:9px;}
+  .panelhead{padding:18px 16px 4px;}
+  .panelhead .eyebrow, #modalHelp .eyebrow{font-size:9px; letter-spacing:2.2px; font-weight:800; color:var(--steel); text-transform:uppercase;}
+  .panelhead h2{font-size:22px; color:#f2f7fb; margin:4px 0 4px; font-weight:800;}
+  .panelhead p{font-size:12px; color:#a9c0d0; line-height:1.5; margin:0;}
+  .panel-help{background:none; border:0; padding:6px 0 0; color:var(--ui-gold, #f0c060); font-weight:800; font-size:11.5px; cursor:pointer;}
+  .help-q{margin-left:8px; width:22px; height:22px; border-radius:50%; border:1px solid #4a6375; background:none; color:#cfe0ec; font-weight:800; font-size:11px; cursor:pointer;}
+  .away-eyebrow{font-size:9px; letter-spacing:2.2px; font-weight:800; color:var(--ui-mint, #65e0b0); text-transform:uppercase; margin-bottom:4px;}
+  .away-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:4px 0 12px;}
+  .away-grid div{border:1px solid #33495a; border-radius:10px; background:#13222e; padding:10px 11px; text-align:left;}
+  .away-grid b{display:block; font-size:19px; color:#f2f7fb; font-weight:800; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .away-grid div:first-child b{color:var(--cash);}
+  .away-grid small{display:block; font-size:9.5px; color:#a9c0d0; margin-top:3px; line-height:1.3;}
+  .policy-opt{display:block; width:100%; text-align:left; margin-top:8px; padding:10px 12px; border-radius:10px; border:1px solid #33495a; background:#13222e; color:#eef5fb; cursor:pointer;}
+  .policy-opt b{font-size:13px; font-weight:800;}
+  .policy-opt span{display:block; font-size:11px; color:#a9c0d0; margin-top:3px; line-height:1.4;}
+  .policy-opt em{display:block; font-style:normal; font-size:10.5px; color:#cfe0ec; margin-top:4px; font-weight:700;}
+  .policy-opt.on{border-color:var(--ui-gold, #ffc665); background:#2a3a33;}
+  .policy-opt.on b{color:var(--ui-gold, #ffc665);}
+  .floor-tags{display:flex; gap:6px; flex-wrap:wrap; padding:0 10px 10px; background:var(--panel);}
+  .ftag{font-size:8.5px; font-weight:800; letter-spacing:.8px; text-transform:uppercase; padding:4px 7px; border-radius:6px; border:1px solid #4a6375; color:#cfe0ec; background:none; cursor:pointer;}
+  .ftag.gold{border-color:var(--ui-gold, #ffc665); color:var(--ui-gold, #ffc665);}
+  .crew-list{padding:0 14px;}
+  .crew-card{border:1px solid #33495a; border-radius:14px; background:#13222e; padding:13px 14px; margin-top:10px;}
+  .crew-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .crew-head b{font-size:16px; color:#f2f7fb; font-weight:800;}
+  .crew-badge{font-size:9px; font-weight:800; letter-spacing:1px; padding:3px 7px; border-radius:6px; border:1px solid var(--ui-gold, #ffc665); color:var(--ui-gold, #ffc665);}
+  .crew-role{font-size:11.5px; color:#a9c0d0; margin-top:3px;}
+  .crew-line{font-size:11px; color:#cfe0ec; margin-top:8px; line-height:1.4;}
+  .crew-assign{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; font-size:12px; color:#cfe0ec;}
+  .crew-assign select{flex:0 0 55%; min-height:38px; border-radius:9px; border:1px solid #3b5466; background:#0f1c26; color:#eef5fb; padding:0 10px; font-size:13px;}
+  .crew-btn{display:block; width:100%; margin-top:10px; min-height:42px; border-radius:10px; border:1px solid #3b5466; background:#1d2f3c; color:#eef5fb; font-weight:800; font-size:13px; cursor:pointer;}
+  .crew-btn.primary{background:var(--ui-gold, #ffc665); border-color:var(--ui-gold, #ffc665); color:#1b1408;}
+  .crew-btn:disabled{opacity:.45; cursor:default;}
+  .lrow{margin-top:9px;}
+  .lrow .lt{display:flex; justify-content:space-between; gap:8px; font-size:12px; color:#eef5fb; font-weight:700;}
+  .lrow .lt span{color:#a9c0d0; font-weight:600; font-size:11px; white-space:nowrap;}
+  .lrow.got .lt{color:var(--cash);}
+  .lrow .ln{font-size:10.5px; color:#8fa7b9; margin-top:2px;}
+  .lrow .lb{height:4px; border-radius:4px; background:#0e1a22; margin-top:5px; overflow:hidden;}
+  .lrow .lb i{display:block; height:100%; background:var(--ui-gold, #ffc665);}
+  .lrow.got .lb i{background:var(--cash);}
+  .jrow{display:flex; gap:9px; align-items:flex-start; padding:7px 0; border-top:1px solid #24384a; font-size:11.5px; line-height:1.45; color:#cfe0ec;}
+  .jrow:first-child{border-top:0;}
+  .jrow i{flex:0 0 7px; height:7px; border-radius:50%; margin-top:5px; background:#6b8396;}
+  .jrow.jk-contract i{background:var(--cash);} .jrow.jk-missed i{background:var(--bad);} .jrow.jk-crew i{background:var(--ui-gold, #ffc665);}
+  .jrow.jk-milestone i{background:var(--corp);} .jrow.jk-away i{background:var(--ui-mint, #65e0b0);}
+  .jrow span{flex:1;} .jrow em{font-style:normal; color:#7f98ab; font-size:10px; white-space:nowrap;}
+  .help-item{border:1px solid #33495a; border-radius:10px; padding:9px 11px; margin-top:8px; font-size:12px; line-height:1.5; color:#cfe0ec; text-align:left;}
+  .help-item b{color:var(--ui-gold, #f0c060); margin-right:4px;}
   .specrow{display:flex; justify-content:space-between; gap:10px; margin-top:7px; font-size:11px; color:var(--dim); line-height:1.4;}
   .specrow b{color:var(--steel); white-space:nowrap;}
   .specrow span{text-align:right;}
@@ -353,6 +419,13 @@ header:after {content:'OPERATIONS';font-size:8px;letter-spacing:1.5px;color:var(
 .metrics {gap:20px;margin-top:9px;padding-top:8px;}
 .metrics b {color:#e8f2fa;font-weight:700;font-size:12px;}
 .metrics i {color:#a2bacb;font-size:9px;letter-spacing:.4px;}
+/* Three equal readouts with dividers, label over value, as in the autonomous prototype. */
+.metrics {display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:0;}
+.metrics span {flex-direction:column-reverse;align-items:flex-start;gap:1px;padding-left:12px;border-left:1px solid #3e5961;}
+.metrics span:first-child {padding-left:0;border-left:0;}
+.metrics span[hidden] {display:none;}
+.metrics b {font-size:16px;}
+.metrics i {text-transform:uppercase;letter-spacing:1px;font-size:8px;}
 .floorview {margin:12px 14px 0;border-radius:17px;border:1px solid #375268;background:#101c26;box-shadow:0 12px 30px #0003;}
 .floor-heading {display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #2b3e50;background:linear-gradient(100deg,#203346,#14232f);}
 .floor-heading b {font-size:11px;letter-spacing:1.5px;}
@@ -497,7 +570,7 @@ header{display:none;}
     <div class="terminal">
       <div class="money" id="money">$0</div>
       <div class="rate"><b id="rate">0</b>/sec <span id="wageTag"></span></div>
-      <div class="rate-2">tap <b id="tapval">$1</b> &middot; <span id="repInfo">REP 0</span> <span id="boostTag"></span></div>
+      <div class="rate-2">tap <b id="tapval">$1</b> <span id="repInfo" hidden>REP 0</span> <span id="boostTag"></span></div>
       <div class="logistics-flow">
         <span class="flow-tag">Efficiency</span>
         <div class="flow-bar"><b id="flowBar"></b></div>
@@ -507,15 +580,19 @@ header{display:none;}
         <span><b id="mDispatched">0</b><i id="mDispatchedLabel">dispatched</i></span>
         <span><b id="mPayroll">0%</b><i>payroll</i></span>
         <span id="mNetWrap" hidden><b id="mNetwork">0%</b><i>network</i></span>
+        <span><b id="mRep">0</b><i>reputation</i></span>
       </div>
     </div>
   </div>
 
   <section id="tab-floor">
     <div class="floorview">
-      <div class="floor-heading"><b>WAREHOUSE FLOOR</b><span>LIVE OPERATIONS</span></div>
+      <div class="floor-heading"><b>WAREHOUSE FLOOR</b><span>LIVE OPERATIONS</span><button class="help-q" type="button" data-help="floor" aria-label="How this screen works">?</button></div>
       <canvas id="wcanvas"></canvas>
       <div class="canvas-controls"><span id="canvasGestureHint">Swipe to scroll · tap to inspect</span><button id="canvasExplore" type="button" aria-pressed="false">Explore</button><button id="canvasOverview" type="button">Overview</button></div>
+      <div class="dept-labels" id="deptLabels" aria-hidden="true"></div>
+      <div class="dept-strip" id="deptStrip" aria-label="Departments"></div>
+      <div class="floor-tags" id="floorTags"><button type="button" class="ftag gold" id="policyTag"></button><span class="ftag" id="rankTag"></span></div>
       <div class="zone-info" id="canvasZoneInfo" hidden><strong id="canvasZoneTitle"></strong><p id="canvasZoneDetail"></p><div class="canvas-controls"><button id="canvasZoneEquipment" type="button">View equipment</button></div></div>
     </div>
     <div class="pickwrap">
@@ -612,6 +689,7 @@ header{display:none;}
   </section>
 
   <section id="tab-equip" hidden>
+    <div class="panelhead"><div class="eyebrow">PEOPLE &amp; EQUIPMENT</div><h2>Build your fleet</h2><p>Every unit works on its own. Buy where the next dollar earns the most.</p><button class="panel-help" type="button" data-help="equip">How this screen works &#8599;</button></div>
     <div class="toolbar">
       <div class="label">Equipment Fleet</div>
       <div class="qty">
@@ -620,14 +698,20 @@ header{display:none;}
       </div>
     </div>
     <div class="gens" id="gens"></div>
+    <div id="crewWrap" hidden>
+      <div class="toolbar"><div class="label">Your crew</div></div>
+      <div class="crew-list" id="crewList"></div>
+    </div>
   </section>
 
   <section id="tab-upgrades" hidden>
+    <div class="panelhead"><div class="eyebrow">UPGRADES &amp; MANAGERS</div><h2>Make every unit count</h2><p>One-off upgrades multiply what a fleet tier already moves.</p><button class="panel-help" type="button" data-help="upgrades">How this screen works &#8599;</button></div>
     <div class="toolbar"><div class="label">Equipment Upgrades &amp; Managers</div></div>
     <div class="shop" id="shop"></div>
   </section>
 
   <section id="tab-pallets" hidden>
+    <div class="panelhead"><div class="eyebrow">PALLETS &amp; LIVERY</div><h2>Spend what you earn</h2><p>Pallets buy permanent boosts and supplies. Crates buy liveries.</p><button class="panel-help" type="button" data-help="pallets">How this screen works &#8599;</button></div>
     <div class="palletbar">
       <div class="palletcount"><span id="palletIcon"></span><span id="palletNum">0</span></div>
     </div>
@@ -646,6 +730,12 @@ header{display:none;}
   </section>
 
   <section id="tab-office" hidden>
+    <div class="panelhead"><div class="eyebrow">COMPANY</div><h2>Run the business</h2><p>Sell a site for REP, grow your Network, and keep your records.</p><button class="panel-help" type="button" data-help="office">How this screen works &#8599;</button></div>
+    <div class="office-block" id="policyBlock">
+      <div class="office-title">OPERATING POLICY</div>
+      <div class="office-text">How your managers run the site. Applies at once; switching is free.</div>
+      <div id="policyList"></div>
+    </div>
     <div class="toolbar"><div class="label">The Office</div><div class="qty"><button id="muteBtn">SFX ON</button><button id="hapticBtn">BUZZ ON</button></div></div>
     <div class="office-block">
       <div class="office-title">COMPANY</div>
@@ -709,6 +799,21 @@ header{display:none;}
       <div class="office-title">ACHIEVEMENTS <span id="achCountTag"></span></div>
       <div id="achPanel"></div>
     </div>
+    <div class="office-block" id="knowledgeBlock">
+      <div class="office-title">COMPANY KNOWLEDGE</div>
+      <div class="office-text" id="knowledgeText"></div>
+      <button class="renamebtn" id="codifyBtn" type="button"></button>
+    </div>
+    <div class="office-block" id="licenceBlock">
+      <div class="office-title">LICENCES</div>
+      <div class="office-text">Earned by what you deliver. Each is +2% output for good, and pallets.</div>
+      <div id="licenceList"></div>
+    </div>
+    <div class="office-block" id="journalBlock">
+      <div class="office-title">OPERATIONS JOURNAL</div>
+      <div class="office-text">What the business has done lately, newest first.</div>
+      <div id="journalList"></div>
+    </div>
     <div class="office-block" id="specialistBlock">
       <div class="office-title">SPECIALIST WORK</div>
       <div class="office-text">Every third job is specialist freight when you can handle it. It pays more.</div>
@@ -755,12 +860,14 @@ header{display:none;}
 
   <div id="modalOffline" class="modal-screen" hidden>
     <div class="modal-box" style="border-top-color:var(--cash);">
-      <div class="modal-title" style="color:var(--cash);">Welcome Back</div>
-      <div class="modal-sub">While you were away, your shift managers kept the freight moving.</div>
-      <div style="background:var(--panel2); border:1px solid var(--line); border-radius:4px; padding:14px; text-align:center; margin-bottom:10px;">
-        <div style="font-size:10px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Base Earnings</div>
-        <b id="offlineBaseTxt" style="font-family:var(--font-cond); font-size:28px; color:var(--ink);"></b>
-        <div id="offlineTimeTxt" style="font-size:9px; color:var(--dim); margin-top:5px;"></div>
+      <div class="eyebrow away-eyebrow">WHILE YOU WERE AWAY</div>
+      <div class="modal-title">The business kept moving.</div>
+      <div class="modal-sub" id="offlineTimeTxt"></div>
+      <div class="away-grid">
+        <div><b id="offlineBaseTxt"></b><small>Added to capital</small></div>
+        <div><b id="offlineRateTxt"></b><small>Earning while you were gone</small></div>
+        <div><b id="offlineSitesTxt"></b><small id="offlineSitesSub">Sites operating</small></div>
+        <div><b id="offlineDeptTxt"></b><small>Busiest department</small></div>
       </div>
       <div id="offlineNextTxt" style="font-size:10px; color:var(--steel); line-height:1.5; text-align:center; margin:0 4px 12px;"></div>
       <button class="modal-btn" id="btnDoubleOffline" style="background:linear-gradient(180deg,var(--hivis),#d85508); color:#20130a; margin-bottom:10px; display:flex; flex-direction:column; align-items:center; gap:2px;">
@@ -778,6 +885,16 @@ header{display:none;}
       <div class="sku-list" id="skuList"></div>
       <div class="office-text" id="changeoverNote" style="margin-top:12px; border-left:3px solid var(--hazard); padding-left:10px;"></div>
       <button class="renamebtn" id="btnCloseSku" style="margin-top:12px;">Close</button>
+    </div>
+  </div>
+
+  <div id="modalHelp" class="modal-screen" hidden>
+    <div class="modal-box">
+      <div class="eyebrow" id="helpEyebrow"></div>
+      <div class="modal-title" id="helpTitle"></div>
+      <div class="modal-sub" id="helpText"></div>
+      <div id="helpItems"></div>
+      <button class="modal-btn" id="btnHelpClose" type="button">Got it</button>
     </div>
   </div>
 
@@ -1922,7 +2039,7 @@ header{display:none;}
     corp: { hr: 0, customs: 0, marketing: 0, tower: 0, training: 0, solar: 0, depot: 0, server: 0 },
     depotFreeUsed: false,
     site: "general", sku: "fmcg", network: [], muted: false, haptics: true,
-    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, bestCombo: 1,
+    prestiges: 0, contract: null, contractsDone: 0, contractsOffered: 0, specialistOffered: 0, policy: "reliable", journal: [], knowledge: 0, licences: {}, kindDone: {}, expressDone: 0, bestCombo: 1,
     company: "FIRST SHIFT LOGISTICS", lastSeen: Date.now(), themesOwned: {},
     milestones: {}, reviewAsked: false, notifs: {}, notifAsked: false, notifPerm: null, notifLast: {},
     launches: 0, notifPrompted: false, milestoneOffer: null,
@@ -2052,8 +2169,43 @@ header{display:none;}
   }
 
   function genRate(g){
-      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id);
+      return (state.owned[g.id]||0) * g.rate * multFor(state.owned[g.id]||0) * upMult(g.id) * crewMult(g.id);
   }
+
+  // --- Crew -----------------------------------------------------------------------------
+  // Three named specialists, from the autonomous prototype. Each is hired once, assigned to
+  // a department, and trained; the department's fleet works faster for them -- a quarter
+  // faster in their own trade, an eighth anywhere else, a tenth more per qualification. They
+  // are the company's people, not the site's, so they stay through a sale.
+  var GEN_DEPT = { picker:"receive", trolley:"receive", forklift:"store", reach:"store",
+                   conveyor:"pack", sorter:"pack", crane:"dispatch", hub:"dispatch" };
+  var DEPT_NAME = { receive:"Receiving", store:"Storage", pack:"Packing", dispatch:"Dispatch" };
+  var CREW = [
+    { id:"mick",   name:"Big Mick", role:"Handling specialist", home:"store",    hire:500 },
+    { id:"shazza", name:"Shazza",   role:"Packing specialist",  home:"pack",     hire:250000 },
+    { id:"elena",  name:"Elena",    role:"Dispatch specialist", home:"dispatch", hire:5e7 }
+  ];
+  var CREW_MAX_LEVEL = 5;
+  function crewOf(id){
+    if (!state.crew || typeof state.crew !== "object") state.crew = {};
+    var c = state.crew[id];
+    if (!c || typeof c !== "object") c = state.crew[id] = { hired:false, dept:null, level:0 };
+    if (!DEPT_NAME[c.dept]) c.dept = null;
+    c.level = Math.max(0, Math.min(CREW_MAX_LEVEL, Math.floor(Number(c.level) || 0)));
+    return c;
+  }
+  function crewDef(id){ for (var i = 0; i < CREW.length; i++) if (CREW[i].id === id) return CREW[i]; return null; }
+  function crewBoost(def, c){ return (c.dept === def.home ? 0.25 : 0.12) + 0.10 * c.level; }
+  function crewMult(genId){
+    var dept = GEN_DEPT[genId], m = 1;
+    if (!dept || !state.crew) return 1;
+    for (var i = 0; i < CREW.length; i++){
+      var c = state.crew[CREW[i].id];
+      if (c && c.hired && c.dept === dept) m *= 1 + crewBoost(CREW[i], c);
+    }
+    return m;
+  }
+  function crewTrainCost(def, c){ return def.hire * Math.pow(4, c.level + 1); }
 
   function prestigeMult(){ return (1 + state.rep * 0.0085) * (1 + Math.sqrt(state.prestiges || 0) * 0.08); }
   function boostActive(){ return Date.now() < boostUntil; }
@@ -2171,9 +2323,103 @@ header{display:none;}
     return span;
   }
 
+  // --- Operating policy ---------------------------------------------------------------------
+  // From the autonomous prototype: one standing choice about how the site is run. Each is a
+  // trade, not an upgrade. High throughput pushes the crew harder -- output up a fifth,
+  // payroll doubled -- which loses money while wages are a large share of gross and pays once
+  // HR and the Network have made them a small one; the header's payroll figure is the thing
+  // to read. Premium service runs slower and earns it back on contracts, whose pay is fixed
+  // when the job is posted, so switching on the way to a delivery does not cash in.
+  var POLICIES = {
+    reliable:   { id:"reliable",   name:"Reliable service", out:1,    wage:1,    contract:1,
+                  desc:"Standard output, wages and contract pay." },
+    throughput: { id:"throughput", name:"High throughput",  out:1.2,  wage:2,    contract:1,
+                  desc:"Output +20%, wages \u00d72. Worth it once payroll is a small share." },
+    premium:    { id:"premium",    name:"Premium service",  out:0.85, wage:0.85, contract:1.5,
+                  desc:"New contracts pay 50% more per load. Output \u221215%." }
+  };
+  function policy(){ return POLICIES[state.policy] || POLICIES.reliable; }
+
+  // --- Company knowledge -------------------------------------------------------------------
+  // From the autonomous prototype: documented procedures make every site faster. Output
+  // only -- a better procedure is the same crew working smarter, so payroll does not follow.
+  // Priced on lifetime earnings, which never fall, so it cannot be bought cheaply in the
+  // trough just after a sale. It belongs to the company and stays through every sale.
+  var KNOWLEDGE_MAX = 12, KNOWLEDGE_STEP = 0.08;
+  function knowledgeLevel(){ return Math.max(0, Math.min(KNOWLEDGE_MAX, Math.floor(Number(state.knowledge) || 0))); }
+  function knowledgeMult(){ return 1 + KNOWLEDGE_STEP * knowledgeLevel(); }
+  function knowledgeCost(){ return Math.ceil(Math.max(2500, (state.lifetime || 0) * 0.02) * Math.pow(1.9, knowledgeLevel())); }
+  function codify(){
+    var lvl = knowledgeLevel(), cost = knowledgeCost();
+    if (lvl >= KNOWLEDGE_MAX || state.money < cost) return false;
+    state.money -= cost; state.knowledge = lvl + 1;
+    Tele.log("knowledge_level", { knowledge_level:state.knowledge });
+    jot("Procedure documented: company knowledge level " + state.knowledge + ". Every site +" + Math.round(KNOWLEDGE_STEP * state.knowledge * 100) + "%.", "milestone");
+    sfx("upgrade"); showToast("<b>Procedure documented.</b> Every site +" + Math.round(KNOWLEDGE_STEP * 100) + "% faster.");
+    render(); saveGame(); return true;
+  }
+
+  // --- Licences ------------------------------------------------------------------------------
+  // From the autonomous prototype: earned by what the business has delivered, never bought.
+  // Each is a permanent +2% to output and a pallet reward. (The prototype paid REP; here REP
+  // is what a sale pays out against lifetime earnings, so REP granted now would simply be
+  // taken off the next sale.)
+  var LICENCE_STEP = 0.02;
+  var LICENCES = [
+    { id:"local",    name:"Local operator licence",  need:"Deliver 10 contracts",            target:10, pallets:5,
+      prog:function(){ return state.contractsDone || 0; } },
+    { id:"express",  name:"Express carrier",         need:"Deliver 5 jobs on express terms", target:5,  pallets:8,
+      prog:function(){ return state.expressDone || 0; } },
+    { id:"heavy",    name:"Heavy haulage permit",    need:"Deliver 5 oversized loads",       target:5,  pallets:8,
+      prog:function(){ return (state.kindDone && state.kindDone.oversize) || 0; } },
+    { id:"medical",  name:"Medical accreditation",   need:"Deliver 5 refrigerated jobs",     target:5,  pallets:10,
+      prog:function(){ return (state.kindDone && state.kindDone.reefer) || 0; } },
+    { id:"dg",       name:"Dangerous goods licence", need:"Deliver 5 dangerous goods jobs",  target:5,  pallets:10,
+      prog:function(){ return (state.kindDone && state.kindDone.dg) || 0; } },
+    { id:"regional", name:"Regional licence",        need:"Hold 3 sites in your Network",    target:3,  pallets:12,
+      prog:function(){ return (state.network || []).length; } }
+  ];
+  function licencesHeld(){
+    if (!state.licences || typeof state.licences !== "object") state.licences = {};
+    var n = 0; LICENCES.forEach(function(l){ if (state.licences[l.id]) n++; }); return n;
+  }
+  function licenceMult(){ return 1 + LICENCE_STEP * licencesHeld(); }
+  function checkLicences(){
+    licencesHeld();
+    LICENCES.forEach(function(l){
+      if (state.licences[l.id] || l.prog() < l.target) return;
+      state.licences[l.id] = Date.now();
+      state.pallets = (state.pallets || 0) + l.pallets;
+      invalidateUpMult();
+      Tele.log("licence_earned", { licence_id:l.id });
+      jot(l.name + " earned: +" + Math.round(LICENCE_STEP * 100) + "% output for good, and " + l.pallets + " pallets.", "milestone");
+      sfx("upgrade"); showToast("<b>" + l.name + "</b> earned.<br>+" + Math.round(LICENCE_STEP * 100) + "% output for good &amp; +" + l.pallets + " pallets.");
+      saveGame();
+    });
+  }
+
+  // --- Operations journal -----------------------------------------------------------------
+  // From the autonomous prototype: a short running record of what the business did, newest
+  // first, kept with the save. It is what a returning player reads to find out what happened
+  // -- which contracts landed, which were missed, who was hired -- without it all having
+  // been a stack of toasts they never saw.
+  var JOURNAL_MAX = 30;
+  function jot(text, kind){
+    if (!Array.isArray(state.journal)) state.journal = [];
+    state.journal.unshift({ at: Date.now(), text: String(text), kind: kind || "info" });
+    if (state.journal.length > JOURNAL_MAX) state.journal.length = JOURNAL_MAX;
+  }
+  function ago(t){
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 60) return "just now";
+    if (s < 3600) return Math.floor(s / 60) + "m ago";
+    if (s < 86400) return Math.floor(s / 3600) + "h ago";
+    return Math.floor(s / 86400) + "d ago";
+  }
+
   function grossRate(){
     var r = 0; GENS.forEach(function(g){ r += genRate(g); });
-    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
+    return r * currentSite().out * getSku().outMult * marketMult(state.sku) * upMult("all") * (state.perks.lean ? 1.10 : 1) * (state.perks.kaizen ? 1.15 : 1) * treeOutput() * prestigeMult() * (1 + rankIndex() * 0.03) * (boostActive() ? 8 : 1) * (incidentActive() ? 1.5 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().out * knowledgeMult() * licenceMult();
   }
 
   function wageBill(){
@@ -2194,7 +2440,7 @@ header{display:none;}
     // x2.03 against a button that says +75%. Pushing the crew harder costs more in wages,
     // not the same, and the rush it exists to solve is still winnable with it priced
     // honestly: 90s at x1 plus 30s at x1.75 clears a goal sized at 110% of two minutes.
-    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency();
+    return w * currentSite().wage * getSku().wageMult * prestigeMult() * (boostActive() ? 8 : 1) * (expediteActive() ? 1.75 : 1) * flowEfficiency() * policy().wage;
   }
 
   function activeRate(){ return Math.max(0, grossRate() - wageBill()); }
@@ -2339,7 +2585,7 @@ header{display:none;}
       ["money","total","lifetime","rep","taps","pallets","prestiges","contractsDone",
        "bestCombo","lastSeen","lastDailyClaim","dailyStreak","crates","crateAdsToday",
        "streakGrace","graceRefilledAt","incidentsCleared","priorityDone",
-       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered",
+       "incidentPalletsToday","repSpent","expediteReadyAt","contractsOffered","specialistOffered","knowledge","expressDone",
        "launches","dispatchesToday","shipment_counter","eventPlaySeconds","crisisNextAt",
        "crisisRepAwarded","automationTrialUsed","automationTrialUntil","inductionStep"].forEach(function(k){
         var v = Number(state[k]);
@@ -2485,9 +2731,7 @@ header{display:none;}
         if (earned > 0 && earned < 1){
           state.money += earned; state.total += earned; state.lifetime += earned;
         } else if (earned >= 1){
-          document.getElementById("offlineBaseTxt").textContent = money(earned);
-          document.getElementById("offlineTimeTxt").textContent =
-            "Away " + awayTime(rawSecs) + (capped ? " · storage capped at " + capHours + "h" : "");
+          fillAwaySummary(earned, secs, rawSecs, capped, capHours);
           var projected = state.money + earned;
           var next = currentProgressTarget(projected);
           document.getElementById("offlineNextTxt").innerHTML =
@@ -2503,6 +2747,7 @@ header{display:none;}
           newClaim.addEventListener("click", function(){
             state.money += earned; state.total += earned; state.lifetime += earned;
             Tele.log("offline_claim", { reward:"standard", seconds:Math.round(secs), amount:Math.round(earned) });
+            jot("Back after " + awayTime(rawSecs) + ": the site banked " + money(earned) + ".", "away");
             document.getElementById("modalOffline").hidden = true;
             sfx("buy"); render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
           });
@@ -2513,6 +2758,7 @@ header{display:none;}
               var doubled = earned * 2;
               state.money += doubled; state.total += doubled; state.lifetime += doubled;
               Tele.log("offline_claim", { reward:"double", seconds:Math.round(secs), amount:Math.round(doubled) });
+              jot("Back after " + awayTime(rawSecs) + ": the site banked " + money(doubled) + " (doubled).", "away");
               document.getElementById("modalOffline").hidden = true;
               sfx("upgrade"); showToast("Welcome back! Claimed <b>" + money(doubled) + "</b> (2× Bonus).");
               render(); saveGame(); openSitePicker(); showPendingDaily(); maybeAskNotifications("offline");
@@ -3378,6 +3624,237 @@ header{display:none;}
   // contract card beneath it already showed. A real bottleneck outranks everything, even
   // onboarding -- a rush falling behind is costing money now, and its card carries the
   // Expedite button; otherwise the task or the next purchase speaks.
+  // --- Departments ---------------------------------------------------------------------
+  // The fleet, grouped the way the floor is laid out: goods in, storage, packing, goods out.
+  // A display grouping for now -- each tier still earns on its own -- but it gives the plan
+  // and the strip under it the same four numbered names, and it is the shape the department
+  // model planned for 4.8 will give real capacity to.
+  var DEPTS = [
+    { id:"receive",  n:1, name:"Receiving", gens:["picker","trolley"],  zone:"receive" },
+    { id:"store",    n:2, name:"Storage",   gens:["forklift","reach"],  zone:"racks" },
+    { id:"pack",     n:3, name:"Packing",   gens:["conveyor","sorter"], zone:"packing" },
+    { id:"dispatch", n:4, name:"Dispatch",  gens:["crane","hub"],       zone:"ship" }
+  ];
+  function genById(id){ for (var i = 0; i < GENS.length; i++) if (GENS[i].id === id) return GENS[i]; return null; }
+  function deptStats(){
+    var all = 0, out = DEPTS.map(function(d){
+      var units = 0, raw = 0;
+      d.gens.forEach(function(id){ var g = genById(id); units += state.owned[id] || 0; raw += g ? genRate(g) : 0; });
+      all += raw;
+      return { d:d, units:units, raw:raw };
+    });
+    var rate = totalRate();
+    out.forEach(function(x){
+      x.share = all > 0 ? x.raw / all : 0;
+      x.rate = x.share * rate;
+      if (!x.units){ var g = genById(x.d.gens[0]); x.next = g ? g.name : ""; }
+    });
+    return out;
+  }
+
+  var deptStripHtml = "";
+  function renderDeptStrip(){
+    var strip = document.getElementById("deptStrip");
+    if (!strip) return;
+    // The opening shift has its own card and captions on the plan; the strip waits for it.
+    strip.hidden = LastTruck.active();
+    if (strip.hidden) return;
+    var stats = deptStats(), top = -1, best = 0;
+    stats.forEach(function(x, i){ if (x.share > best){ best = x.share; top = i; } });
+    var html = stats.map(function(x, i){
+      return '<button type="button" class="dept' + (x.units ? ' on' : '') + (i === top ? ' top' : '') + '" data-dept="' + x.d.id + '">' +
+             '<div class="dn"><i>' + x.d.n + '</i>' + x.d.name + '</div>' +
+             '<div class="dv">' + (x.units ? fmt(x.units) : "0") + ' <small>units</small></div>' +
+             '<div class="ds">' + (x.units ? "\u25cf " + moneyRate(x.rate) + "/s" : "Not staffed") + '</div>' +
+             '<div class="db"><i style="width:' + Math.round(x.share * 100) + '%"></i></div></button>';
+    }).join("");
+    if (html !== deptStripHtml){ strip.innerHTML = html; deptStripHtml = html; }
+  }
+  document.getElementById("deptStrip").addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest(".dept") : null;
+    if (!b) return;
+    var d = null; DEPTS.forEach(function(x){ if (x.id === b.getAttribute("data-dept")) d = x; });
+    if (!d) return;
+    sfx("tap");
+    switchTab("equip");
+    var e = genEls[d.gens[0]];
+    if (e && e.card.scrollIntoView) setTimeout(function(){ e.card.scrollIntoView({ behavior:"smooth", block:"center" }); }, 60);
+  });
+
+  // --- Field guides ----------------------------------------------------------------------
+  // One short card per screen, opened from its header. The opening shift teaches the floor
+  // once; this is for the player who comes back to a screen and wants the rules again.
+  var HELP = {
+    floor: { eyebrow:"FLOOR / FIELD GUIDE", title:"Your site, live",
+      text:"Everything here runs on its own. Freight comes in at the top and leaves at the bottom.",
+      items:["The four numbered departments match the strip under the plan. Tap one to buy for it.",
+             "The card under the plan says what to do next. When a contract is behind, it names the fix.",
+             "PICK ORDER adds a hand pick on top of what the site earns. It is never required."] },
+    equip: { eyebrow:"FLEET / FIELD GUIDE", title:"Build your fleet",
+      text:"Each unit earns every second, whether you are here or not.",
+      items:["The green figure on each card is what one more adds, after wages.",
+             "Switch to \u00d710 to buy in bulk. Every 25 of a tier earns a milestone bonus.",
+             "Your crew, below the fleet, speed up one department each. They stay when you sell."] },
+    upgrades: { eyebrow:"UPGRADES / FIELD GUIDE", title:"Make every unit count",
+      text:"An upgrade is bought once and multiplies a fleet tier for the rest of this site.",
+      items:["Managers keep a tier running at full output.",
+             "Upgrades are lost when you sell the site. REP and the Network are not.",
+             "When nothing here is affordable, the Floor's next-target card says what to save for."] },
+    pallets: { eyebrow:"STORE / FIELD GUIDE", title:"Spend what you earn",
+      text:"Pallets come from contracts, daily shifts and awards. They are never lost.",
+      items:["Permanent boosts carry across every site you ever run.",
+             "Supplies are one-off: a timed boost or an instant top-up.",
+             "Crates buy liveries, which change the look and nothing else."] },
+    office: { eyebrow:"OFFICE / FIELD GUIDE", title:"Run the business",
+      text:"This is where a site becomes a company.",
+      items:["Selling a site turns its earnings into REP, a permanent multiplier.",
+             "A sold site joins your Network and keeps earning a share in the background.",
+             "Your save is backed up on this phone. Export a code to move it to another."] }
+  };
+  function openHelp(key){
+    var h = HELP[key]; if (!h) return;
+    document.getElementById("helpEyebrow").textContent = h.eyebrow;
+    document.getElementById("helpTitle").textContent = h.title;
+    document.getElementById("helpText").textContent = h.text;
+    document.getElementById("helpItems").innerHTML = h.items.map(function(t, i){
+      return '<div class="help-item"><b>' + (i + 1) + '.</b>' + t + '</div>';
+    }).join("");
+    document.getElementById("modalHelp").hidden = false;
+    Tele.log("help_opened", { help_screen:key });
+  }
+  document.addEventListener("click", function(ev){
+    var t = ev.target && ev.target.closest ? ev.target.closest("[data-help]") : null;
+    if (t){ ev.stopPropagation(); openHelp(t.getAttribute("data-help")); }
+  });
+  document.getElementById("btnHelpClose").addEventListener("click", function(){ document.getElementById("modalHelp").hidden = true; });
+
+  // What net income would be under each policy right now, for the Office card. Computed by
+  // trying each in turn: the multipliers interact with payroll, which is the whole point.
+  function policyNet(id){
+    var was = state.policy; state.policy = id;
+    var n = grossRate() - wageBill();
+    state.policy = was;
+    return n;
+  }
+  var policyHtml = "";
+  function renderPolicy(){
+    var tag = document.getElementById("policyTag"), rk = document.getElementById("rankTag");
+    var tags = document.getElementById("floorTags");
+    if (tags) tags.hidden = LastTruck.active();
+    if (tag) tag.textContent = policy().name;
+    if (rk) rk.textContent = RANKS[rankIndex()].name;
+    var list = document.getElementById("policyList");
+    if (!list || curTab !== "office") return;
+    var cur = policy().id;
+    var html = Object.keys(POLICIES).map(function(k){
+      var P = POLICIES[k];
+      return '<button type="button" class="policy-opt' + (k === cur ? ' on' : '') + '" data-policy="' + k + '"><b>' + P.name + (k === cur ? ' \u2713' : '') + '</b>' +
+             '<span>' + P.desc + '</span><em>Site net now: ' + moneyRate(policyNet(k)) + '/s</em></button>';
+    }).join("");
+    if (html !== policyHtml){ list.innerHTML = html; policyHtml = html; }
+  }
+  function setPolicy(id){
+    if (!POLICIES[id] || state.policy === id) return;
+    state.policy = id;
+    invalidateUpMult();
+    Tele.log("policy_set", { policy_choice:id });
+    jot("Policy changed to " + POLICIES[id].name + ".", "action");
+    sfx("upgrade");
+    showToast("<b>" + POLICIES[id].name + "</b> is now in force.");
+    render(); saveGame();
+  }
+  document.getElementById("policyList").addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest("[data-policy]") : null;
+    if (b) setPolicy(b.getAttribute("data-policy"));
+  });
+  document.getElementById("policyTag").addEventListener("click", function(){
+    switchTab("office");
+    var blk = document.getElementById("policyBlock");
+    if (blk && blk.scrollIntoView) setTimeout(function(){ blk.scrollIntoView({ behavior:"smooth", block:"center" }); }, 60);
+  });
+
+  // The crew section heads the Fleet tab. Its structure is rebuilt only when someone is
+  // hired, trained or moved -- rebuilding a <select> ten times a second would shut it under
+  // the player's thumb -- and the buttons' affordability is refreshed in place.
+  var crewKey = "";
+  function renderCrew(){
+    var wrap = document.getElementById("crewWrap"), list = document.getElementById("crewList");
+    if (!wrap || !list) return;
+    wrap.hidden = !GATES.office() || LastTruck.active();
+    if (wrap.hidden) return;
+    var key = CREW.map(function(d){ var c = crewOf(d.id); return d.id + c.hired + c.dept + c.level; }).join("|");
+    if (key !== crewKey){
+      crewKey = key;
+      list.innerHTML = CREW.map(function(d){
+        var c = crewOf(d.id);
+        var badge = c.hired ? "QUAL " + c.level : "AVAILABLE";
+        var body;
+        if (!c.hired){
+          body = '<button type="button" class="crew-btn primary" data-crew-hire="' + d.id + '">Hire permanently \u00b7 ' + money(d.hire) + '</button>';
+        } else {
+          var opts = Object.keys(DEPT_NAME).map(function(k){
+            return '<option value="' + k + '"' + (c.dept === k ? " selected" : "") + '>' + DEPT_NAME[k] + '</option>';
+          }).join("");
+          var gens = [];
+          for (var g in GEN_DEPT) if (GEN_DEPT[g] === c.dept){ var gd = genById(g); if (gd) gens.push(gd.name); }
+          body = '<div class="crew-line">' + (c.dept ? "+" + Math.round(crewBoost(d, c) * 100) + "% to " + gens.join(" &amp; ") + (c.dept === d.home ? " \u00b7 home trade" : "") : "Not assigned yet") + '</div>' +
+                 '<label class="crew-assign"><span>Department</span><select data-crew-assign="' + d.id + '">' +
+                 (c.dept ? "" : '<option value="" selected>Choose\u2026</option>') + opts + '</select></label>' +
+                 (c.level < CREW_MAX_LEVEL
+                   ? '<button type="button" class="crew-btn" data-crew-train="' + d.id + '">Train \u00b7 ' + money(crewTrainCost(d, c)) + '</button>'
+                   : '<div class="crew-line">Fully qualified.</div>');
+        }
+        return '<div class="crew-card"><div class="crew-head"><b>' + d.name + '</b><span class="crew-badge">' + badge + '</span></div>' +
+               '<div class="crew-role">' + d.role + ' \u00b7 best in ' + DEPT_NAME[d.home] + '</div>' + body + '</div>';
+      }).join("");
+    }
+    list.querySelectorAll("[data-crew-hire]").forEach(function(b){ var d = crewDef(b.getAttribute("data-crew-hire")); b.disabled = !d || state.money < d.hire; });
+    list.querySelectorAll("[data-crew-train]").forEach(function(b){ var d = crewDef(b.getAttribute("data-crew-train")); b.disabled = !d || state.money < crewTrainCost(d, crewOf(d.id)); });
+  }
+  function hireCrew(id){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || c.hired || state.money < d.hire) return false;
+    state.money -= d.hire; c.hired = true; c.dept = d.home;
+    Tele.log("crew_hire", { crew_member:id });
+    jot(d.name + " hired and put on " + DEPT_NAME[d.home] + ".", "crew");
+    sfx("upgrade"); showToast("<b>" + d.name + "</b> joins the crew, on " + DEPT_NAME[d.home] + ".");
+    render(); saveGame(); return true;
+  }
+  function trainCrew(id){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || !c.hired || c.level >= CREW_MAX_LEVEL) return false;
+    var cost = crewTrainCost(d, c);
+    if (state.money < cost) return false;
+    state.money -= cost; c.level++;
+    Tele.log("crew_train", { crew_member:id, crew_level:c.level });
+    jot(d.name + " qualified to level " + c.level + ".", "crew");
+    sfx("upgrade"); showToast("<b>" + d.name + "</b> qualified to level " + c.level + ".");
+    render(); saveGame(); return true;
+  }
+  function assignCrew(id, dept){
+    var d = crewDef(id), c = d && crewOf(id);
+    if (!d || !c.hired || !DEPT_NAME[dept] || c.dept === dept) return false;
+    c.dept = dept;
+    Tele.log("crew_assign", { crew_member:id, crew_dept:dept });
+    render(); saveGame(); return true;
+  }
+  document.getElementById("crewList").addEventListener("click", function(ev){
+    var t = ev.target.closest ? ev.target.closest("[data-crew-hire],[data-crew-train]") : null;
+    if (!t || t.disabled) return;
+    if (t.hasAttribute("data-crew-hire")) hireCrew(t.getAttribute("data-crew-hire"));
+    else trainCrew(t.getAttribute("data-crew-train"));
+  });
+  document.getElementById("crewList").addEventListener("change", function(ev){
+    var t = ev.target;
+    if (t && t.getAttribute && t.getAttribute("data-crew-assign")) assignCrew(t.getAttribute("data-crew-assign"), t.value);
+  });
+
+  window.__crew = { CREW: CREW, GEN_DEPT: GEN_DEPT, mult: crewMult, hire: hireCrew, train: trainCrew, assign: assignCrew,
+                    render: renderCrew, trainCost: function(id){ return crewTrainCost(crewDef(id), crewOf(id)); } };
+
+  window.__depts = { DEPTS: DEPTS, stats: deptStats, render: renderDeptStrip, help: openHelp, HELP: HELP,
+                     POLICIES: POLICIES, policyNet: policyNet, setPolicy: setPolicy, renderPolicy: renderPolicy };
+
   function pickNextCard(){
     var obj = document.getElementById("objective"), bn = document.getElementById("bottleneck");
     if (!bn.hidden && bn.classList.contains("good")) bn.hidden = true;
@@ -3670,6 +4147,7 @@ header{display:none;}
     el.rate.textContent = money(totalRate());
     el.tapval.textContent = money(tapValue());
     document.getElementById("repInfo").textContent = "REP " + state.rep;
+    document.getElementById("mRep").textContent = fmt(state.rep);
 
     var currentWages = wageBill();
     // The Office tab always remains accessible for settings; only its progression-heavy
@@ -3732,7 +4210,7 @@ header{display:none;}
     document.getElementById("shiftTaps").textContent = state.taps;
     document.getElementById("shiftCombo").textContent = "\u00d7" + maxCombo.toFixed(2);
     renderNetwork(); renderScaleStrip(); renderPickSub();
-    renderObjective(); renderBottleneck(); pickNextCard();
+    renderObjective(); renderBottleneck(); pickNextCard(); renderDeptStrip(); renderPolicy();
     renderAdButtons(); renderShiftSummary();
   }
 
@@ -3760,6 +4238,7 @@ header{display:none;}
   }
 
   function renderEquipTab(){
+    renderCrew();
     var base = grossRate() - wageBill();
     GENS.forEach(function(g){
       var e = genEls[g.id];
@@ -4166,7 +4645,52 @@ header{display:none;}
     });
   })();
 
+  function renderJournal(){
+    var el = document.getElementById("journalList");
+    if (!el) return;
+    // A save is the player's to edit, so every entry is read as untrusted: objects only, the
+    // kind reduced to a class name, the text stripped of markup.
+    var j = (Array.isArray(state.journal) ? state.journal : []).filter(function(e){ return e && typeof e === "object"; });
+    var html = j.length ? j.slice(0, 12).map(function(e){
+      var kind = String(e.kind || "info").replace(/[^a-z]/g, "");
+      // Prefixed: a bare "contract" class picked up the contract card's own styling.
+      return '<div class="jrow jk-' + kind + '"><i></i><span>' + String(e.text).replace(/[<>&"]/g, "") + '</span><em>' + ago(Number(e.at) || Date.now()) + '</em></div>';
+    }).join("") : '<div class="jrow"><i></i><span>Nothing yet. Contracts, hires and sales are recorded here.</span></div>';
+    if (el._html !== html){ el.innerHTML = html; el._html = html; }
+  }
+
+  window.__journal = { jot: jot, render: renderJournal };
+  window.__company = { codify: codify, knowledgeCost: knowledgeCost, knowledgeMult: knowledgeMult, LICENCES: LICENCES,
+                       checkLicences: checkLicences, licenceMult: licenceMult, renderKnowledge: renderKnowledge, renderLicences: renderLicences };
+
+  function renderKnowledge(){
+    var t = document.getElementById("knowledgeText"), b = document.getElementById("codifyBtn");
+    if (!t || !b) return;
+    var lvl = knowledgeLevel();
+    t.innerHTML = "Documented procedures make every site faster, now and after every sale. Level <b>" + lvl + " / " + KNOWLEDGE_MAX +
+                  "</b> \u00b7 every site <b>+" + Math.round(KNOWLEDGE_STEP * lvl * 100) + "%</b>.";
+    if (lvl >= KNOWLEDGE_MAX){ b.textContent = "FULLY DOCUMENTED"; b.disabled = true; return; }
+    var cost = knowledgeCost();
+    b.textContent = "DOCUMENT A PROCEDURE \u00b7 " + money(cost) + " \u00b7 +" + Math.round(KNOWLEDGE_STEP * 100) + "%";
+    b.disabled = state.money < cost;
+  }
+  function renderLicences(){
+    var el = document.getElementById("licenceList");
+    if (!el) return;
+    licencesHeld();
+    var html = LICENCES.map(function(l){
+      var got = !!state.licences[l.id], p = got ? l.target : Math.min(l.target, l.prog());
+      return '<div class="lrow' + (got ? ' got' : '') + '"><div class="lt">' + (got ? "\u2713 " : "") + l.name +
+             '<span>' + (got ? "+" + Math.round(LICENCE_STEP * 100) + "% output" : fmt(p) + " / " + l.target) + '</span></div>' +
+             '<div class="ln">' + l.need + ' \u00b7 ' + l.pallets + ' pallets</div>' +
+             '<div class="lb"><i style="width:' + Math.round(p / l.target * 100) + '%"></i></div></div>';
+    }).join("");
+    if (el._html !== html){ el.innerHTML = html; el._html = html; }
+  }
+  document.getElementById("codifyBtn").addEventListener("click", function(){ codify(); });
+
   function renderOffice(){
+    renderPolicy(); renderJournal(); renderKnowledge(); renderLicences();
     var sl = document.getElementById("specialistList");
     if (sl){
       var rows = JOB_KINDS.map(function(k){
@@ -4208,6 +4732,8 @@ header{display:none;}
     state.rep += gain; state.prestiges++;
     state.pallets += (3 + Math.floor(Math.sqrt(gain) * 2)) + (repBonusArmed ? 10 : 0);
     Tele.log("business_sold", { rep_gain:gain, sales:state.prestiges, site:state.site });
+    jot("Sold " + currentSite().name + " for " + fmt(gain) + " REP. It joins the Network.", "milestone");
+    setTimeout(checkLicences, 0);
     repBonusArmed = false; sellArmed = false; sellBtn.classList.remove("armed");
 
     if (!state.network) state.network = [];
@@ -4968,7 +5494,7 @@ header{display:none;}
     var goal = Math.max(minGoal, Math.floor(r * 60 * mins * goalFraction * customsCut));
     var towerMult = 1 + ((state.corp.tower || 0) * 0.50);
     var rushReward = rush ? 2.5 : 1;
-    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward;
+    var cashReward = Math.max(400, Math.floor(r * 60 * 6 * conMult)) * towerMult * (hasNode("broker") ? 1.25 : 1) * rushReward * policy().contract;
     var kinds = !rush && state.contractsDone >= 2 && state.contractsOffered % 3 === 2 ? jobKinds() : [];
     // Taken in turn by a count of their own: indexing by the job number let a rush that
     // fell on a specialist slot skip the same kind every time round.
@@ -5013,6 +5539,7 @@ header{display:none;}
     c.cash *= EXPRESS_CASH; c.pallets += EXPRESS_PALLETS;
     c.label = "EXPRESS · " + c.label;
     expressArmedUntil = 0;
+    jot("Express clause signed: " + money(c.cash) + " if delivered in " + clockLeft(c.deadline - Date.now()) + ".", "action");
     Tele.log("express_taken", { express_progress:Math.round(c.prog / c.goal * 100),
                                 express_secs:Math.round((c.deadline - Date.now()) / 1000) });
     sfx("upgrade");
@@ -5045,9 +5572,11 @@ header{display:none;}
     if (Date.now() > c.deadline){
       if (c.rush){
         Tele.log("rush_contract_missed", { progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        jot("Rush window closed at " + Math.round(Math.min(1, c.prog / c.goal) * 100) + "%. No penalty.", "missed");
         showToast("Rush window closed. <b>No penalty.</b>");
       } else if (c.express){
         Tele.log("express_missed", { express_progress:Math.round(Math.min(1, c.prog / c.goal) * 100) });
+        jot("Express job missed at " + Math.round(Math.min(1, c.prog / c.goal) * 100) + "%. It went to another carrier.", "missed");
         showToast("Express clause missed. <b>The job went to another carrier.</b>");
       }
       state.contract = newContract(); c = state.contract;
@@ -5350,6 +5879,24 @@ header{display:none;}
   // come back at all: on their second launch, or the moment they collect a shift's offline
   // takings and the reminder has just demonstrated what it is for -- or the moment they
   // finish the Last Truck, the one point every new player who stays reaches in session one.
+  // The return screen, laid out as the autonomous prototype's: what came in, at what rate,
+  // from how many sites, and which part of the floor carried it. Everything shown is what
+  // the offline sum was actually made of -- nothing here is simulated after the fact.
+  function fillAwaySummary(earned, secs, rawSecs, capped, capHours){
+    document.getElementById("offlineBaseTxt").textContent = money(earned);
+    document.getElementById("offlineTimeTxt").textContent =
+      "Away " + awayTime(rawSecs) + (capped ? " · storage filled after " + capHours + "h" : "") + ". Your crew ran the site.";
+    document.getElementById("offlineRateTxt").textContent = moneyRate(earned / Math.max(1, secs)) + "/s";
+    var held = (state.network || []).length;
+    document.getElementById("offlineSitesTxt").textContent = String(1 + held);
+    var net = networkRate() * secs;
+    document.getElementById("offlineSitesSub").textContent = held
+      ? "Sites operating · " + money(net) + " from your Network" : "Sites operating";
+    var stats = deptStats(), best = null;
+    stats.forEach(function(x){ if (x.units && (!best || x.share > best.share)) best = x; });
+    document.getElementById("offlineDeptTxt").textContent = best ? best.d.n + " " + best.d.name : "\u2014";
+  }
+
   function maybeAskNotifications(trigger){
     if(LastTruck.active())return;
     if (state.notifPrompted || state.notifAsked) return;
@@ -7392,6 +7939,39 @@ header{display:none;}
 
   /* ---- frame ---------------------------------------------------------------- */
   var animT = 0, lastFrame = 0, lastSitePainted = null, lastHubVisible = null;
+  // The numbered department cards on the plan. HTML rather than canvas so they stay crisp
+  // at any zoom; placed from the camera each frame, and only where they can be read: not
+  // pulled out to Overview, not over the opening shift's own captions.
+  var deptLabelEls = null, deptLabelText = "";
+  function placeDeptLabels(){
+    var host = document.getElementById("deptLabels"), cv = document.getElementById("wcanvas");
+    if (!host || !cv) return;
+    var show = cam.z >= 0.3 && !LastTruck.active() && document.getElementById("canvasZoneInfo").hidden;
+    host.hidden = !show;
+    if (!show) return;
+    if (!deptLabelEls){
+      host.innerHTML = DEPTS.map(function(d){ return '<div class="dept-label"><em>' + d.n + '</em>' + d.name + '<span></span></div>'; }).join("");
+      deptLabelEls = host.querySelectorAll(".dept-label");
+    }
+    host.style.top = cv.offsetTop + "px"; host.style.height = CH + "px";
+    var stats = deptStats(), text = "";
+    for (var i = 0; i < DEPTS.length && i < deptLabelEls.length; i++){
+      var z = ZONE[DEPTS[i].zone], el = deptLabelEls[i], p = toScreen(z.x, z.y);
+      var x = Math.max(4, Math.min(CW - 120, p.x + 8)), y = p.y + 8;
+      el.style.display = (y < -10 || y > CH - 24) ? "none" : "";
+      el.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
+      text += stats[i].units + ",";
+    }
+    // The sub-lines change only when the fleet does, so they are rewritten only then.
+    if (text !== deptLabelText){
+      deptLabelText = text;
+      for (var k = 0; k < DEPTS.length && k < deptLabelEls.length; k++){
+        var sp = deptLabelEls[k].querySelector("span");
+        if (sp) sp.textContent = stats[k].units ? fmt(stats[k].units) + " units" : "empty";
+      }
+    }
+  }
+
   function frame(ts){
     requestAnimationFrame(frame);
     DayOne.update();
@@ -7408,6 +7988,7 @@ header{display:none;}
     // is not a purchase: it opens on the working building, as frameCamera() does.
     if(lastHubVisible!==hubVisible){var firstLook=lastHubVisible===null;lastHubVisible=hubVisible;if(!camTouched)cameraTarget=cameraFor(firstLook?WORK_BOUNDS:overviewBounds());}
     tickCamera(dt);
+    placeDeptLabels();
     // Selling the business can land you on a different site, and the palette is built
     // from the theme rather than per frame, so it has to be told.
     if (lastSitePainted !== state.site) update3DPalette();
@@ -7493,8 +8074,16 @@ header{display:none;}
         state.money += state.contract.cash; state.total += state.contract.cash; state.lifetime += state.contract.cash;
         Tele.log("contract_complete", { number:state.contractsDone, cash:Math.round(state.contract.cash), pallets:state.contract.pallets, rush:state.contract.rush ? 1 : 0,
                                         contract_express:state.contract.express ? 1 : 0, contract_kind:state.contract.kind || "standard" });
+        if (state.contract.express) state.expressDone = (state.expressDone || 0) + 1;
+        if (state.contract.kind){
+          if (!state.kindDone || typeof state.kindDone !== "object") state.kindDone = {};
+          state.kindDone[state.contract.kind] = (state.kindDone[state.contract.kind] || 0) + 1;
+        }
+        jot((state.contract.express ? "Express contract" : state.contract.rush ? "Rush contract" : state.contract.kind ? (jobKind(state.contract.kind) || {}).name + " contract" : "Contract") +
+            " delivered: +" + money(state.contract.cash) + " and " + state.contract.pallets + " pallets.", "contract");
         sfx("upgrade"); showToast("Contract Fulfilled! <b>+" + money(state.contract.cash) + "</b> &amp; <b>+" + state.contract.pallets + " Pallets</b>.");
         state.contract = newContract();
+        checkLicences();
         maybeOfferMilestone();
       }
     }

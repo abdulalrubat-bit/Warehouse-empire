@@ -47,6 +47,8 @@ async function phone(b, save){
     chk("and stays reachable wherever the page is scrolled", r2.ok, r2.why);
     const pick = await p.evaluate(REACHABLE, "#pickBtn");
     chk("with PICK ORDER still reachable beside it", pick.ok, pick.why);
+    chk("the numbered department cards stay off the plan during the opening shift",
+        await p.evaluate(() => document.getElementById("deptLabels").hidden === true));
     await ctx.close(); }
 
   // ---- the first task can be finished with the button alone ----
@@ -151,6 +153,23 @@ async function phone(b, save){
     chk("the site opens at a scale its labels survive", open.z >= 0.35, "z=" + open.z.toFixed(3));
     chk("with receiving and shipping both in frame",
         open.recvTop > -40 && open.shipTop < open.h, JSON.stringify(open));
+    // The four numbered department cards sit on the plan, inside the canvas, without
+    // covering one another.
+    const lab = await p.evaluate(() => {
+      const c = document.getElementById("wcanvas").getBoundingClientRect();
+      const r = [...document.querySelectorAll(".dept-label")].filter(e => e.style.display !== "none").map(e => e.getBoundingClientRect());
+      let overlap = false;
+      for (let i = 0; i < r.length; i++) for (let j = i + 1; j < r.length; j++)
+        if (r[i].left < r[j].right && r[j].left < r[i].right && r[i].top < r[j].bottom && r[j].top < r[i].bottom) overlap = true;
+      return { n: r.length, inside: r.every(b => b.top >= c.top - 1 && b.bottom <= c.bottom + 1), overlap };
+    });
+    chk("the plan carries the four numbered department cards", lab.n === 4 && lab.inside, JSON.stringify(lab));
+    chk("and none covers another", lab.overlap === false);
+    // The operating policy card is drawn by the Office, not the Floor; it was once empty.
+    await p.click('.tabs button[data-tab="office"]'); await p.waitForTimeout(300);
+    chk("the Office lists the three operating policies",
+        await p.evaluate(() => document.querySelectorAll("#policyList .policy-opt").length === 3));
+    await p.click('.tabs button[data-tab="floor"]'); await p.waitForTimeout(400);
     await p.click("#canvasOverview"); await p.waitForTimeout(1500);
     const over = await p.evaluate(() => {
       const P = window.__plan, a = P.toScreen(P.site.x, P.net.y), b2 = P.toScreen(P.site.x + P.site.w, P.site.y + P.site.h);
