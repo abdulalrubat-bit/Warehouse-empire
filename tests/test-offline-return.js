@@ -47,6 +47,11 @@ for (const [label, save] of Object.entries(SAVES)){
   const awayLine = document.getElementById("offlineTimeTxt").textContent || "";
 
   chk(label + ": loads without throwing", threw === null, threw || "clean");
+  // An existing business meets the department rule with a week in which it can only gain.
+  if ((s.lifetime || 0) > 0)
+    chk(label + ": an existing save gets its week of flow-balance grace",
+        s.flowGraceUntil > Date.now() + 6.9 * 86400000 && s.flowGraceUntil < Date.now() + 7.1 * 86400000, s.flowGraceUntil);
+  else chk(label + ": a save that never earned has no grace to give", s.flowGraceUntil === 0, s.flowGraceUntil);
   if (!modal.hidden){
     chk(label + ": the away line is filled in", /Away/.test(awayLine), awayLine);
     // The summary grid, after the autonomous prototype: every cell filled, none of it junk.

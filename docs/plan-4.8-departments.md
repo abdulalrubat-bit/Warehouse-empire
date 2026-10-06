@@ -1,5 +1,7 @@
 # 4.8 plan: departments with real capacity
 
+**Status: built in 4.8 (see release-notes-4.8.md) with the recommended options. Balance is weighed by investment rather than output share; see the notes for why.**
+
 **Goal:** bring across the core idea of the Autonomous Operations prototype. Freight
 moves Receiving → Storage → Packing → Dispatch, and the slowest department limits the
 site. That gives the bottleneck card a real cause ("Packing can't keep up") and makes
