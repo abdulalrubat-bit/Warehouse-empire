@@ -29,7 +29,7 @@ async function page(b, w, h){
   // still inside it is measuring the yard in motion, not the plots beyond the fence.
   await ctx.addInitScript(() => {
     try { if (!localStorage.getItem("warehouse-empire-save"))
-      localStorage.setItem("warehouse-empire-save", JSON.stringify({ launches: 1, lastTruck: {version:1, status:"complete"} }));
+      localStorage.setItem("warehouse-empire-save", JSON.stringify({ launches: 1, lastTruck: {version:1, status:"complete"}, mapView: "plan" }));
     } catch(e){}
   });
   const p = await ctx.newPage();
